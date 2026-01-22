@@ -10,10 +10,11 @@ Séries coletadas:
 - IPCA (código 433): Índice nacional de preços ao consumidor-amplo
 """
 
+import asyncio
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 from bcb import sgs
@@ -47,6 +48,15 @@ SERIES_CODES = {
     "ipca": 433,      # IPCA - Variação mensal
     "selic_meta": 432,  # Taxa Selic - Meta definida pelo Copom
 }
+
+
+def _sgs_get_sync(codes: dict[str, int], **kwargs: Any) -> Any:
+    """
+    Wrapper síncrono para sgs.get().
+
+    Necessário para uso com asyncio.to_thread().
+    """
+    return sgs.get(codes=codes, **kwargs)
 
 
 class BCBCollector(BaseCollector):
@@ -132,9 +142,10 @@ class BCBCollector(BaseCollector):
             if not codigo:
                 return None
 
-            # python-bcb é síncrono, executa em thread
-            df = sgs.get(
-                codes={tipo: codigo},
+            # python-bcb é síncrono, executa em thread para não bloquear event loop
+            df = await asyncio.to_thread(
+                _sgs_get_sync,
+                {tipo: codigo},
                 start=data_inicio.strftime("%Y-%m-%d"),
                 end=data_fim.strftime("%Y-%m-%d"),
             )
@@ -169,8 +180,10 @@ class BCBCollector(BaseCollector):
             data_fim = date.today()
             data_inicio = data_fim - timedelta(days=dias)
 
-            df = sgs.get(
-                codes={"selic": SERIES_CODES["selic"]},
+            # python-bcb é síncrono, executa em thread para não bloquear event loop
+            df = await asyncio.to_thread(
+                _sgs_get_sync,
+                {"selic": SERIES_CODES["selic"]},
                 start=data_inicio.strftime("%Y-%m-%d"),
                 end=data_fim.strftime("%Y-%m-%d"),
             )
@@ -212,8 +225,10 @@ class BCBCollector(BaseCollector):
             data_fim = date.today()
             data_inicio = data_fim - timedelta(days=90)  # Copom se reúne ~45 dias
 
-            df = sgs.get(
-                codes={"selic_meta": SERIES_CODES["selic_meta"]},
+            # python-bcb é síncrono, executa em thread para não bloquear event loop
+            df = await asyncio.to_thread(
+                _sgs_get_sync,
+                {"selic_meta": SERIES_CODES["selic_meta"]},
                 start=data_inicio.strftime("%Y-%m-%d"),
                 end=data_fim.strftime("%Y-%m-%d"),
             )

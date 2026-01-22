@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Generic, TypeVar
 
+from veredas import TZ_BRASIL
+
 T = TypeVar("T")
 
 
@@ -30,7 +32,7 @@ class CollectionResult(Generic[T]):
             success=True,
             data=data,
             source=source,
-            collected_at=datetime.now(),
+            collected_at=datetime.now(TZ_BRASIL),
             error=None,
             raw_response=raw_response,
         )
@@ -42,7 +44,7 @@ class CollectionResult(Generic[T]):
             success=False,
             data=None,
             source=source,
-            collected_at=datetime.now(),
+            collected_at=datetime.now(TZ_BRASIL),
             error=error,
             raw_response=None,
         )

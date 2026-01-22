@@ -11,6 +11,7 @@ from typing import Optional, Sequence
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.orm import Session
 
+from veredas import TZ_BRASIL
 from veredas.storage.models import (
     Anomalia,
     EventoRegulatorio,
@@ -102,7 +103,7 @@ class TaxaCDBRepository:
         indexador: Optional[str] = None,
     ) -> Sequence[TaxaCDB]:
         """Lista taxas recentes."""
-        desde = datetime.now() - timedelta(days=dias)
+        desde = datetime.now(TZ_BRASIL) - timedelta(days=dias)
         stmt = (
             select(TaxaCDB)
             .where(TaxaCDB.data_coleta >= desde)
@@ -118,7 +119,7 @@ class TaxaCDBRepository:
         dias: int = 7,
     ) -> Optional[Decimal]:
         """Calcula média do mercado para um indexador."""
-        desde = datetime.now() - timedelta(days=dias)
+        desde = datetime.now(TZ_BRASIL) - timedelta(days=dias)
         stmt = select(func.avg(TaxaCDB.percentual)).where(
             and_(
                 TaxaCDB.indexador == indexador,
@@ -133,17 +134,48 @@ class TaxaCDBRepository:
         indexador: str,
         dias: int = 30,
     ) -> Optional[Decimal]:
-        """Calcula desvio padrão do mercado."""
-        desde = datetime.now() - timedelta(days=dias)
-        stmt = select(func.avg(TaxaCDB.percentual), func.count(TaxaCDB.id)).where(
+        """
+        Calcula desvio padrão do mercado.
+
+        SQLite não tem STDDEV nativo, então calculamos manualmente em Python.
+
+        Args:
+            indexador: Tipo de indexador (CDI, IPCA, etc.).
+            dias: Quantidade de dias para calcular.
+
+        Returns:
+            Desvio padrão como Decimal ou None se não houver dados suficientes.
+        """
+        desde = datetime.now(TZ_BRASIL) - timedelta(days=dias)
+
+        # Buscar todos os valores
+        stmt = select(TaxaCDB.percentual).where(
             and_(
                 TaxaCDB.indexador == indexador,
                 TaxaCDB.data_coleta >= desde,
             )
         )
-        # SQLite não tem STDDEV nativo, calcular manualmente se necessário
-        # Por enquanto, retorna None
-        return None
+        result = self.session.execute(stmt).scalars().all()
+
+        # Precisa de pelo menos 2 valores para calcular desvio padrão
+        if len(result) < 2:
+            return None
+
+        # Converter para float para cálculos
+        valores = [float(v) for v in result]
+        n = len(valores)
+
+        # Calcular média
+        media = sum(valores) / n
+
+        # Calcular variância (soma dos quadrados das diferenças / n)
+        soma_quadrados = sum((x - media) ** 2 for x in valores)
+        variancia = soma_quadrados / n
+
+        # Desvio padrão = raiz quadrada da variância
+        desvio = variancia ** 0.5
+
+        return Decimal(str(round(desvio, 6)))
 
     def create(self, **kwargs) -> TaxaCDB:
         """Cria uma nova taxa."""
@@ -221,7 +253,7 @@ class AnomaliaRepository:
             severidade=severidade,
             valor_detectado=valor_detectado,
             descricao=descricao,
-            detectado_em=datetime.now(),
+            detectado_em=datetime.now(TZ_BRASIL),
             **kwargs,
         )
         self.session.add(anomalia)
@@ -237,7 +269,7 @@ class AnomaliaRepository:
         anomalia = self.get_by_id(anomalia_id)
         if anomalia:
             anomalia.resolvido = True
-            anomalia.resolvido_em = datetime.now()
+            anomalia.resolvido_em = datetime.now(TZ_BRASIL)
             anomalia.notas_resolucao = notas
         return anomalia
 
