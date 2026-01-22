@@ -15,11 +15,13 @@ API: https://www3.bcb.gov.br/ifdata/
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
-from typing import Optional
+from types import TracebackType
+from typing import Optional, Type
 
 import httpx
 
 from veredas.collectors.base import BaseCollector, CollectionResult
+from veredas.config import PRINCIPAIS_BANCOS_CNPJ
 
 
 @dataclass
@@ -153,6 +155,9 @@ class IFDataCollector(BaseCollector):
         """
         Obtem lista das principais IFs por ativo total.
 
+        Tenta obter lista atualizada da API IF.Data.
+        Em caso de falha, usa lista configurada em config.PRINCIPAIS_BANCOS_CNPJ.
+
         Args:
             client: Cliente HTTP.
             limite: Numero maximo de IFs a retornar.
@@ -160,20 +165,6 @@ class IFDataCollector(BaseCollector):
         Returns:
             Lista de CNPJs.
         """
-        # Lista de CNPJs dos maiores bancos brasileiros (fallback)
-        principais_bancos = [
-            "00.000.000/0001-91",  # Banco do Brasil
-            "60.746.948/0001-12",  # Bradesco
-            "60.701.190/0001-04",  # Itau
-            "00.360.305/0001-04",  # Caixa
-            "33.657.248/0001-89",  # Santander
-            "90.400.888/0001-42",  # Banco Safra
-            "30.306.294/0001-45",  # Banco BTG Pactual
-            "33.042.953/0001-04",  # Citibank
-            "62.073.200/0001-21",  # Banco Votorantim
-            "07.237.373/0001-20",  # Banco do Nordeste
-        ]
-
         try:
             # Tentar obter lista atualizada da API
             response = await client.get(
@@ -184,12 +175,19 @@ class IFDataCollector(BaseCollector):
             if response.status_code == 200:
                 data = response.json()
                 if isinstance(data, list):
-                    return [if_data.get("cnpj") for if_data in data[:limite] if if_data.get("cnpj")]
+                    cnpjs = [
+                        if_data.get("cnpj")
+                        for if_data in data[:limite]
+                        if if_data.get("cnpj")
+                    ]
+                    if cnpjs:
+                        return cnpjs
 
         except Exception:
             pass
 
-        return principais_bancos[:limite]
+        # Fallback: usar lista configurada centralmente (M4)
+        return PRINCIPAIS_BANCOS_CNPJ[:limite]
 
     async def _collect_dados_if(
         self,
@@ -282,16 +280,22 @@ class IFDataCollector(BaseCollector):
         """
         Verifica se a API do IF.Data esta acessivel.
 
+        Testa fazendo uma requisicao real ao endpoint de lista de IFs
+        ao inves de um endpoint de status que pode nao existir.
+
         Returns:
-            True se a API esta respondendo.
+            True se a API esta respondendo com sucesso (HTTP 200).
         """
         try:
             client = await self._get_client()
+            # Usar endpoint real que sabemos existir (L2)
             response = await client.get(
-                f"{IFDATA_BASE_URL}/status",
+                f"{IFDATA_BASE_URL}{IFDATA_ENDPOINTS['lista_ifs']}",
+                params={"tipo": "Banco"},
                 timeout=10,
             )
-            return response.status_code in (200, 404)  # 404 = endpoint nao existe mas servidor responde
+            # Aceitar apenas 200 - qualquer outro codigo indica problema
+            return response.status_code == 200
         except Exception:
             return False
 
@@ -331,3 +335,30 @@ class IFDataCollector(BaseCollector):
         if self._client:
             await self._client.aclose()
             self._client = None
+
+    # Context Manager (L3) - evita resource leak
+    async def __aenter__(self) -> "IFDataCollector":
+        """
+        Entra no context manager.
+
+        Permite uso com 'async with':
+            async with IFDataCollector() as collector:
+                result = await collector.collect()
+        """
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        """
+        Sai do context manager, fechando recursos.
+
+        Args:
+            exc_type: Tipo da excecao (se houver).
+            exc_val: Valor da excecao (se houver).
+            exc_tb: Traceback da excecao (se houver).
+        """
+        await self.close()
