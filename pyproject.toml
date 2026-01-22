@@ -121,3 +121,7 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
+
+[tool.bandit]
+exclude_dirs = ["tests", "alembic"]
+skips = ["B101"]  # assert_used - usado em testes
