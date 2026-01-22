@@ -10,6 +10,7 @@ from datetime import datetime, time, timedelta
 from enum import Enum
 from typing import Callable, Optional
 
+from veredas import TZ_BRASIL
 from veredas.collectors.base import BaseCollector, CollectionResult
 
 
@@ -115,7 +116,7 @@ class CollectionScheduler:
             task_id=task_id,
             collector=collector,
             frequency=FrequencyType.ONCE,
-            next_run=datetime.now() + timedelta(seconds=delay_seconds),
+            next_run=datetime.now(TZ_BRASIL) + timedelta(seconds=delay_seconds),
             on_complete=on_complete,
         )
         self.add_task(task)
@@ -144,7 +145,7 @@ class CollectionScheduler:
             task_id=task_id,
             collector=collector,
             frequency=FrequencyType.HOURLY,
-            next_run=datetime.now(),
+            next_run=datetime.now(TZ_BRASIL),
             interval_seconds=hours * 3600,
             on_complete=on_complete,
         )
@@ -170,8 +171,8 @@ class CollectionScheduler:
         Returns:
             Tarefa criada.
         """
-        now = datetime.now()
-        next_run = datetime.combine(now.date(), time_of_day)
+        now = datetime.now(TZ_BRASIL)
+        next_run = datetime.combine(now.date(), time_of_day, tzinfo=TZ_BRASIL)
 
         # Se ja passou hoje, agendar para amanha
         if next_run < now:
@@ -211,7 +212,7 @@ class CollectionScheduler:
             task_id=task_id,
             collector=collector,
             frequency=FrequencyType.INTERVAL,
-            next_run=datetime.now(),
+            next_run=datetime.now(TZ_BRASIL),
             interval_seconds=seconds,
             on_complete=on_complete,
         )
@@ -260,14 +261,14 @@ class CollectionScheduler:
 
             # Atualizar estatisticas
             task.run_count += 1
-            task.last_run = datetime.now()
+            task.last_run = datetime.now(TZ_BRASIL)
 
             if result.success:
                 task.success_count += 1
             else:
                 task.error_count += 1
                 if result.error:
-                    task.errors.append(f"{datetime.now()}: {result.error}")
+                    task.errors.append(f"{datetime.now(TZ_BRASIL)}: {result.error}")
                     # Manter apenas ultimos 10 erros
                     task.errors = task.errors[-10:]
 
@@ -277,7 +278,7 @@ class CollectionScheduler:
 
         except Exception as e:
             task.error_count += 1
-            task.errors.append(f"{datetime.now()}: {str(e)}")
+            task.errors.append(f"{datetime.now(TZ_BRASIL)}: {str(e)}")
             task.errors = task.errors[-10:]
 
     def _calculate_next_run(self, task: ScheduledTask) -> datetime:
@@ -290,7 +291,7 @@ class CollectionScheduler:
         Returns:
             Proximo horario de execucao.
         """
-        now = datetime.now()
+        now = datetime.now(TZ_BRASIL)
 
         if task.frequency == FrequencyType.ONCE:
             # Tarefa unica nao reexecuta
@@ -301,11 +302,28 @@ class CollectionScheduler:
 
         elif task.frequency == FrequencyType.DAILY:
             if task.time_of_day:
-                next_run = datetime.combine(now.date(), task.time_of_day)
+                next_run = datetime.combine(now.date(), task.time_of_day, tzinfo=TZ_BRASIL)
                 if next_run < now:
                     next_run += timedelta(days=1)
                 return next_run
             return now + timedelta(days=1)
+
+        elif task.frequency == FrequencyType.WEEKLY:
+            # Calcular próximo dia da semana especificado
+            dias_ate_proximo = (task.day_of_week - now.weekday()) % 7
+            if dias_ate_proximo == 0:
+                # Mesmo dia da semana, verificar se já passou o horário
+                if task.time_of_day:
+                    next_run = datetime.combine(now.date(), task.time_of_day, tzinfo=TZ_BRASIL)
+                    if next_run <= now:
+                        dias_ate_proximo = 7  # Próxima semana
+                else:
+                    dias_ate_proximo = 7  # Próxima semana
+
+            next_date = now.date() + timedelta(days=dias_ate_proximo)
+            if task.time_of_day:
+                return datetime.combine(next_date, task.time_of_day, tzinfo=TZ_BRASIL)
+            return datetime.combine(next_date, now.time(), tzinfo=TZ_BRASIL)
 
         elif task.frequency == FrequencyType.INTERVAL:
             return now + timedelta(seconds=task.interval_seconds)
@@ -324,7 +342,7 @@ class CollectionScheduler:
 
         try:
             while self._running:
-                now = datetime.now()
+                now = datetime.now(TZ_BRASIL)
 
                 # Verificar tarefas que precisam executar
                 for task in list(self.tasks.values()):

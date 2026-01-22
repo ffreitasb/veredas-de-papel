@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from veredas import TZ_BRASIL
 from veredas.collectors.base import CollectionResult
 from veredas.collectors.scheduler import (
     CollectionScheduler,
@@ -38,7 +39,7 @@ class TestScheduledTask:
     def test_create_scheduled_task(self):
         """Testa criacao de tarefa agendada."""
         collector = MockCollector()
-        next_run = datetime.now() + timedelta(hours=1)
+        next_run = datetime.now(TZ_BRASIL) + timedelta(hours=1)
 
         task = ScheduledTask(
             task_id="test_task",
@@ -66,7 +67,7 @@ class TestScheduledTask:
             task_id="test_task",
             collector=collector,
             frequency=FrequencyType.ONCE,
-            next_run=datetime.now(),
+            next_run=datetime.now(TZ_BRASIL),
             on_complete=callback,
         )
 
@@ -186,7 +187,7 @@ class TestCollectionScheduler:
             task_id="test_task",
             collector=mock_collector,
             frequency=FrequencyType.ONCE,
-            next_run=datetime.now(),
+            next_run=datetime.now(TZ_BRASIL),
         )
 
         await scheduler._execute_task(task)
@@ -204,7 +205,7 @@ class TestCollectionScheduler:
             task_id="test_task",
             collector=failing_collector,
             frequency=FrequencyType.ONCE,
-            next_run=datetime.now(),
+            next_run=datetime.now(TZ_BRASIL),
         )
 
         await scheduler._execute_task(task)
@@ -224,7 +225,7 @@ class TestCollectionScheduler:
             task_id="test_task",
             collector=mock_collector,
             frequency=FrequencyType.ONCE,
-            next_run=datetime.now(),
+            next_run=datetime.now(TZ_BRASIL),
             on_complete=callback,
         )
 
@@ -238,7 +239,7 @@ class TestCollectionScheduler:
             task_id="test",
             collector=MockCollector(),
             frequency=FrequencyType.ONCE,
-            next_run=datetime.now(),
+            next_run=datetime.now(TZ_BRASIL),
         )
 
         next_run = scheduler._calculate_next_run(task)
@@ -250,11 +251,11 @@ class TestCollectionScheduler:
             task_id="test",
             collector=MockCollector(),
             frequency=FrequencyType.HOURLY,
-            next_run=datetime.now(),
+            next_run=datetime.now(TZ_BRASIL),
             interval_seconds=3600,
         )
 
-        now = datetime.now()
+        now = datetime.now(TZ_BRASIL)
         next_run = scheduler._calculate_next_run(task)
 
         # Deve ser aproximadamente 1 hora no futuro
@@ -268,7 +269,7 @@ class TestCollectionScheduler:
             task_id="test",
             collector=MockCollector(),
             frequency=FrequencyType.DAILY,
-            next_run=datetime.now(),
+            next_run=datetime.now(TZ_BRASIL),
             time_of_day=target_time,
         )
 
