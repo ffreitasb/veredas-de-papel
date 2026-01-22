@@ -60,7 +60,21 @@ class InstituicaoRepository:
         return instituicao
 
     def upsert(self, cnpj: str, **kwargs) -> InstituicaoFinanceira:
-        """Cria ou atualiza IF por CNPJ."""
+        """
+        Cria ou atualiza IF por CNPJ.
+
+        Nota sobre imutabilidade (M5): A mutacao direta do objeto e IDIOMATICA
+        para SQLAlchemy ORM. O ORM rastreia objetos na sessao e detecta mudancas
+        automaticamente via Unit of Work pattern. Criar um novo objeto quebraria
+        o tracking de mudancas e o relacionamento com a sessao.
+
+        Args:
+            cnpj: CNPJ da instituicao.
+            **kwargs: Campos a atualizar/criar.
+
+        Returns:
+            Instituicao criada ou atualizada (mesma instancia se existia).
+        """
         instituicao = self.get_by_cnpj(cnpj)
         if instituicao:
             for key, value in kwargs.items():
@@ -327,7 +341,21 @@ class TaxaReferenciaRepository:
         return taxa
 
     def upsert(self, tipo: str, data: date, valor: Decimal, **kwargs) -> TaxaReferencia:
-        """Cria ou atualiza taxa de referência."""
+        """
+        Cria ou atualiza taxa de referencia.
+
+        Nota sobre imutabilidade (M5): A mutacao direta do objeto e IDIOMATICA
+        para SQLAlchemy ORM. Ver nota em InstituicaoRepository.upsert().
+
+        Args:
+            tipo: Tipo da taxa (selic, cdi, ipca).
+            data: Data da taxa.
+            valor: Valor da taxa.
+            **kwargs: Campos adicionais.
+
+        Returns:
+            Taxa criada ou atualizada.
+        """
         taxa = self.get_por_data(tipo, data)
         if taxa:
             taxa.valor = valor

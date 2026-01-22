@@ -182,7 +182,7 @@ class TestCollectionScheduler:
     async def test_execute_task_success(
         self, scheduler: CollectionScheduler, mock_collector: MockCollector
     ):
-        """Testa execucao de tarefa com sucesso."""
+        """Testa execucao de tarefa com sucesso (imutabilidade - M1)."""
         task = ScheduledTask(
             task_id="test_task",
             collector=mock_collector,
@@ -190,16 +190,22 @@ class TestCollectionScheduler:
             next_run=datetime.now(TZ_BRASIL),
         )
 
-        await scheduler._execute_task(task)
+        # _execute_task retorna NOVA instancia (imutabilidade)
+        updated_task = await scheduler._execute_task(task)
 
-        assert task.run_count == 1
-        assert task.success_count == 1
-        assert task.error_count == 0
+        # Objeto original nao foi modificado
+        assert task.run_count == 0
+        assert task.success_count == 0
+
+        # Nova instancia tem estatisticas atualizadas
+        assert updated_task.run_count == 1
+        assert updated_task.success_count == 1
+        assert updated_task.error_count == 0
         assert mock_collector.call_count == 1
 
     @pytest.mark.asyncio
     async def test_execute_task_failure(self, scheduler: CollectionScheduler):
-        """Testa execucao de tarefa com falha."""
+        """Testa execucao de tarefa com falha (imutabilidade - M1)."""
         failing_collector = MockCollector(should_fail=True)
         task = ScheduledTask(
             task_id="test_task",
@@ -208,12 +214,18 @@ class TestCollectionScheduler:
             next_run=datetime.now(TZ_BRASIL),
         )
 
-        await scheduler._execute_task(task)
+        # _execute_task retorna NOVA instancia (imutabilidade)
+        updated_task = await scheduler._execute_task(task)
 
-        assert task.run_count == 1
-        assert task.success_count == 0
-        assert task.error_count == 1
-        assert len(task.errors) == 1
+        # Objeto original nao foi modificado
+        assert task.run_count == 0
+        assert task.error_count == 0
+
+        # Nova instancia tem estatisticas atualizadas
+        assert updated_task.run_count == 1
+        assert updated_task.success_count == 0
+        assert updated_task.error_count == 1
+        assert len(updated_task.errors) == 1
 
     @pytest.mark.asyncio
     async def test_execute_task_with_callback(

@@ -103,6 +103,33 @@ class CollectorSettings(BaseSettings):
     )
 
 
+# CNPJs dos maiores bancos brasileiros
+# Usado como fallback quando API IF.Data nao retorna lista atualizada
+# Fonte: Ranking BCB por ativos totais (atualizado periodicamente)
+PRINCIPAIS_BANCOS_CNPJ: list[str] = [
+    "00.000.000/0001-91",  # Banco do Brasil
+    "60.746.948/0001-12",  # Bradesco
+    "60.701.190/0001-04",  # Itau Unibanco
+    "00.360.305/0001-04",  # Caixa Economica Federal
+    "33.657.248/0001-89",  # Santander Brasil
+    "90.400.888/0001-42",  # Banco Safra
+    "30.306.294/0001-45",  # Banco BTG Pactual
+    "33.042.953/0001-04",  # Citibank
+    "62.073.200/0001-21",  # Banco Votorantim (BV)
+    "07.237.373/0001-20",  # Banco do Nordeste (BNB)
+    "04.902.979/0001-44",  # Banco XP
+    "92.874.270/0001-40",  # Banco Pan
+    "01.181.521/0001-55",  # Banco Original
+    "00.416.968/0001-01",  # Banco Inter
+    "18.236.120/0001-58",  # Nubank (Nu Pagamentos)
+    "10.573.521/0001-91",  # C6 Bank
+    "13.009.717/0001-46",  # Pagseguro / Pagbank
+    "02.318.507/0001-81",  # Banco BS2
+    "92.702.067/0001-96",  # Banrisul
+    "33.172.537/0001-98",  # Banco de Investimentos Credit Suisse
+]
+
+
 class Settings(BaseSettings):
     """Configuracoes principais da aplicacao."""
 

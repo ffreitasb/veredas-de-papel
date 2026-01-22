@@ -5,13 +5,16 @@ Permite agendar coletas periodicas dos coletores de forma programatica.
 """
 
 import asyncio
-from dataclasses import dataclass, field
+import logging
+from dataclasses import dataclass, field, replace
 from datetime import datetime, time, timedelta
 from enum import Enum
 from typing import Callable, Optional
 
 from veredas import TZ_BRASIL
 from veredas.collectors.base import BaseCollector, CollectionResult
+
+logger = logging.getLogger(__name__)
 
 
 class FrequencyType(str, Enum):
@@ -78,11 +81,17 @@ class CollectionScheduler:
         await scheduler.run()
     """
 
-    def __init__(self):
-        """Inicializa o scheduler."""
+    def __init__(self, check_interval: float = 1.0):
+        """
+        Inicializa o scheduler.
+
+        Args:
+            check_interval: Intervalo em segundos entre verificacoes de tasks (default: 1.0).
+        """
         self.tasks: dict[str, ScheduledTask] = {}
         self._running = False
         self._task: Optional[asyncio.Task] = None
+        self.check_interval = check_interval
 
     def add_task(self, task: ScheduledTask) -> None:
         """
@@ -235,51 +244,100 @@ class CollectionScheduler:
         return False
 
     def enable_task(self, task_id: str) -> bool:
-        """Habilita uma tarefa."""
+        """
+        Habilita uma tarefa (imutavel).
+
+        Args:
+            task_id: ID da tarefa.
+
+        Returns:
+            True se habilitada, False se nao encontrada.
+        """
         if task_id in self.tasks:
-            self.tasks[task_id].enabled = True
+            self.tasks[task_id] = replace(self.tasks[task_id], enabled=True)
             return True
         return False
 
     def disable_task(self, task_id: str) -> bool:
-        """Desabilita uma tarefa."""
+        """
+        Desabilita uma tarefa (imutavel).
+
+        Args:
+            task_id: ID da tarefa.
+
+        Returns:
+            True se desabilitada, False se nao encontrada.
+        """
         if task_id in self.tasks:
-            self.tasks[task_id].enabled = False
+            self.tasks[task_id] = replace(self.tasks[task_id], enabled=False)
             return True
         return False
 
-    async def _execute_task(self, task: ScheduledTask) -> None:
+    async def _execute_task(self, task: ScheduledTask) -> ScheduledTask:
         """
         Executa uma tarefa de coleta.
 
+        Usa imutabilidade: retorna uma NOVA instancia de ScheduledTask
+        com as estatisticas atualizadas, ao inves de mutar o objeto original.
+
         Args:
             task: Tarefa a executar.
+
+        Returns:
+            Nova instancia de ScheduledTask com estatisticas atualizadas.
         """
+        now = datetime.now(TZ_BRASIL)
+
         try:
             # Executar coleta
             result = await task.collector.collect()
 
-            # Atualizar estatisticas
-            task.run_count += 1
-            task.last_run = datetime.now(TZ_BRASIL)
+            # Criar nova lista de erros (imutabilidade)
+            new_errors = task.errors.copy()
 
             if result.success:
-                task.success_count += 1
+                updated_task = replace(
+                    task,
+                    run_count=task.run_count + 1,
+                    last_run=now,
+                    success_count=task.success_count + 1,
+                )
             else:
-                task.error_count += 1
                 if result.error:
-                    task.errors.append(f"{datetime.now(TZ_BRASIL)}: {result.error}")
-                    # Manter apenas ultimos 10 erros
-                    task.errors = task.errors[-10:]
+                    new_errors.append(f"{now}: {result.error}")
+                    new_errors = new_errors[-10:]  # Manter ultimos 10
 
-            # Callback opcional
+                updated_task = replace(
+                    task,
+                    run_count=task.run_count + 1,
+                    last_run=now,
+                    error_count=task.error_count + 1,
+                    errors=new_errors,
+                )
+
+            # Callback opcional com tratamento de excecao (M6)
             if task.on_complete:
-                task.on_complete(result)
+                try:
+                    task.on_complete(result)
+                except Exception as callback_error:
+                    logger.warning(
+                        f"Erro em callback da task {task.task_id}: {callback_error}"
+                    )
+
+            return updated_task
 
         except Exception as e:
-            task.error_count += 1
-            task.errors.append(f"{datetime.now(TZ_BRASIL)}: {str(e)}")
-            task.errors = task.errors[-10:]
+            new_errors = task.errors.copy()
+            new_errors.append(f"{now}: {str(e)}")
+            new_errors = new_errors[-10:]
+
+            return replace(
+                task,
+                run_count=task.run_count + 1,
+                last_run=now,
+                error_count=task.error_count + 1,
+                errors=new_errors,
+            )
 
     def _calculate_next_run(self, task: ScheduledTask) -> datetime:
         """
@@ -350,21 +408,26 @@ class CollectionScheduler:
                         continue
 
                     if task.next_run <= now:
-                        await self._execute_task(task)
+                        # Executar e obter nova instancia (imutabilidade - M1)
+                        updated_task = await self._execute_task(task)
 
-                        # Calcular proximo horario
-                        task.next_run = self._calculate_next_run(task)
+                        # Calcular proximo horario e atualizar dict com nova instancia
+                        updated_task = replace(
+                            updated_task,
+                            next_run=self._calculate_next_run(updated_task),
+                        )
+                        self.tasks[task.task_id] = updated_task
 
                         # Remover tarefas ONCE apos execucao
-                        if task.frequency == FrequencyType.ONCE:
-                            self.remove_task(task.task_id)
+                        if updated_task.frequency == FrequencyType.ONCE:
+                            self.remove_task(updated_task.task_id)
 
                 iterations += 1
                 if max_iterations and iterations >= max_iterations:
                     break
 
-                # Sleep por 1 segundo
-                await asyncio.sleep(1)
+                # Sleep configuravel (L1)
+                await asyncio.sleep(self.check_interval)
 
             # Loop exited normally
             self._running = False
