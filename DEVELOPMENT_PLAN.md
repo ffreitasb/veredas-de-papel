@@ -108,117 +108,151 @@ O frontend do veredas de papel segue uma abordagem **funcionalista**:
 
 **Inspiração**: Bloomberg Terminal, Hacker News, gov.uk, Stripe Dashboard (minimalismo funcional)
 
-### 2.1 Stack Frontend
+### 2.1 Stack Frontend (Python + HTML/CSS)
 
 | Item | Descrição | Tecnologia | Status |
 |------|-----------|------------|--------|
-| 2.1.1 | Framework principal | **Next.js 14+** (App Router) | ⬜ |
-| 2.1.2 | Styling | **Tailwind CSS** + **shadcn/ui** | ⬜ |
-| 2.1.3 | Gráficos | **Recharts** ou **Tremor** | ⬜ |
-| 2.1.4 | Tabelas | **TanStack Table** | ⬜ |
-| 2.1.5 | State management | **TanStack Query** (server state) | ⬜ |
-| 2.1.6 | Validação | **Zod** + **React Hook Form** | ⬜ |
+| 2.1.1 | Backend/Server | **FastAPI** | ⬜ |
+| 2.1.2 | Templates | **Jinja2** | ⬜ |
+| 2.1.3 | Interatividade | **HTMX** (sem JS custom) | ⬜ |
+| 2.1.4 | Gráficos | **Plotly** (server-side render) | ⬜ |
+| 2.1.5 | CSS Base | **Pico CSS** ou CSS custom | ⬜ |
+| 2.1.6 | Validação | **Pydantic** | ⬜ |
+
+**Por que esta stack?**
+- 100% Python - sem build tools, sem npm
+- HTML puro - fácil de manter e debugar
+- HTMX - interatividade sem escrever JavaScript
+- Pico CSS - estilo funcional sem configuração
+- Sem frameworks pesados - carrega em milissegundos
+- Funciona offline com SQLite local
 
 ### 2.2 Estrutura do Frontend
 
 ```
-frontend/
-├── app/                      # Next.js App Router
-│   ├── layout.tsx            # Layout global (header, nav)
-│   ├── page.tsx              # Home - visão geral
-│   ├── taxas/
-│   │   └── page.tsx          # Listagem de taxas
-│   ├── anomalias/
-│   │   └── page.tsx          # Anomalias detectadas
-│   ├── instituicoes/
-│   │   ├── page.tsx          # Lista de IFs
-│   │   └── [id]/page.tsx     # Detalhe da IF
-│   └── timeline/
-│       └── page.tsx          # Eventos regulatórios
-├── components/
-│   ├── ui/                   # shadcn/ui components
-│   ├── charts/               # Gráficos customizados
-│   │   ├── taxa-sparkline.tsx
-│   │   ├── spread-histogram.tsx
-│   │   └── anomaly-timeline.tsx
-│   └── data/                 # Componentes de dados
-│       ├── data-table.tsx
-│       ├── stat-card.tsx
-│       └── severity-badge.tsx
-├── lib/
-│   ├── api.ts                # Client para API backend
-│   ├── utils.ts              # Utilitários
-│   └── formatters.ts         # Formatação de números/datas
-└── styles/
-    └── globals.css           # Estilos globais (Tailwind)
+src/veredas/
+├── web/                          # Módulo web
+│   ├── __init__.py
+│   ├── app.py                    # FastAPI app + rotas
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── home.py               # GET /
+│   │   ├── taxas.py              # GET /taxas
+│   │   ├── anomalias.py          # GET /anomalias
+│   │   ├── instituicoes.py       # GET /instituicoes, /instituicoes/{id}
+│   │   └── timeline.py           # GET /timeline
+│   ├── templates/
+│   │   ├── base.html             # Layout base (header, nav, footer)
+│   │   ├── index.html            # Home - visão geral
+│   │   ├── taxas.html            # Listagem de taxas
+│   │   ├── anomalias.html        # Anomalias detectadas
+│   │   ├── instituicoes.html     # Lista de IFs
+│   │   ├── instituicao.html      # Detalhe da IF
+│   │   ├── timeline.html         # Eventos regulatórios
+│   │   └── partials/             # Fragmentos HTMX
+│   │       ├── taxa_row.html     # Linha de tabela
+│   │       ├── anomalia_card.html
+│   │       └── stat_card.html
+│   └── static/
+│       ├── css/
+│       │   └── style.css         # CSS customizado (minimal)
+│       └── js/
+│           └── htmx.min.js       # HTMX (único JS)
 ```
 
-### 2.3 Páginas do Frontend
+### 2.3 Páginas e Rotas
 
 | Item | Descrição | Arquivos | Status |
 |------|-----------|----------|--------|
-| 2.3.1 | **Home/Visão Geral** | `app/page.tsx` | ⬜ |
+| 2.3.1 | **Home/Visão Geral** | `templates/index.html`, `routes/home.py` | ⬜ |
 |       | - Taxas de referência atuais (Selic, CDI, IPCA) | | |
 |       | - Contador de anomalias por severidade | | |
 |       | - Últimas anomalias detectadas | | |
 |       | - Status do sistema | | |
-| 2.3.2 | **Taxas** | `app/taxas/page.tsx` | ⬜ |
+| 2.3.2 | **Taxas** | `templates/taxas.html`, `routes/taxas.py` | ⬜ |
 |       | - Tabela filtável de taxas coletadas | | |
-|       | - Filtros: indexador, prazo, IF | | |
+|       | - Filtros: indexador, prazo, IF (via HTMX) | | |
 |       | - Ordenação por spread, data, valor | | |
-|       | - Sparklines inline | | |
-| 2.3.3 | **Anomalias** | `app/anomalias/page.tsx` | ⬜ |
+|       | - Paginação server-side | | |
+| 2.3.3 | **Anomalias** | `templates/anomalias.html`, `routes/anomalias.py` | ⬜ |
 |       | - Lista de anomalias ativas/resolvidas | | |
 |       | - Filtros: severidade, tipo, IF | | |
-|       | - Detalhe expandível | | |
-|       | - Ações: marcar resolvida, ignorar | | |
-| 2.3.4 | **Instituições** | `app/instituicoes/page.tsx` | ⬜ |
+|       | - Ações: marcar resolvida (HTMX POST) | | |
+| 2.3.4 | **Instituições** | `templates/instituicoes.html`, `routes/instituicoes.py` | ⬜ |
 |       | - Lista de IFs monitoradas | | |
 |       | - Indicadores: Basileia, Liquidez | | |
 |       | - Score de risco composto | | |
-|       | - Link para detalhe | | |
-| 2.3.5 | **Detalhe IF** | `app/instituicoes/[id]/page.tsx` | ⬜ |
+| 2.3.5 | **Detalhe IF** | `templates/instituicao.html` | ⬜ |
 |       | - Histórico de taxas da IF | | |
-|       | - Gráfico de evolução | | |
+|       | - Gráfico de evolução (Plotly) | | |
 |       | - Anomalias relacionadas | | |
-|       | - Indicadores financeiros | | |
-| 2.3.6 | **Timeline** | `app/timeline/page.tsx` | ⬜ |
+| 2.3.6 | **Timeline** | `templates/timeline.html`, `routes/timeline.py` | ⬜ |
 |       | - Eventos regulatórios históricos | | |
 |       | - Casos de estudo (Master, BVA) | | |
-|       | - Correlação com sinais detectados | | |
 
-### 2.4 Componentes de UI
+### 2.4 Templates e Partials
 
 | Item | Descrição | Arquivos | Status |
 |------|-----------|----------|--------|
-| 2.4.1 | Header minimalista | `components/header.tsx` | ⬜ |
-| 2.4.2 | Navegação lateral | `components/sidebar.tsx` | ⬜ |
-| 2.4.3 | Card de estatística | `components/data/stat-card.tsx` | ⬜ |
-| 2.4.4 | Badge de severidade | `components/data/severity-badge.tsx` | ⬜ |
-| 2.4.5 | Tabela de dados | `components/data/data-table.tsx` | ⬜ |
-| 2.4.6 | Sparkline de taxa | `components/charts/sparkline.tsx` | ⬜ |
-| 2.4.7 | Gráfico de spread | `components/charts/spread-chart.tsx` | ⬜ |
-| 2.4.8 | Timeline vertical | `components/charts/timeline.tsx` | ⬜ |
+| 2.4.1 | Layout base | `templates/base.html` | ⬜ |
+|       | - Header minimalista | | |
+|       | - Navegação horizontal simples | | |
+|       | - Footer com status do sistema | | |
+| 2.4.2 | Partials HTMX | `templates/partials/*.html` | ⬜ |
+|       | - `stat_card.html` - Card de estatística | | |
+|       | - `taxa_row.html` - Linha de tabela | | |
+|       | - `anomalia_item.html` - Item de anomalia | | |
+|       | - `if_card.html` - Card de instituição | | |
 
-### 2.5 Design System
+### 2.5 Design System (CSS)
+
+```css
+/* style.css - Variáveis CSS customizadas */
+:root {
+  /* Tipografia */
+  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, monospace;
+
+  /* Cores - Paleta neutra */
+  --gray-50: #fafafa;
+  --gray-100: #f4f4f5;
+  --gray-200: #e4e4e7;
+  --gray-500: #71717a;
+  --gray-700: #3f3f46;
+  --gray-900: #18181b;
+
+  /* Severidade */
+  --critical-bg: #fef2f2;
+  --critical-text: #dc2626;
+  --high-bg: #fff7ed;
+  --high-text: #ea580c;
+  --medium-bg: #fefce8;
+  --medium-text: #ca8a04;
+  --low-text: #71717a;
+
+  /* Espaçamento */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+
+  /* Bordas */
+  --radius: 0.375rem;
+  --border: 1px solid var(--gray-200);
+}
+```
 
 | Item | Descrição | Decisão |
 |------|-----------|---------|
-| **Tipografia** | Sans-serif legível | Inter ou Geist Sans |
-| **Cores primárias** | Cinzas neutros | gray-50 a gray-900 |
-| **Cor de destaque** | Azul discreto | blue-600 (apenas links/CTAs) |
-| **Severidade** | Semânticas sem exagero | |
-|   - CRITICAL | | `red-600` texto, `red-50` bg |
-|   - HIGH | | `orange-600` texto, `orange-50` bg |
-|   - MEDIUM | | `yellow-600` texto, `yellow-50` bg |
-|   - LOW | | `gray-500` texto |
-| **Espaçamento** | Consistente | 4px grid (Tailwind default) |
-| **Bordas** | Sutis | `border-gray-200`, radius `rounded-md` |
-| **Sombras** | Mínimas | Apenas para cards flutuantes |
+| **Tipografia** | System fonts | `system-ui, sans-serif` |
+| **Cores** | Cinzas neutros | CSS custom properties |
+| **Layout** | Max-width container | `max-width: 1200px` |
+| **Tabelas** | Bordas sutis | `border-collapse`, linhas zebradas |
+| **Botões** | Minimalistas | Outline style, sem sombras |
 
 ### 2.6 Dashboard Alternativo (Streamlit)
 
-Para usuários que preferem executar localmente sem Node.js:
+Para prototipagem rápida ou usuários não-técnicos:
 
 | Item | Descrição | Arquivos | Status |
 |------|-----------|----------|--------|
@@ -226,8 +260,7 @@ Para usuários que preferem executar localmente sem Node.js:
 | 2.6.2 | Página principal | `dashboard/pages/home.py` | ⬜ |
 | 2.6.3 | Página de taxas | `dashboard/pages/taxas.py` | ⬜ |
 | 2.6.4 | Página de anomalias | `dashboard/pages/anomalias.py` | ⬜ |
-| 2.6.5 | Página de IFs | `dashboard/pages/instituicoes.py` | ⬜ |
-| 2.6.6 | Gráficos Plotly | `dashboard/charts.py` | ⬜ |
+| 2.6.5 | Gráficos Plotly | `dashboard/charts.py` | ⬜ |
 
 ### 2.7 Sistema de Alertas
 
