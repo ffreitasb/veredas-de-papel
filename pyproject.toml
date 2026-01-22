@@ -7,7 +7,7 @@ name = "veredas-de-papel"
 version = "0.1.0"
 description = "Monitor de taxas de CDB e detecção de anomalias no mercado de renda fixa brasileiro"
 readme = "README.md"
-license = "MIT"
+license = "GPL-3.0-or-later"
 requires-python = ">=3.11"
 authors = [
     { name = "ffreitasb" }
@@ -16,7 +16,7 @@ keywords = ["cdb", "renda-fixa", "anomaly-detection", "banco-central", "finance"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Financial and Insurance Industry",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
