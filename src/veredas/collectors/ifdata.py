@@ -12,7 +12,10 @@ dados financeiros das instituicoes financeiras brasileiras, incluindo:
 API: https://www3.bcb.gov.br/ifdata/
 """
 
+import logging
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 from datetime import date
 from decimal import Decimal
 from types import TracebackType
@@ -184,7 +187,7 @@ class IFDataCollector(BaseCollector):
                         return cnpjs
 
         except Exception:
-            pass
+            logger.debug("Falha ao obter lista de IFs da API, usando fallback")
 
         # Fallback: usar lista configurada centralmente (M4)
         return PRINCIPAIS_BANCOS_CNPJ[:limite]
@@ -226,6 +229,7 @@ class IFDataCollector(BaseCollector):
             return self._parse_dados_if(cnpj, data)
 
         except Exception:
+            logger.debug(f"Falha ao coletar dados da IF {cnpj}")
             return None
 
     def _parse_dados_if(self, cnpj: str, data: dict) -> Optional[DadosIF]:

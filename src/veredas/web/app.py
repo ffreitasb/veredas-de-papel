@@ -8,9 +8,10 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from veredas.config import get_settings
 from veredas.storage.database import DatabaseManager
@@ -28,6 +29,44 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 # Add CSRF helper to templates
 templates.env.globals["csrf_token_input"] = csrf_token_input
 templates.env.globals["get_csrf_token"] = get_csrf_token
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware que adiciona headers de seguranca HTTP.
+
+    Adiciona protecoes contra:
+    - Clickjacking (X-Frame-Options)
+    - MIME type sniffing (X-Content-Type-Options)
+    - XSS reflexivo (X-XSS-Protection)
+    - Referrer leakage (Referrer-Policy)
+    - Feature abuse (Permissions-Policy)
+    """
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        response = await call_next(request)
+
+        # Protecao contra clickjacking
+        response.headers["X-Frame-Options"] = "DENY"
+
+        # Evita MIME type sniffing
+        response.headers["X-Content-Type-Options"] = "nosniff"
+
+        # Protecao XSS legacy (browsers modernos usam CSP)
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+
+        # Controla informacoes de referrer
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        # Desabilita features potencialmente perigosas
+        response.headers["Permissions-Policy"] = (
+            "accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
+            "magnetometer=(), microphone=(), payment=(), usb=()"
+        )
+
+        return response
 
 
 @asynccontextmanager
@@ -69,6 +108,8 @@ def create_app() -> FastAPI:
     )
     # CSRF protection
     app.add_middleware(CSRFMiddleware)
+    # Security headers (executa por ultimo, adiciona headers a todas respostas)
+    app.add_middleware(SecurityHeadersMiddleware)
 
     # Static files
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
