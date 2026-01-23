@@ -71,8 +71,8 @@ def _prepare_time_series(
     if not if_taxas:
         return pd.Series(dtype=float), {}
 
-    # Ordenar por data
-    if_taxas.sort(key=lambda t: t.data_coleta)
+    # Ordenar por data (BUG-001: usar sorted() para não mutar lista original)
+    if_taxas = sorted(if_taxas, key=lambda t: t.data_coleta)
 
     # Criar série temporal
     dates = [t.data_coleta for t in if_taxas]
