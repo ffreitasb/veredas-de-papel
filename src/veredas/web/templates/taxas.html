@@ -6,7 +6,7 @@
 <h1>Taxas de CDB</h1>
 
 <!-- Filtros -->
-<form class="filters" hx-get="/taxas/partials/table" hx-target="#taxas-table" hx-push-url="true">
+<form class="filters" hx-get="/taxas/" hx-target="#taxas-table" hx-push-url="true">
     <select name="indexador">
         <option value="">Todos indexadores</option>
         {% for idx in indexadores %}

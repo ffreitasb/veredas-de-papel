@@ -41,8 +41,8 @@ async def list_taxas(
     prazo_max: Optional[int] = Query(None, description="Prazo maximo em dias"),
     if_id: Optional[int] = Query(None, description="ID da instituicao"),
     ordem: str = Query("data_desc", description="Ordenacao"),
-    page: int = Query(1, ge=1, description="Pagina"),
-    per_page: int = Query(20, ge=10, le=100, description="Itens por pagina"),
+    pagina: int = Query(1, ge=1, description="Pagina"),
+    por_pagina: int = Query(20, ge=10, le=100, description="Itens por pagina"),
 ):
     """
     Lista taxas de CDB com filtros e paginacao.
@@ -65,12 +65,12 @@ async def list_taxas(
     taxas, total = taxa_repo.list_paginated(
         filters=filters,
         order_by=ordem,
-        page=page,
-        per_page=per_page,
+        page=pagina,
+        per_page=por_pagina,
     )
 
     # Calcular paginacao
-    total_pages = (total + per_page - 1) // per_page
+    total_paginas = (total + por_pagina - 1) // por_pagina
 
     # Listar IFs para filtro
     instituicoes = if_repo.list_all()
@@ -82,9 +82,9 @@ async def list_taxas(
         "request": request,
         "taxas": taxas,
         "total": total,
-        "page": page,
-        "per_page": per_page,
-        "total_pages": total_pages,
+        "pagina": pagina,
+        "por_pagina": por_pagina,
+        "total_paginas": total_paginas,
         "indexador": indexador,
         "prazo_min": prazo_min,
         "prazo_max": prazo_max,

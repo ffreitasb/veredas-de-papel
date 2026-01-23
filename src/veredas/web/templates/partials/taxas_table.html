@@ -39,19 +39,19 @@
 </table>
 
 <!-- Paginacao -->
-{% if total_pages > 1 %}
+{% if total_paginas > 1 %}
 <div class="pagination">
-    {% if page > 1 %}
+    {% if pagina > 1 %}
     <a href="#"
-       hx-get="/taxas/partials/table?page={{ page - 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&ordem={{ ordem }}"
+       hx-get="/taxas/?pagina={{ pagina - 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&ordem={{ ordem }}"
        hx-target="#taxas-table">&laquo; Anterior</a>
     {% endif %}
 
-    <span class="current">{{ page }} / {{ total_pages }}</span>
+    <span class="current">{{ pagina }} / {{ total_paginas }}</span>
 
-    {% if page < total_pages %}
+    {% if pagina < total_paginas %}
     <a href="#"
-       hx-get="/taxas/partials/table?page={{ page + 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&ordem={{ ordem }}"
+       hx-get="/taxas/?pagina={{ pagina + 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&ordem={{ ordem }}"
        hx-target="#taxas-table">Proxima &raquo;</a>
     {% endif %}
 </div>
