@@ -9,7 +9,7 @@ Exibe lista de anomalias:
 
 from typing import Optional
 
-from fastapi import APIRouter, Request, Depends, Query, Form
+from fastapi import APIRouter, Request, Depends, Query, Form, HTTPException
 from fastapi.responses import HTMLResponse
 
 from veredas.web.app import templates
@@ -18,6 +18,32 @@ from veredas.storage.repository import AnomaliaRepository, InstituicaoFinanceira
 from veredas.storage.models import Severidade
 
 router = APIRouter()
+
+
+def _parse_severidade(value: Optional[str]) -> Optional[Severidade]:
+    """
+    Converte string para Severidade enum de forma segura.
+
+    Args:
+        value: Valor string da severidade.
+
+    Returns:
+        Severidade enum ou None se valor vazio.
+
+    Raises:
+        HTTPException: Se valor invalido.
+    """
+    if not value:
+        return None
+
+    try:
+        return Severidade(value)
+    except ValueError:
+        valid_values = [s.value for s in Severidade]
+        raise HTTPException(
+            status_code=400,
+            detail=f"Severidade invalida: '{value}'. Valores aceitos: {valid_values}",
+        )
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -37,10 +63,11 @@ async def anomalias_list(
     anomalia_repo = AnomaliaRepository(session)
     if_repo = InstituicaoFinanceiraRepository(session)
 
-    # Construir filtros
+    # Construir filtros (com validacao segura de enum)
     filters = {}
-    if severidade:
-        filters["severidade"] = Severidade(severidade)
+    parsed_severidade = _parse_severidade(severidade)
+    if parsed_severidade:
+        filters["severidade"] = parsed_severidade
     if tipo:
         filters["tipo"] = tipo
     if instituicao:
@@ -128,9 +155,11 @@ async def anomalias_list_partial(
     """
     anomalia_repo = AnomaliaRepository(session)
 
+    # Construir filtros (com validacao segura de enum)
     filters = {}
-    if severidade:
-        filters["severidade"] = Severidade(severidade)
+    parsed_severidade = _parse_severidade(severidade)
+    if parsed_severidade:
+        filters["severidade"] = parsed_severidade
     if tipo:
         filters["tipo"] = tipo
     if instituicao:

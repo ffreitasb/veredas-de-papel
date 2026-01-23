@@ -46,6 +46,9 @@ class ScheduledTask:
     # Callback opcional apos coleta
     on_complete: Optional[Callable[[CollectionResult], None]] = None
 
+    # Timeout para execucao (segundos, 0 = sem limite)
+    timeout_seconds: int = 300  # 5 minutos padrao
+
     # Estatisticas
     run_count: int = 0
     success_count: int = 0
@@ -289,8 +292,15 @@ class CollectionScheduler:
         now = datetime.now(TZ_BRASIL)
 
         try:
-            # Executar coleta
-            result = await task.collector.collect()
+            # Executar coleta com timeout (MEDIUM-004 security fix)
+            timeout = task.timeout_seconds if task.timeout_seconds > 0 else None
+            if timeout:
+                result = await asyncio.wait_for(
+                    task.collector.collect(),
+                    timeout=timeout,
+                )
+            else:
+                result = await task.collector.collect()
 
             # Criar nova lista de erros (imutabilidade)
             new_errors = task.errors.copy()
@@ -326,10 +336,29 @@ class CollectionScheduler:
 
             return updated_task
 
+        except asyncio.TimeoutError:
+            new_errors = task.errors.copy()
+            new_errors.append(f"{now}: Timeout apos {task.timeout_seconds}s")
+            new_errors = new_errors[-10:]
+
+            logger.warning(
+                f"Task {task.task_id} timeout apos {task.timeout_seconds}s"
+            )
+
+            return replace(
+                task,
+                run_count=task.run_count + 1,
+                last_run=now,
+                error_count=task.error_count + 1,
+                errors=new_errors,
+            )
+
         except Exception as e:
             new_errors = task.errors.copy()
             new_errors.append(f"{now}: {str(e)}")
             new_errors = new_errors[-10:]
+
+            logger.exception(f"Erro em task {task.task_id}")
 
             return replace(
                 task,

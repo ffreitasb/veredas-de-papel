@@ -15,6 +15,7 @@ from fastapi.templating import Jinja2Templates
 from veredas.config import get_settings
 from veredas.storage.database import DatabaseManager
 from veredas.web.csrf import CSRFMiddleware, csrf_token_input, get_csrf_token
+from veredas.web.ratelimit import RateLimitMiddleware
 
 # Paths
 WEB_DIR = Path(__file__).parent
@@ -59,7 +60,14 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CSRF protection middleware
+    # Security middlewares (ordem importa: primeiro adicionado = ultimo executado)
+    # Rate limiting (executa primeiro, antes do CSRF)
+    app.add_middleware(
+        RateLimitMiddleware,
+        requests_per_minute=60,
+        exclude_paths=["/static", "/health", "/favicon.ico"],
+    )
+    # CSRF protection
     app.add_middleware(CSRFMiddleware)
 
     # Static files
