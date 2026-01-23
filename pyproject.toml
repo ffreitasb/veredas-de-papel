@@ -65,6 +65,7 @@ web = [
 ]
 ml = [
     "scikit-learn>=1.4.0",         # Isolation Forest, DBSCAN
+    "ruptures>=1.1.9",             # Change point detection (PELT)
 ]
 dashboard = [
     "streamlit>=1.31.0",

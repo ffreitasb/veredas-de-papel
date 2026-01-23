@@ -58,12 +58,20 @@ class Indexador(StrEnum):
 class TipoAnomalia(StrEnum):
     """Tipos de anomalia detectados."""
 
+    # Fase 1 - Regras de negócio
     SPREAD_ALTO = "spread_alto"
     SPREAD_CRITICO = "spread_critico"
     SALTO_BRUSCO = "salto_brusco"
     SALTO_EXTREMO = "salto_extremo"
     DIVERGENCIA = "divergencia"
     DIVERGENCIA_EXTREMA = "divergencia_extrema"
+
+    # Fase 3 - Detectores estatísticos e ML
+    SEASONALITY_BREAK = "seasonality_break"  # STL decomposition
+    CHANGE_POINT = "change_point"  # Ruptures PELT
+    ROLLING_OUTLIER = "rolling_outlier"  # Rolling z-score
+    CLUSTER_OUTLIER = "cluster_outlier"  # DBSCAN
+    ISOLATION_ANOMALY = "isolation_anomaly"  # Isolation Forest
 
 
 class Severidade(StrEnum):
