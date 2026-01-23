@@ -9,7 +9,7 @@ from decimal import Decimal
 from typing import Optional, Sequence
 
 from sqlalchemy import and_, desc, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from veredas import TZ_BRASIL
 from veredas.storage.models import (
@@ -316,12 +316,22 @@ class AnomaliaRepository:
     def list_ativas(
         self,
         severidade_minima: Optional[Severidade] = None,
+        limit: int = 100,
     ) -> Sequence[Anomalia]:
-        """Lista anomalias não resolvidas."""
+        """Lista anomalias não resolvidas.
+
+        Args:
+            severidade_minima: Filtrar por severidade minima.
+            limit: Limite de resultados (default 100, evita memory leak).
+
+        Returns:
+            Lista de anomalias nao resolvidas.
+        """
         stmt = (
             select(Anomalia)
             .where(Anomalia.resolvido == False)  # noqa: E712
             .order_by(desc(Anomalia.detectado_em))
+            .limit(limit)
         )
         if severidade_minima:
             severidades = {
@@ -419,9 +429,24 @@ class AnomaliaRepository:
         filters: Optional[dict] = None,
         limit: int = 20,
         offset: int = 0,
+        eager_load: bool = False,
     ) -> Sequence[Anomalia]:
-        """Lista anomalias com filtros."""
+        """Lista anomalias com filtros.
+
+        Args:
+            filters: Filtros opcionais (severidade, tipo, cnpj, resolvida).
+            limit: Limite de resultados.
+            offset: Offset para paginacao.
+            eager_load: Se True, carrega instituicao junto (evita N+1).
+
+        Returns:
+            Lista de anomalias.
+        """
         stmt = select(Anomalia).order_by(desc(Anomalia.detectado_em))
+
+        # Eager loading para evitar N+1 queries
+        if eager_load:
+            stmt = stmt.options(selectinload(Anomalia.instituicao))
 
         if filters:
             if "severidade" in filters:
@@ -597,9 +622,25 @@ class EventoRepository:
         self,
         filters: Optional[dict] = None,
         order_by: str = "data_desc",
+        limit: int = 100,
+        eager_load: bool = False,
     ) -> Sequence[EventoRegulatorio]:
-        """Lista eventos com filtros."""
+        """Lista eventos com filtros.
+
+        Args:
+            filters: Filtros opcionais (ano, tipo).
+            order_by: Ordenacao (data_desc ou data_asc).
+            limit: Limite de resultados (default 100).
+            eager_load: Se True, carrega instituicao junto (evita N+1).
+
+        Returns:
+            Lista de eventos filtrados.
+        """
         stmt = select(EventoRegulatorio)
+
+        # Eager loading para evitar N+1 queries
+        if eager_load:
+            stmt = stmt.options(selectinload(EventoRegulatorio.instituicao))
 
         if filters:
             if "ano" in filters:
@@ -614,6 +655,7 @@ class EventoRepository:
         else:
             stmt = stmt.order_by(EventoRegulatorio.data_evento)
 
+        stmt = stmt.limit(limit)
         return self.session.execute(stmt).scalars().all()
 
     def get_distinct_years(self) -> list[int]:

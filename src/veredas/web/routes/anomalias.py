@@ -48,12 +48,13 @@ async def anomalias_list(
     if status == "ativas":
         filters["resolvida"] = False
 
-    # Buscar anomalias
+    # Buscar anomalias (com eager loading para evitar N+1)
     offset = (pagina - 1) * por_pagina
     anomalias = anomalia_repo.list_with_filters(
         filters=filters,
         limit=por_pagina,
         offset=offset,
+        eager_load=True,
     )
     total = anomalia_repo.count_with_filters(filters=filters)
     total_paginas = (total + por_pagina - 1) // por_pagina
