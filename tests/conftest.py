@@ -279,3 +279,165 @@ def anomalia_exemplo(
 def tmp_db_path(tmp_path: Path) -> Path:
     """Caminho temporário para banco de dados de teste."""
     return tmp_path / "test_veredas.db"
+
+
+# ============================================================================
+# Fixtures para detectores estatísticos (Fase 3)
+# ============================================================================
+
+
+@pytest.fixture
+def taxas_serie_temporal(
+    db_session: Session, instituicao_exemplo: InstituicaoFinanceira
+) -> list[TaxaCDB]:
+    """Cria série temporal de taxas para análise estatística (30 dias)."""
+    import random
+
+    random.seed(42)  # Reprodutibilidade
+
+    taxas = []
+    base_rate = 110.0
+    now = datetime.now()
+
+    for i in range(30):
+        # Pequena variação aleatória (normal)
+        noise = random.gauss(0, 1.5)
+        # Tendência leve de alta
+        trend = i * 0.1
+        percentual = Decimal(str(round(base_rate + trend + noise, 2)))
+
+        taxa = TaxaCDB(
+            if_id=instituicao_exemplo.id,
+            data_coleta=now - timedelta(days=30 - i),
+            indexador=Indexador.CDI,
+            percentual=percentual,
+            prazo_dias=365,
+            valor_minimo=Decimal("1000.00"),
+            fonte="teste",
+        )
+        db_session.add(taxa)
+        taxas.append(taxa)
+
+    db_session.commit()
+    return taxas
+
+
+@pytest.fixture
+def taxas_com_outlier(
+    db_session: Session, instituicao_risco: InstituicaoFinanceira
+) -> list[TaxaCDB]:
+    """Cria série temporal com um outlier extremo no final."""
+    import random
+
+    random.seed(42)
+
+    taxas = []
+    base_rate = 110.0
+    now = datetime.now()
+
+    for i in range(20):
+        noise = random.gauss(0, 1.0)
+        percentual = Decimal(str(round(base_rate + noise, 2)))
+
+        taxa = TaxaCDB(
+            if_id=instituicao_risco.id,
+            data_coleta=now - timedelta(days=20 - i),
+            indexador=Indexador.CDI,
+            percentual=percentual,
+            prazo_dias=365,
+            valor_minimo=Decimal("1000.00"),
+            fonte="teste",
+        )
+        db_session.add(taxa)
+        taxas.append(taxa)
+
+    # Adiciona outlier extremo
+    outlier_taxa = TaxaCDB(
+        if_id=instituicao_risco.id,
+        data_coleta=now,
+        indexador=Indexador.CDI,
+        percentual=Decimal("145.0"),  # ~35pp acima da média
+        prazo_dias=365,
+        valor_minimo=Decimal("1000.00"),
+        fonte="teste",
+    )
+    db_session.add(outlier_taxa)
+    taxas.append(outlier_taxa)
+
+    db_session.commit()
+    return taxas
+
+
+@pytest.fixture
+def taxas_com_change_point(
+    db_session: Session, instituicao_risco: InstituicaoFinanceira
+) -> list[TaxaCDB]:
+    """Cria série temporal com mudança estrutural no meio."""
+    import random
+
+    random.seed(42)
+
+    taxas = []
+    now = datetime.now()
+
+    # Primeiro segmento: média ~110%
+    for i in range(15):
+        noise = random.gauss(0, 1.0)
+        percentual = Decimal(str(round(110.0 + noise, 2)))
+
+        taxa = TaxaCDB(
+            if_id=instituicao_risco.id,
+            data_coleta=now - timedelta(days=30 - i),
+            indexador=Indexador.CDI,
+            percentual=percentual,
+            prazo_dias=365,
+            valor_minimo=Decimal("1000.00"),
+            fonte="teste",
+        )
+        db_session.add(taxa)
+        taxas.append(taxa)
+
+    # Segundo segmento: média ~130% (change point)
+    for i in range(15):
+        noise = random.gauss(0, 1.0)
+        percentual = Decimal(str(round(130.0 + noise, 2)))
+
+        taxa = TaxaCDB(
+            if_id=instituicao_risco.id,
+            data_coleta=now - timedelta(days=15 - i),
+            indexador=Indexador.CDI,
+            percentual=percentual,
+            prazo_dias=365,
+            valor_minimo=Decimal("1000.00"),
+            fonte="teste",
+        )
+        db_session.add(taxa)
+        taxas.append(taxa)
+
+    db_session.commit()
+    return taxas
+
+
+@pytest.fixture
+def taxas_insuficientes(
+    db_session: Session, instituicao_exemplo: InstituicaoFinanceira
+) -> list[TaxaCDB]:
+    """Cria série temporal muito curta (insuficiente para análise)."""
+    taxas = []
+    now = datetime.now()
+
+    for i in range(5):
+        taxa = TaxaCDB(
+            if_id=instituicao_exemplo.id,
+            data_coleta=now - timedelta(days=5 - i),
+            indexador=Indexador.CDI,
+            percentual=Decimal("110.0"),
+            prazo_dias=365,
+            valor_minimo=Decimal("1000.00"),
+            fonte="teste",
+        )
+        db_session.add(taxa)
+        taxas.append(taxa)
+
+    db_session.commit()
+    return taxas
