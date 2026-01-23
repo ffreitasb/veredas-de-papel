@@ -277,6 +277,14 @@ class FeatureExtractor:
 
         features: list[TaxaFeatures] = []
 
+        # BUG-006: Função movida para fora do loop (evita recriação a cada iteração)
+        def safe_get(s: pd.Series, idx: datetime) -> Optional[float]:
+            try:
+                val = s.get(idx)
+                return float(val) if pd.notna(val) else None
+            except Exception:
+                return None
+
         for i, taxa in enumerate(taxas):
             date = taxa.data_coleta
             value = float(taxa.percentual)
@@ -291,14 +299,6 @@ class FeatureExtractor:
             next_month = date.replace(day=28) + timedelta(days=4)
             ultimo_dia = next_month - timedelta(days=next_month.day)
             fim_de_mes = date.day >= ultimo_dia.day - 2
-
-            # Rolling stats
-            def safe_get(s: pd.Series, idx: datetime) -> Optional[float]:
-                try:
-                    val = s.get(idx)
-                    return float(val) if pd.notna(val) else None
-                except Exception:
-                    return None
 
             rolling_mean_7d = safe_get(rolling_stats.get("mean_7d", pd.Series()), date)
             rolling_std_7d = safe_get(rolling_stats.get("std_7d", pd.Series()), date)

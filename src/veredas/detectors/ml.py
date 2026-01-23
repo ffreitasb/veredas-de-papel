@@ -26,20 +26,16 @@ if TYPE_CHECKING:
     from sklearn.ensemble import IsolationForest as IsolationForestType
     from sklearn.preprocessing import StandardScaler as StandardScalerType
 
-# Importação condicional do scikit-learn
+# BUG-009: Consolidar imports do sklearn (todos do mesmo pacote)
 try:
+    from sklearn.cluster import DBSCAN
     from sklearn.ensemble import IsolationForest
     from sklearn.preprocessing import StandardScaler
 
     HAS_SKLEARN = True
+    HAS_DBSCAN = True  # Mantido para compatibilidade
 except ImportError:
     HAS_SKLEARN = False
-
-try:
-    from sklearn.cluster import DBSCAN
-
-    HAS_DBSCAN = True
-except ImportError:
     HAS_DBSCAN = False
 
 
