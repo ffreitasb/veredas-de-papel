@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Home | veredas de papel{% endblock %}
+
+{% block content %}
+<h1>Visao Geral</h1>
+
+<!-- Taxas de Referencia -->
+<section>
+    <div class="section-header">
+        <h2>Taxas de Referencia</h2>
+        <small>Fonte: Banco Central</small>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value">{{ "%.2f"|format(taxas_referencia.selic.valor) if taxas_referencia.selic.valor else "-" }}%</div>
+            <div class="label">Selic Meta</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ "%.2f"|format(taxas_referencia.cdi.valor) if taxas_referencia.cdi.valor else "-" }}%</div>
+            <div class="label">CDI</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ "%.2f"|format(taxas_referencia.ipca.valor) if taxas_referencia.ipca.valor else "-" }}%</div>
+            <div class="label">IPCA 12m</div>
+        </div>
+    </div>
+</section>
+
+<!-- Anomalias por Severidade -->
+<section>
+    <div class="section-header">
+        <h2>Anomalias Detectadas</h2>
+        <a href="/anomalias">Ver todas</a>
+    </div>
+    <div class="stats-grid" id="anomalias-stats" hx-get="/partials/stats" hx-trigger="every 60s">
+        <div class="stat-card">
+            <div class="value severity-critical">{{ anomalias_count.critical }}</div>
+            <div class="label">Critical</div>
+        </div>
+        <div class="stat-card">
+            <div class="value severity-high">{{ anomalias_count.high }}</div>
+            <div class="label">High</div>
+        </div>
+        <div class="stat-card">
+            <div class="value severity-medium">{{ anomalias_count.medium }}</div>
+            <div class="label">Medium</div>
+        </div>
+        <div class="stat-card">
+            <div class="value severity-low">{{ anomalias_count.low }}</div>
+            <div class="label">Low</div>
+        </div>
+    </div>
+</section>
+
+<!-- Estatisticas Gerais -->
+<section>
+    <div class="section-header">
+        <h2>Dados Coletados</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value">{{ total_taxas }}</div>
+            <div class="label">Taxas</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ total_ifs }}</div>
+            <div class="label">Instituicoes</div>
+        </div>
+    </div>
+</section>
+
+<!-- Ultimas Anomalias -->
+<section>
+    <div class="section-header">
+        <h2>Ultimas Anomalias</h2>
+        <a href="/anomalias">Ver todas</a>
+    </div>
+
+    {% if ultimas_anomalias %}
+        {% for anomalia in ultimas_anomalias %}
+        <div class="anomalia-card {{ anomalia.severidade.value.lower() }}">
+            <div class="header">
+                <h3 class="title">{{ anomalia.tipo }}</h3>
+                <span class="badge badge-{{ anomalia.severidade.value.lower() }}">{{ anomalia.severidade.value }}</span>
+            </div>
+            <p>{{ anomalia.descricao }}</p>
+            <div class="meta">
+                {% if anomalia.instituicao %}{{ anomalia.instituicao.nome }} | {% endif %}
+                {{ anomalia.detectado_em.strftime('%d/%m/%Y %H:%M') if anomalia.detectado_em else 'N/A' }}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <p>Nenhuma anomalia detectada</p>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

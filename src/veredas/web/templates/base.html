@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}veredas de papel{% endblock %}</title>
+
+    <!-- Pico CSS (minimal) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header class="container">
+        <nav>
+            <ul>
+                <li><a href="/" class="brand"><strong>veredas</strong></a></li>
+            </ul>
+            <ul>
+                <li><a href="/" {% if request.url.path == "/" %}class="active"{% endif %}>Home</a></li>
+                <li><a href="/taxas" {% if "/taxas" in request.url.path %}class="active"{% endif %}>Taxas</a></li>
+                <li><a href="/anomalias" {% if "/anomalias" in request.url.path %}class="active"{% endif %}>Anomalias</a></li>
+                <li><a href="/instituicoes" {% if "/instituicoes" in request.url.path %}class="active"{% endif %}>IFs</a></li>
+                <li><a href="/timeline" {% if "/timeline" in request.url.path %}class="active"{% endif %}>Timeline</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="container">
+        <small>
+            <span class="status-indicator"></span>
+            veredas de papel v0.1.0 |
+            Dados atualizados em: {{ now.strftime('%d/%m/%Y %H:%M') if now else 'N/A' }}
+        </small>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

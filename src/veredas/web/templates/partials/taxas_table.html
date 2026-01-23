@@ -1,0 +1,58 @@
+<!-- Partial: Tabela de taxas (HTMX) -->
+<p><small>{{ total }} taxas encontradas</small></p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Data</th>
+            <th>Instituicao</th>
+            <th>Indexador</th>
+            <th>Prazo</th>
+            <th>Taxa</th>
+            <th>Spread</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for taxa in taxas %}
+        <tr>
+            <td>{{ taxa.data_coleta.strftime('%d/%m/%Y') }}</td>
+            <td>
+                {% if taxa.instituicao %}
+                <a href="/instituicoes/{{ taxa.instituicao.cnpj }}">{{ taxa.instituicao.nome }}</a>
+                {% else %}
+                -
+                {% endif %}
+            </td>
+            <td>{{ taxa.indexador.value }}</td>
+            <td class="num">{{ taxa.prazo_dias }}d</td>
+            <td class="num">{{ "%.2f"|format(taxa.percentual) }}%</td>
+            <td class="num {% if taxa.percentual and taxa.percentual > 130 %}num-negative{% elif taxa.percentual and taxa.percentual > 100 %}severity-medium{% endif %}">
+                {{ "%.0f"|format(taxa.percentual) if taxa.percentual else "-" }}%
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6" class="empty-state">Nenhuma taxa encontrada</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Paginacao -->
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="#"
+       hx-get="/taxas/partials/table?page={{ page - 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&ordem={{ ordem }}"
+       hx-target="#taxas-table">&laquo; Anterior</a>
+    {% endif %}
+
+    <span class="current">{{ page }} / {{ total_pages }}</span>
+
+    {% if page < total_pages %}
+    <a href="#"
+       hx-get="/taxas/partials/table?page={{ page + 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&ordem={{ ordem }}"
+       hx-target="#taxas-table">Proxima &raquo;</a>
+    {% endif %}
+</div>
+{% endif %}

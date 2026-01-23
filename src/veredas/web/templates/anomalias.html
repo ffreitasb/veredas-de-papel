@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Anomalias | veredas de papel{% endblock %}
+
+{% block content %}
+<h1>Anomalias Detectadas</h1>
+
+<!-- Filtros -->
+<form class="filters" hx-get="/anomalias/partials/list" hx-target="#anomalias-list" hx-push-url="true">
+    <select name="severidade">
+        <option value="">Todas severidades</option>
+        {% for sev in severidades %}
+        <option value="{{ sev }}" {% if filtros.severidade == sev %}selected{% endif %}>{{ sev }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="tipo">
+        <option value="">Todos tipos</option>
+        {% for t in tipos %}
+        <option value="{{ t }}" {% if filtros.tipo == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="instituicao">
+        <option value="">Todas IFs</option>
+        {% for inst in instituicoes %}
+        <option value="{{ inst.cnpj }}" {% if filtros.instituicao == inst.cnpj %}selected{% endif %}>{{ inst.nome }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="status">
+        <option value="ativas" {% if filtros.status == 'ativas' %}selected{% endif %}>Apenas ativas</option>
+        <option value="todas" {% if filtros.status == 'todas' %}selected{% endif %}>Todas</option>
+    </select>
+
+    <button type="submit">Filtrar</button>
+</form>
+
+<!-- Lista de Anomalias -->
+<div id="anomalias-list">
+    {% include "partials/anomalias_list.html" %}
+</div>
+{% endblock %}

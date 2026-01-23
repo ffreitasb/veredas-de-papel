@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Timeline | veredas de papel{% endblock %}
+
+{% block content %}
+<h1>Timeline de Eventos</h1>
+
+<!-- Filtros -->
+<div class="filters">
+    <select name="ano" hx-get="/timeline" hx-target="body" hx-push-url="true" hx-include="[name]">
+        <option value="">Todos os anos</option>
+        {% for a in anos %}
+        <option value="{{ a }}" {% if filtros.ano == a %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="tipo" hx-get="/timeline" hx-target="body" hx-push-url="true" hx-include="[name]">
+        <option value="">Todos os tipos</option>
+        {% for t in tipos %}
+        <option value="{{ t }}" {% if filtros.tipo == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<!-- Timeline -->
+<div class="timeline">
+    {% for item in timeline_items %}
+    <div class="timeline-item {{ item.type }}">
+        <div class="date">{{ item.date.strftime('%d/%m/%Y') if item.date else 'N/A' }}</div>
+        <div class="content">
+            <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+                <strong>{{ item.title }}</strong>
+                <span class="badge badge-{% if item.severity == 'CRITICAL' %}critical{% elif item.severity == 'HIGH' %}high{% elif item.severity == 'MEDIUM' %}medium{% else %}low{% endif %}">
+                    {{ item.severity }}
+                </span>
+            </div>
+            <p style="margin: 0.5rem 0;">{{ item.description }}</p>
+            <div class="meta">
+                {% if item.instituicao %}IF: {{ item.instituicao }} | {% endif %}
+                Fonte: {{ item.source }}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>Nenhum evento encontrado</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

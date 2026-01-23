@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}{{ instituicao.nome }} | veredas de papel{% endblock %}
+
+{% block head %}
+<!-- Plotly para graficos -->
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<h1>{{ instituicao.nome }}</h1>
+
+<!-- Dados Cadastrais -->
+<section>
+    <div class="section-header">
+        <h2>Dados Cadastrais</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value" style="font-size: 1rem;">{{ instituicao.cnpj }}</div>
+            <div class="label">CNPJ</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ instituicao.segmento or '-' }}</div>
+            <div class="label">Segmento</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ instituicao.tipo_instituicao or '-' }}</div>
+            <div class="label">Tipo</div>
+        </div>
+    </div>
+</section>
+
+<!-- Indicadores de Saude -->
+<section>
+    <div class="section-header">
+        <h2>Indicadores de Saude</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value {% if instituicao.indice_basileia and instituicao.indice_basileia < 11 %}severity-critical{% elif instituicao.indice_basileia and instituicao.indice_basileia < 13 %}severity-high{% else %}severity-low{% endif %}">
+                {{ "%.1f"|format(instituicao.indice_basileia) if instituicao.indice_basileia else "-" }}%
+            </div>
+            <div class="label">Indice Basileia</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ "%.1f"|format(instituicao.indice_liquidez) if instituicao.indice_liquidez else "-" }}%</div>
+            <div class="label">Liquidez</div>
+        </div>
+        <div class="stat-card">
+            <div class="value {% if instituicao.risk_score and instituicao.risk_score >= 7 %}severity-critical{% elif instituicao.risk_score and instituicao.risk_score >= 5 %}severity-high{% else %}severity-low{% endif %}">
+                {{ instituicao.risk_score if instituicao.risk_score else "-" }}
+            </div>
+            <div class="label">Risk Score</div>
+        </div>
+    </div>
+</section>
+
+<!-- Grafico de Evolucao -->
+<section>
+    <div class="section-header">
+        <h2>Evolucao de Taxas</h2>
+    </div>
+    <div id="chart-container" style="width: 100%; height: 400px;">
+        {% if chart_data.dates %}
+        <div id="taxa-chart"></div>
+        {% else %}
+        <div class="empty-state">
+            <p>Sem dados de taxas para exibir grafico</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Historico de Taxas -->
+<section>
+    <div class="section-header">
+        <h2>Historico de Taxas</h2>
+    </div>
+    {% if taxas %}
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Indexador</th>
+                <th>Prazo</th>
+                <th>Taxa</th>
+                <th>Spread</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for taxa in taxas[:20] %}
+            <tr>
+                <td>{{ taxa.data_coleta.strftime('%d/%m/%Y') }}</td>
+                <td>{{ taxa.indexador.value }}</td>
+                <td class="num">{{ taxa.prazo_dias }}d</td>
+                <td class="num">{{ "%.2f"|format(taxa.percentual) }}%</td>
+                <td class="num {% if taxa.percentual and taxa.percentual > 130 %}num-negative{% endif %}">
+                    {{ "%.0f"|format(taxa.percentual) if taxa.percentual else "-" }}%
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if taxas|length > 20 %}
+    <p><small>Mostrando 20 de {{ taxas|length }} taxas</small></p>
+    {% endif %}
+    {% else %}
+    <div class="empty-state">
+        <p>Nenhuma taxa coletada para esta instituicao</p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Anomalias Relacionadas -->
+<section>
+    <div class="section-header">
+        <h2>Anomalias Relacionadas</h2>
+    </div>
+    {% if anomalias %}
+        {% for anomalia in anomalias %}
+        <div class="anomalia-card {{ anomalia.severidade.value.lower() }}">
+            <div class="header">
+                <h3 class="title">{{ anomalia.tipo }}</h3>
+                <span class="badge badge-{{ anomalia.severidade.value.lower() }}">{{ anomalia.severidade.value }}</span>
+            </div>
+            <p>{{ anomalia.descricao }}</p>
+            <div class="meta">
+                {{ anomalia.detectado_em.strftime('%d/%m/%Y %H:%M') if anomalia.detectado_em else 'N/A' }}
+                {% if anomalia.resolvida %} | <strong>Resolvida</strong>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <p>Nenhuma anomalia detectada para esta instituicao</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if chart_data.dates %}
+<script>
+    var data = [{
+        x: {{ chart_data.dates | tojson }},
+        y: {{ chart_data.values | tojson }},
+        text: {{ chart_data.labels | tojson }},
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: '#0066cc', width: 2 },
+        marker: { size: 6 }
+    }];
+
+    var layout = {
+        margin: { t: 20, r: 20, b: 40, l: 50 },
+        xaxis: { title: 'Data' },
+        yaxis: { title: 'Taxa (%)' },
+        hovermode: 'closest',
+        plot_bgcolor: '#fafafa',
+        paper_bgcolor: '#fafafa'
+    };
+
+    Plotly.newPlot('taxa-chart', data, layout, { responsive: true });
+</script>
+{% endif %}
+{% endblock %}

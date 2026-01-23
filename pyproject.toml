@@ -56,6 +56,13 @@ dev = [
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",
 ]
+web = [
+    "fastapi>=0.109.0",            # Web framework
+    "uvicorn[standard]>=0.27.0",   # ASGI server
+    "jinja2>=3.1.0",               # Templates
+    "python-multipart>=0.0.9",     # Form handling
+    "plotly>=5.18.0",              # Charts (server-side)
+]
 ml = [
     "scikit-learn>=1.4.0",         # Isolation Forest, DBSCAN
 ]

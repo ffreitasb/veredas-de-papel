@@ -1,0 +1,17 @@
+<!-- Partial: Card de anomalia individual (HTMX) -->
+<div class="anomalia-card {{ anomalia.severidade.value.lower() }}" id="anomalia-{{ anomalia.id }}">
+    <div class="header">
+        <h3 class="title">{{ anomalia.tipo }}</h3>
+        <span class="badge badge-{{ anomalia.severidade.value.lower() }}">{{ anomalia.severidade.value }}</span>
+    </div>
+    <p>{{ anomalia.descricao }}</p>
+    <div class="meta">
+        {% if anomalia.instituicao %}
+        <a href="/instituicoes/{{ anomalia.instituicao.cnpj }}">{{ anomalia.instituicao.nome }}</a> |
+        {% endif %}
+        {{ anomalia.detectado_em.strftime('%d/%m/%Y %H:%M') if anomalia.detectado_em else 'N/A' }}
+        {% if resolved or anomalia.resolvida %}
+        | <strong style="color: var(--severity-low);">Resolvida</strong>
+        {% endif %}
+    </div>
+</div>

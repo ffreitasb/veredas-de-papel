@@ -8,6 +8,7 @@ Comandos principais:
 - alerts: Gerencia alertas
 - export: Exporta dados
 - status: Mostra status do sistema
+- web: Inicia o servidor web
 """
 
 import asyncio
@@ -308,6 +309,51 @@ def export(
         "[yellow]⚠ Funcionalidade em desenvolvimento[/]",
         title="Exportação",
     ))
+
+
+@app.command()
+def web(
+    host: str = typer.Option(
+        "127.0.0.1",
+        "--host",
+        "-h",
+        help="Host para bind do servidor",
+    ),
+    port: int = typer.Option(
+        8000,
+        "--port",
+        "-p",
+        help="Porta para bind do servidor",
+    ),
+    reload: bool = typer.Option(
+        False,
+        "--reload",
+        "-r",
+        help="Habilita hot reload (desenvolvimento)",
+    ),
+):
+    """
+    Inicia o servidor web.
+
+    Executa a interface web do veredas de papel.
+    Acesse http://localhost:8000 após iniciar.
+    """
+    rprint(f"[bold]Iniciando servidor web...[/]")
+    rprint(f"  Host: [cyan]{host}[/]")
+    rprint(f"  Porta: [cyan]{port}[/]")
+    rprint(f"  Reload: [cyan]{reload}[/]")
+    rprint(f"\n[green]Acesse:[/] [bold]http://{host}:{port}[/]\n")
+
+    try:
+        from veredas.web.app import run_server
+        run_server(host=host, port=port, reload=reload)
+    except ImportError as e:
+        rprint(f"[red]✗[/] Dependencias web nao instaladas: {e}")
+        rprint("  Instale com: [bold]pip install veredas-de-papel[web][/]")
+        raise typer.Exit(1)
+    except Exception as e:
+        rprint(f"[red]✗[/] Erro ao iniciar servidor: {e}")
+        raise typer.Exit(1)
 
 
 @app.command()

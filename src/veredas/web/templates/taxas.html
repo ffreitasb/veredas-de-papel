@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Taxas de CDB | veredas de papel{% endblock %}
+
+{% block content %}
+<h1>Taxas de CDB</h1>
+
+<!-- Filtros -->
+<form class="filters" hx-get="/taxas/partials/table" hx-target="#taxas-table" hx-push-url="true">
+    <select name="indexador">
+        <option value="">Todos indexadores</option>
+        {% for idx in indexadores %}
+        <option value="{{ idx }}" {% if idx == indexador %}selected{% endif %}>{{ idx }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="if_id">
+        <option value="">Todas IFs</option>
+        {% for inst in instituicoes %}
+        <option value="{{ inst.id }}" {% if inst.id == if_id %}selected{% endif %}>{{ inst.nome }}</option>
+        {% endfor %}
+    </select>
+
+    <input type="number" name="prazo_min" placeholder="Prazo min (dias)" value="{{ prazo_min or '' }}">
+    <input type="number" name="prazo_max" placeholder="Prazo max (dias)" value="{{ prazo_max or '' }}">
+
+    <select name="ordem">
+        <option value="data_desc" {% if ordem == 'data_desc' %}selected{% endif %}>Data (recente)</option>
+        <option value="data_asc" {% if ordem == 'data_asc' %}selected{% endif %}>Data (antiga)</option>
+        <option value="spread_desc" {% if ordem == 'spread_desc' %}selected{% endif %}>Spread (maior)</option>
+        <option value="spread_asc" {% if ordem == 'spread_asc' %}selected{% endif %}>Spread (menor)</option>
+        <option value="taxa_desc" {% if ordem == 'taxa_desc' %}selected{% endif %}>Taxa (maior)</option>
+        <option value="taxa_asc" {% if ordem == 'taxa_asc' %}selected{% endif %}>Taxa (menor)</option>
+    </select>
+
+    <button type="submit">Filtrar</button>
+</form>
+
+<!-- Tabela de Taxas -->
+<div id="taxas-table">
+    {% include "partials/taxas_table.html" %}
+</div>
+{% endblock %}

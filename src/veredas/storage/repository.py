@@ -52,6 +52,35 @@ class InstituicaoRepository:
             stmt = stmt.where(InstituicaoFinanceira.ativa == True)  # noqa: E712
         return self.session.execute(stmt).scalars().all()
 
+    def list_paginated(
+        self,
+        order_by: str = "nome",
+        limit: int = 30,
+        offset: int = 0,
+    ) -> Sequence[InstituicaoFinanceira]:
+        """Lista IFs com paginacao."""
+        stmt = select(InstituicaoFinanceira).where(
+            InstituicaoFinanceira.ativa == True  # noqa: E712
+        )
+
+        # Ordenacao
+        if order_by == "nome":
+            stmt = stmt.order_by(InstituicaoFinanceira.nome)
+        elif order_by == "risco_desc":
+            stmt = stmt.order_by(desc(InstituicaoFinanceira.risk_score))
+        elif order_by == "basileia_asc":
+            stmt = stmt.order_by(InstituicaoFinanceira.indice_basileia)
+
+        stmt = stmt.offset(offset).limit(limit)
+        return self.session.execute(stmt).scalars().all()
+
+    def count(self) -> int:
+        """Conta total de IFs ativas."""
+        stmt = select(func.count(InstituicaoFinanceira.id)).where(
+            InstituicaoFinanceira.ativa == True  # noqa: E712
+        )
+        return self.session.execute(stmt).scalar() or 0
+
     def create(self, **kwargs) -> InstituicaoFinanceira:
         """Cria uma nova IF."""
         instituicao = InstituicaoFinanceira(**kwargs)
@@ -205,6 +234,73 @@ class TaxaCDBRepository:
         self.session.flush()
         return objetos
 
+    def count(self) -> int:
+        """Conta total de taxas."""
+        stmt = select(func.count(TaxaCDB.id))
+        return self.session.execute(stmt).scalar() or 0
+
+    def count_distinct_ifs(self) -> int:
+        """Conta IFs distintas com taxas."""
+        stmt = select(func.count(func.distinct(TaxaCDB.if_id)))
+        return self.session.execute(stmt).scalar() or 0
+
+    def list_paginated(
+        self,
+        filters: Optional[dict] = None,
+        order_by: str = "data_desc",
+        page: int = 1,
+        per_page: int = 20,
+    ) -> tuple[Sequence[TaxaCDB], int]:
+        """Lista taxas com filtros e paginacao."""
+        stmt = select(TaxaCDB)
+        count_stmt = select(func.count(TaxaCDB.id))
+
+        # Aplicar filtros
+        if filters:
+            if "indexador" in filters:
+                stmt = stmt.where(TaxaCDB.indexador == filters["indexador"])
+                count_stmt = count_stmt.where(TaxaCDB.indexador == filters["indexador"])
+            if "prazo_min" in filters:
+                stmt = stmt.where(TaxaCDB.prazo_dias >= filters["prazo_min"])
+                count_stmt = count_stmt.where(TaxaCDB.prazo_dias >= filters["prazo_min"])
+            if "prazo_max" in filters:
+                stmt = stmt.where(TaxaCDB.prazo_dias <= filters["prazo_max"])
+                count_stmt = count_stmt.where(TaxaCDB.prazo_dias <= filters["prazo_max"])
+            if "instituicao_id" in filters:
+                stmt = stmt.where(TaxaCDB.if_id == filters["instituicao_id"])
+                count_stmt = count_stmt.where(TaxaCDB.if_id == filters["instituicao_id"])
+
+        # Ordenacao
+        if order_by == "data_desc":
+            stmt = stmt.order_by(desc(TaxaCDB.data_coleta))
+        elif order_by == "data_asc":
+            stmt = stmt.order_by(TaxaCDB.data_coleta)
+        elif order_by == "spread_desc":
+            stmt = stmt.order_by(desc(TaxaCDB.percentual))
+        elif order_by == "spread_asc":
+            stmt = stmt.order_by(TaxaCDB.percentual)
+        elif order_by == "taxa_desc":
+            stmt = stmt.order_by(desc(TaxaCDB.percentual))
+        elif order_by == "taxa_asc":
+            stmt = stmt.order_by(TaxaCDB.percentual)
+
+        # Paginacao
+        offset = (page - 1) * per_page
+        stmt = stmt.offset(offset).limit(per_page)
+
+        taxas = self.session.execute(stmt).scalars().all()
+        total = self.session.execute(count_stmt).scalar() or 0
+
+        return taxas, total
+
+    def get_by_instituicao(
+        self,
+        instituicao_id: int,
+        limit: int = 100,
+    ) -> Sequence[TaxaCDB]:
+        """Lista taxas de uma instituicao."""
+        return self.list_by_if(instituicao_id, limit=limit)
+
 
 class AnomaliaRepository:
     """Repositório para anomalias."""
@@ -287,6 +383,98 @@ class AnomaliaRepository:
             anomalia.notas_resolucao = notas
         return anomalia
 
+    # Alias para compatibilidade com web routes
+    mark_resolved = resolver
+
+    def count_by_severity(self, severidade: Severidade) -> int:
+        """Conta anomalias ativas por severidade."""
+        stmt = select(func.count(Anomalia.id)).where(
+            and_(
+                Anomalia.severidade == severidade,
+                Anomalia.resolvido == False,  # noqa: E712
+            )
+        )
+        return self.session.execute(stmt).scalar() or 0
+
+    def count_active(self) -> int:
+        """Conta total de anomalias ativas."""
+        stmt = select(func.count(Anomalia.id)).where(
+            Anomalia.resolvido == False  # noqa: E712
+        )
+        return self.session.execute(stmt).scalar() or 0
+
+    def get_recent(self, limit: int = 5) -> Sequence[Anomalia]:
+        """Busca anomalias mais recentes."""
+        stmt = (
+            select(Anomalia)
+            .where(Anomalia.resolvido == False)  # noqa: E712
+            .order_by(desc(Anomalia.detectado_em))
+            .limit(limit)
+        )
+        return self.session.execute(stmt).scalars().all()
+
+    def list_with_filters(
+        self,
+        filters: Optional[dict] = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> Sequence[Anomalia]:
+        """Lista anomalias com filtros."""
+        stmt = select(Anomalia).order_by(desc(Anomalia.detectado_em))
+
+        if filters:
+            if "severidade" in filters:
+                stmt = stmt.where(Anomalia.severidade == filters["severidade"])
+            if "tipo" in filters:
+                stmt = stmt.where(Anomalia.tipo == filters["tipo"])
+            if "cnpj" in filters:
+                stmt = stmt.join(InstituicaoFinanceira).where(
+                    InstituicaoFinanceira.cnpj == filters["cnpj"]
+                )
+            if "resolvida" in filters:
+                stmt = stmt.where(Anomalia.resolvido == filters["resolvida"])
+
+        stmt = stmt.offset(offset).limit(limit)
+        return self.session.execute(stmt).scalars().all()
+
+    def count_with_filters(self, filters: Optional[dict] = None) -> int:
+        """Conta anomalias com filtros."""
+        stmt = select(func.count(Anomalia.id))
+
+        if filters:
+            if "severidade" in filters:
+                stmt = stmt.where(Anomalia.severidade == filters["severidade"])
+            if "tipo" in filters:
+                stmt = stmt.where(Anomalia.tipo == filters["tipo"])
+            if "cnpj" in filters:
+                stmt = stmt.join(InstituicaoFinanceira).where(
+                    InstituicaoFinanceira.cnpj == filters["cnpj"]
+                )
+            if "resolvida" in filters:
+                stmt = stmt.where(Anomalia.resolvido == filters["resolvida"])
+
+        return self.session.execute(stmt).scalar() or 0
+
+    def get_distinct_tipos(self) -> list[str]:
+        """Lista tipos distintos de anomalias."""
+        stmt = select(func.distinct(Anomalia.tipo))
+        result = self.session.execute(stmt).scalars().all()
+        return [str(t) for t in result if t]
+
+    def get_by_instituicao(
+        self,
+        instituicao_id: int,
+        limit: int = 20,
+    ) -> Sequence[Anomalia]:
+        """Lista anomalias de uma instituicao."""
+        stmt = (
+            select(Anomalia)
+            .where(Anomalia.if_id == instituicao_id)
+            .order_by(desc(Anomalia.detectado_em))
+            .limit(limit)
+        )
+        return self.session.execute(stmt).scalars().all()
+
 
 class TaxaReferenciaRepository:
     """Repositório para taxas de referência."""
@@ -303,6 +491,9 @@ class TaxaReferenciaRepository:
             .limit(1)
         )
         return self.session.execute(stmt).scalar_one_or_none()
+
+    # Alias para compatibilidade com web routes
+    get_latest = get_ultima
 
     def get_por_data(self, tipo: str, data: date) -> Optional[TaxaReferencia]:
         """Busca taxa por tipo e data."""
@@ -400,3 +591,43 @@ class EventoRepository:
         self.session.add(evento)
         self.session.flush()
         return evento
+
+    def list_with_filters(
+        self,
+        filters: Optional[dict] = None,
+        order_by: str = "data_desc",
+    ) -> Sequence[EventoRegulatorio]:
+        """Lista eventos com filtros."""
+        stmt = select(EventoRegulatorio)
+
+        if filters:
+            if "ano" in filters:
+                stmt = stmt.where(
+                    func.extract("year", EventoRegulatorio.data_evento) == filters["ano"]
+                )
+            if "tipo" in filters:
+                stmt = stmt.where(EventoRegulatorio.tipo == filters["tipo"])
+
+        if order_by == "data_desc":
+            stmt = stmt.order_by(desc(EventoRegulatorio.data_evento))
+        else:
+            stmt = stmt.order_by(EventoRegulatorio.data_evento)
+
+        return self.session.execute(stmt).scalars().all()
+
+    def get_distinct_years(self) -> list[int]:
+        """Lista anos distintos com eventos."""
+        stmt = select(func.distinct(func.extract("year", EventoRegulatorio.data_evento)))
+        result = self.session.execute(stmt).scalars().all()
+        return sorted([int(y) for y in result if y], reverse=True)
+
+    def get_distinct_types(self) -> list[str]:
+        """Lista tipos distintos de eventos."""
+        stmt = select(func.distinct(EventoRegulatorio.tipo))
+        result = self.session.execute(stmt).scalars().all()
+        return [str(t) for t in result if t]
+
+
+# Aliases para compatibilidade com web routes
+InstituicaoFinanceiraRepository = InstituicaoRepository
+EventoRegulatorioRepository = EventoRepository
