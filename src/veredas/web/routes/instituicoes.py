@@ -13,7 +13,7 @@ from fastapi import APIRouter, Request, Depends, Query
 from fastapi.responses import HTMLResponse
 
 from veredas.web.app import templates
-from veredas.storage.database import DatabaseManager
+from veredas.web.dependencies import get_db
 from veredas.storage.repository import (
     InstituicaoFinanceiraRepository,
     TaxaCDBRepository,
@@ -21,17 +21,6 @@ from veredas.storage.repository import (
 )
 
 router = APIRouter()
-
-
-def get_db():
-    """Dependencia para obter sessao do banco."""
-    from veredas.config import get_settings
-
-    settings = get_settings()
-    db_manager = DatabaseManager(settings.database.path)
-
-    with db_manager.session_scope() as session:
-        yield session
 
 
 @router.get("/", response_class=HTMLResponse)

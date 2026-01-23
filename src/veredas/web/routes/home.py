@@ -9,13 +9,12 @@ Exibe visao geral do sistema:
 """
 
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 
 from veredas.web.app import templates
-from veredas.storage.database import DatabaseManager, get_session
+from veredas.web.dependencies import get_db
 from veredas.storage.repository import (
     TaxaReferenciaRepository,
     AnomaliaRepository,
@@ -24,17 +23,6 @@ from veredas.storage.repository import (
 from veredas.storage.models import Severidade
 
 router = APIRouter()
-
-
-def get_db():
-    """Dependencia para obter sessao do banco."""
-    from veredas.config import get_settings
-
-    settings = get_settings()
-    db_manager = DatabaseManager(settings.database.path)
-
-    with db_manager.session_scope() as session:
-        yield session
 
 
 @router.get("/", response_class=HTMLResponse)
