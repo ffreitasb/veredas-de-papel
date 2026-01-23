@@ -35,11 +35,20 @@ router = APIRouter(prefix="/api/v1/detection", tags=["detection"])
 
 def _taxa_input_to_model(taxa_input: TaxaInput) -> TaxaCDB:
     """Converte TaxaInput para TaxaCDB model."""
+    # SEC-002: Validar indexador antes de converter
+    indexador_lower = taxa_input.indexador.lower()
+    valid_indexadores = [e.value for e in Indexador]
+    if indexador_lower not in valid_indexadores:
+        raise ValueError(
+            f"Indexador inválido: '{taxa_input.indexador}'. "
+            f"Valores aceitos: {', '.join(valid_indexadores)}"
+        )
+
     return TaxaCDB(
         id=taxa_input.taxa_id,
         if_id=taxa_input.if_id,
         data_coleta=taxa_input.data_coleta,
-        indexador=Indexador(taxa_input.indexador.lower()),
+        indexador=Indexador(indexador_lower),
         percentual=taxa_input.percentual,
         prazo_dias=taxa_input.prazo_dias,
         fonte="api",
@@ -202,11 +211,18 @@ async def analyze_taxas(request: DetectionRequest) -> DetectionResponse:
             detector_results=detector_results,
         )
 
-    except Exception as e:
+    except ValueError as e:
+        # Erros de validação (ex: indexador inválido) - expor mensagem
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception:
+        # SEC-003: Não expor detalhes internos de erros
         logger.exception("Erro na análise de detecção")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro na análise: {str(e)}",
+            detail="Erro interno no processamento. Tente novamente ou contate o suporte.",
         )
 
 
@@ -286,11 +302,18 @@ async def analyze_single_detector(request: SingleDetectorRequest) -> DetectionRe
 
     except HTTPException:
         raise
-    except Exception as e:
+    except ValueError as e:
+        # Erros de validação - expor mensagem
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception:
+        # SEC-003: Não expor detalhes internos de erros
         logger.exception("Erro na análise de detector único")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro na análise: {str(e)}",
+            detail="Erro interno no processamento. Tente novamente ou contate o suporte.",
         )
 
 

@@ -59,7 +59,8 @@ class TaxaInput(BaseModel):
     if_id: int = Field(..., description="ID da instituição financeira")
     data_coleta: datetime = Field(..., description="Data/hora da coleta")
     indexador: str = Field(default="cdi", description="Indexador (cdi, ipca, pre)")
-    percentual: Decimal = Field(..., description="Percentual da taxa", ge=0, le=500)
+    # SEC-004: Range realista para CDB (50-250% do CDI)
+    percentual: Decimal = Field(..., description="Percentual da taxa", ge=50, le=250)
     prazo_dias: int = Field(default=365, description="Prazo em dias", ge=1)
     taxa_id: Optional[int] = Field(default=None, description="ID da taxa no banco")
 
