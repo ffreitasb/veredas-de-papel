@@ -14,9 +14,9 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 
 from veredas.web.app import templates
+from veredas.web.cache import get_cached_reference_rates
 from veredas.web.dependencies import get_db
 from veredas.storage.repository import (
-    TaxaReferenciaRepository,
     AnomaliaRepository,
     TaxaCDBRepository,
 )
@@ -31,14 +31,14 @@ async def home(request: Request, session=Depends(get_db)):
     Pagina inicial com visao geral do sistema.
     """
     # Repositories
-    taxa_ref_repo = TaxaReferenciaRepository(session)
     anomalia_repo = AnomaliaRepository(session)
     taxa_cdb_repo = TaxaCDBRepository(session)
 
-    # Taxas de referencia atuais
-    selic = taxa_ref_repo.get_latest("selic")
-    cdi = taxa_ref_repo.get_latest("cdi")
-    ipca = taxa_ref_repo.get_latest("ipca")
+    # Taxas de referencia atuais (cache de 1 hora)
+    rates = get_cached_reference_rates(session)
+    selic = rates.get("selic")
+    cdi = rates.get("cdi")
+    ipca = rates.get("ipca")
 
     taxas_referencia = {
         "selic": {"valor": selic.valor if selic else None, "data": selic.data if selic else None},

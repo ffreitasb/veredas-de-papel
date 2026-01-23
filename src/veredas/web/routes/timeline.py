@@ -27,6 +27,8 @@ async def timeline_view(
     session=Depends(get_db),
     ano: Optional[int] = Query(None, description="Filtrar por ano"),
     tipo: Optional[str] = Query(None, description="Filtrar por tipo de evento"),
+    pagina: int = Query(1, ge=1, description="Pagina atual"),
+    por_pagina: int = Query(20, ge=10, le=100, description="Itens por pagina"),
 ):
     """
     Timeline de eventos regulatorios e anomalias historicas.
@@ -34,23 +36,34 @@ async def timeline_view(
     evento_repo = EventoRegulatorioRepository(session)
     anomalia_repo = AnomaliaRepository(session)
 
-    # Buscar eventos regulatorios
+    # Buscar eventos regulatorios (limitado para paginacao)
     filters = {}
     if ano:
         filters["ano"] = ano
     if tipo:
         filters["tipo"] = tipo
 
-    eventos = evento_repo.list_with_filters(filters=filters, order_by="data_desc")
+    # Limitar busca inicial para memoria
+    max_items = por_pagina * 5  # Buscar 5 paginas de cada fonte no maximo
+    eventos = evento_repo.list_with_filters(
+        filters=filters, order_by="data_desc", limit=max_items, eager_load=True
+    )
 
-    # Anomalias criticas historicas
+    # Anomalias criticas historicas (com eager loading e limite)
     anomalias_criticas = anomalia_repo.list_with_filters(
         filters={"severidade": Severidade.CRITICAL},
-        limit=50,
+        limit=max_items,
+        eager_load=True,
     )
 
     # Combinar em timeline ordenada
-    timeline_items = _build_timeline(eventos, anomalias_criticas)
+    all_items = _build_timeline(eventos, anomalias_criticas)
+    total = len(all_items)
+    total_paginas = (total + por_pagina - 1) // por_pagina
+
+    # Aplicar paginacao
+    offset = (pagina - 1) * por_pagina
+    timeline_items = all_items[offset : offset + por_pagina]
 
     # Anos disponiveis para filtro
     anos = evento_repo.get_distinct_years()
@@ -63,6 +76,9 @@ async def timeline_view(
         {
             "request": request,
             "timeline_items": timeline_items,
+            "total": total,
+            "pagina": pagina,
+            "total_paginas": total_paginas,
             "anos": anos,
             "tipos": tipos,
             "filtros": {
