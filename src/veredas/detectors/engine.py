@@ -305,9 +305,18 @@ class DetectionEngine:
         Returns:
             DetectionResult do detector.
         """
+        # BUG-011: Mapa completo incluindo variacao_detector e divergencia_detector
         detector_map = {
             # Rules
             "spread_detector": lambda: self.rule_engine.spread_detector.detect(taxas),
+            "variacao_detector": lambda: self.rule_engine.variacao_detector.detect(
+                taxas, kwargs.get("taxas_anteriores", [])
+            ),
+            "divergencia_detector": lambda: self.rule_engine.divergencia_detector.detect(
+                taxas,
+                kwargs.get("media_mercado"),
+                kwargs.get("desvio_padrao_mercado"),
+            ),
             # Statistical
             "stl_decomposition_detector": lambda: self.stl_detector.detect(taxas),
             "change_point_detector": lambda: self.change_point_detector.detect(taxas),

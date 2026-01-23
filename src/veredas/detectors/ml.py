@@ -10,7 +10,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Sequence
+from typing import TYPE_CHECKING, Optional, Sequence
 
 import numpy as np
 
@@ -19,6 +19,12 @@ from veredas.detectors.features import FeatureExtractor, TaxaFeatures, calculate
 from veredas.storage.models import Severidade, TaxaCDB, TipoAnomalia
 
 logger = logging.getLogger(__name__)
+
+# BUG-008: TYPE_CHECKING guard para type hints do sklearn
+if TYPE_CHECKING:
+    from sklearn.cluster import DBSCAN as DBSCANType
+    from sklearn.ensemble import IsolationForest as IsolationForestType
+    from sklearn.preprocessing import StandardScaler as StandardScalerType
 
 # Importação condicional do scikit-learn
 try:
@@ -86,8 +92,8 @@ class IsolationForestDetector(BaseDetector):
         self.thresholds = thresholds or DEFAULT_ML_THRESHOLDS
         self.feature_extractor = feature_extractor or FeatureExtractor()
         self.min_samples = min_samples
-        self._model: Optional["IsolationForest"] = None
-        self._scaler: Optional["StandardScaler"] = None
+        self._model: Optional["IsolationForestType"] = None
+        self._scaler: Optional["StandardScalerType"] = None
 
     @property
     def name(self) -> str:
