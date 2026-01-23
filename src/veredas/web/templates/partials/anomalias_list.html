@@ -1,0 +1,51 @@
+<!-- Partial: Lista de anomalias (HTMX) -->
+<p><small>{{ total }} anomalias encontradas</small></p>
+
+{% for anomalia in anomalias %}
+<div class="anomalia-card {{ anomalia.severidade.value.lower() }}" id="anomalia-{{ anomalia.id }}">
+    <div class="header">
+        <h3 class="title">{{ anomalia.tipo }}</h3>
+        <span class="badge badge-{{ anomalia.severidade.value.lower() }}">{{ anomalia.severidade.value }}</span>
+    </div>
+    <p>{{ anomalia.descricao }}</p>
+    <div class="meta">
+        {% if anomalia.instituicao %}
+        <a href="/instituicoes/{{ anomalia.instituicao.cnpj }}">{{ anomalia.instituicao.nome }}</a> |
+        {% endif %}
+        {{ anomalia.detectado_em.strftime('%d/%m/%Y %H:%M') if anomalia.detectado_em else 'N/A' }}
+        {% if anomalia.resolvida %}
+        | <strong style="color: var(--severity-low);">Resolvida</strong>
+        {% else %}
+        | <button hx-post="/anomalias/{{ anomalia.id }}/resolver"
+                  hx-target="#anomalia-{{ anomalia.id }}"
+                  hx-swap="outerHTML"
+                  style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+            Resolver
+          </button>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <p>Nenhuma anomalia encontrada</p>
+</div>
+{% endfor %}
+
+<!-- Paginacao -->
+{% if total_paginas > 1 %}
+<div class="pagination">
+    {% if pagina > 1 %}
+    <a href="#"
+       hx-get="/anomalias/partials/list?pagina={{ pagina - 1 }}"
+       hx-target="#anomalias-list">&laquo; Anterior</a>
+    {% endif %}
+
+    <span class="current">{{ pagina }} / {{ total_paginas }}</span>
+
+    {% if pagina < total_paginas %}
+    <a href="#"
+       hx-get="/anomalias/partials/list?pagina={{ pagina + 1 }}"
+       hx-target="#anomalias-list">Proxima &raquo;</a>
+    {% endif %}
+</div>
+{% endif %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Instituicoes | veredas de papel{% endblock %}
+
+{% block content %}
+<h1>Instituicoes Financeiras</h1>
+
+<!-- Ordenacao -->
+<div class="filters">
+    <select name="ordem" hx-get="/instituicoes" hx-target="body" hx-push-url="true">
+        <option value="nome" {% if ordem == 'nome' %}selected{% endif %}>Nome (A-Z)</option>
+        <option value="risco_desc" {% if ordem == 'risco_desc' %}selected{% endif %}>Maior risco</option>
+        <option value="basileia_asc" {% if ordem == 'basileia_asc' %}selected{% endif %}>Menor Basileia</option>
+        <option value="taxas_desc" {% if ordem == 'taxas_desc' %}selected{% endif %}>Mais taxas coletadas</option>
+    </select>
+</div>
+
+<!-- Tabela de Instituicoes -->
+<table>
+    <thead>
+        <tr>
+            <th>Nome</th>
+            <th>CNPJ</th>
+            <th>Basileia</th>
+            <th>Liquidez</th>
+            <th>Risk Score</th>
+            <th>Acoes</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for inst in instituicoes %}
+        <tr>
+            <td><a href="/instituicoes/{{ inst.cnpj }}">{{ inst.nome }}</a></td>
+            <td class="num">{{ inst.cnpj }}</td>
+            <td class="num {% if inst.indice_basileia and inst.indice_basileia < 11 %}num-negative{% endif %}">
+                {{ "%.1f"|format(inst.indice_basileia) if inst.indice_basileia else "-" }}%
+            </td>
+            <td class="num">{{ "%.1f"|format(inst.indice_liquidez) if inst.indice_liquidez else "-" }}%</td>
+            <td>
+                {% if inst.risk_score %}
+                    {% if inst.risk_score >= 7 %}
+                    <span class="badge badge-critical">{{ inst.risk_score }}</span>
+                    {% elif inst.risk_score >= 5 %}
+                    <span class="badge badge-high">{{ inst.risk_score }}</span>
+                    {% elif inst.risk_score >= 3 %}
+                    <span class="badge badge-medium">{{ inst.risk_score }}</span>
+                    {% else %}
+                    <span class="badge badge-low">{{ inst.risk_score }}</span>
+                    {% endif %}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td><a href="/instituicoes/{{ inst.cnpj }}">Ver</a></td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6" class="empty-state">Nenhuma instituicao cadastrada</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Paginacao -->
+{% if total_paginas > 1 %}
+<div class="pagination">
+    {% if pagina > 1 %}
+    <a href="?pagina={{ pagina - 1 }}&ordem={{ ordem }}">&laquo; Anterior</a>
+    {% endif %}
+
+    <span class="current">{{ pagina }} / {{ total_paginas }}</span>
+
+    {% if pagina < total_paginas %}
+    <a href="?pagina={{ pagina + 1 }}&ordem={{ ordem }}">Proxima &raquo;</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

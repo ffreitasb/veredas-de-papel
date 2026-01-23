@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Nao encontrado | veredas de papel{% endblock %}
+
+{% block content %}
+<div class="empty-state" style="padding: 4rem;">
+    <h1>404</h1>
+    <p>{{ message or 'Pagina nao encontrada' }}</p>
+    <p><a href="/">Voltar para home</a></p>
+</div>
+{% endblock %}
