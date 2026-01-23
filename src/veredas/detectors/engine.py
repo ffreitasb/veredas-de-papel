@@ -263,17 +263,27 @@ class DetectionEngine:
 
         # ================== DETECTORES DE ML ==================
         if self.config.enable_ml and len(all_taxas) >= self.config.min_observations_ml:
-            # Isolation Forest
-            if self._should_run("ml", "isolation_forest_detector"):
-                result = self.isolation_forest_detector.detect(all_taxas)
-                results.append(result)
-                detectors_used.append("isolation_forest_detector")
+            run_if = self._should_run("ml", "isolation_forest_detector")
+            run_dbscan = self._should_run("ml", "dbscan_outlier_detector")
 
-            # DBSCAN
-            if self._should_run("ml", "dbscan_outlier_detector"):
-                result = self.dbscan_detector.detect(all_taxas)
-                results.append(result)
-                detectors_used.append("dbscan_outlier_detector")
+            if run_if or run_dbscan:
+                # PERF-006: Extrair features uma vez e compartilhar entre detectores
+                ml_market_mean, ml_market_std = calculate_market_stats(all_taxas)
+                shared_features = self.isolation_forest_detector.feature_extractor.extract(
+                    all_taxas, ml_market_mean, ml_market_std
+                )
+
+                # Isolation Forest
+                if run_if:
+                    result = self.isolation_forest_detector.detect_with_features(shared_features)
+                    results.append(result)
+                    detectors_used.append("isolation_forest_detector")
+
+                # DBSCAN
+                if run_dbscan:
+                    result = self.dbscan_detector.detect_with_features(shared_features)
+                    results.append(result)
+                    detectors_used.append("dbscan_outlier_detector")
 
         # Consolidar anomalias
         anomalias = self._consolidate_anomalias(results)

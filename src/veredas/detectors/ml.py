@@ -127,25 +127,52 @@ class IsolationForestDetector(BaseDetector):
                 execution_time_ms=elapsed,
             )
 
+        # Calcular estatísticas de mercado e extrair features
+        market_mean, market_std = calculate_market_stats(taxas)
+        features_list = self.feature_extractor.extract(taxas, market_mean, market_std)
+
+        # PERF-006: Delegar para método que aceita features pré-computadas
+        return self.detect_with_features(features_list, start_time)
+
+    def detect_with_features(
+        self,
+        features_list: list[TaxaFeatures],
+        start_time: Optional[datetime] = None,
+    ) -> DetectionResult:
+        """
+        Detecta anomalias usando features pré-computadas.
+
+        PERF-006: Permite compartilhar extração de features entre detectores ML.
+
+        Args:
+            features_list: Lista de TaxaFeatures já extraídas.
+            start_time: Tempo de início para cálculo de elapsed time.
+
+        Returns:
+            DetectionResult com anomalias encontradas.
+        """
+        if start_time is None:
+            start_time = datetime.now()
+
+        if not HAS_SKLEARN:
+            return DetectionResult(
+                detector_name=self.name,
+                anomalias=[],
+                execution_time_ms=0,
+                error="scikit-learn não instalado. Use: pip install scikit-learn",
+            )
+
+        if len(features_list) < self.min_samples:
+            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            return DetectionResult(
+                detector_name=self.name,
+                anomalias=[],
+                execution_time_ms=elapsed,
+            )
+
         anomalias: list[AnomaliaDetectada] = []
 
         try:
-            # Calcular estatísticas de mercado
-            market_mean, market_std = calculate_market_stats(taxas)
-
-            # Extrair features
-            features_list = self.feature_extractor.extract(
-                taxas, market_mean, market_std
-            )
-
-            if len(features_list) < self.min_samples:
-                elapsed = (datetime.now() - start_time).total_seconds() * 1000
-                return DetectionResult(
-                    detector_name=self.name,
-                    anomalias=[],
-                    execution_time_ms=elapsed,
-                )
-
             # Converter para matriz
             X = np.array([f.to_array() for f in features_list])
 
@@ -174,7 +201,7 @@ class IsolationForestDetector(BaseDetector):
                     if anomalia:
                         anomalias.append(anomalia)
 
-        except Exception as e:
+        except Exception:
             elapsed = (datetime.now() - start_time).total_seconds() * 1000
             # SEC-001: Usar exception() para log seguro (não expõe em mensagem)
             logger.exception("Erro no Isolation Forest")
@@ -182,7 +209,7 @@ class IsolationForestDetector(BaseDetector):
                 detector_name=self.name,
                 anomalias=[],
                 execution_time_ms=elapsed,
-                error=str(e),
+                error="Erro interno no Isolation Forest",
             )
 
         elapsed = (datetime.now() - start_time).total_seconds() * 1000
@@ -292,25 +319,52 @@ class DBSCANOutlierDetector(BaseDetector):
                 execution_time_ms=elapsed,
             )
 
+        # Calcular estatísticas de mercado e extrair features
+        market_mean, market_std = calculate_market_stats(taxas)
+        features_list = self.feature_extractor.extract(taxas, market_mean, market_std)
+
+        # PERF-006: Delegar para método que aceita features pré-computadas
+        return self.detect_with_features(features_list, start_time)
+
+    def detect_with_features(
+        self,
+        features_list: list[TaxaFeatures],
+        start_time: Optional[datetime] = None,
+    ) -> DetectionResult:
+        """
+        Detecta anomalias usando features pré-computadas.
+
+        PERF-006: Permite compartilhar extração de features entre detectores ML.
+
+        Args:
+            features_list: Lista de TaxaFeatures já extraídas.
+            start_time: Tempo de início para cálculo de elapsed time.
+
+        Returns:
+            DetectionResult com anomalias encontradas.
+        """
+        if start_time is None:
+            start_time = datetime.now()
+
+        if not HAS_SKLEARN:
+            return DetectionResult(
+                detector_name=self.name,
+                anomalias=[],
+                execution_time_ms=0,
+                error="scikit-learn não instalado. Use: pip install scikit-learn",
+            )
+
+        if len(features_list) < self.min_samples:
+            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            return DetectionResult(
+                detector_name=self.name,
+                anomalias=[],
+                execution_time_ms=elapsed,
+            )
+
         anomalias: list[AnomaliaDetectada] = []
 
         try:
-            # Calcular estatísticas de mercado
-            market_mean, market_std = calculate_market_stats(taxas)
-
-            # Extrair features
-            features_list = self.feature_extractor.extract(
-                taxas, market_mean, market_std
-            )
-
-            if len(features_list) < self.min_samples:
-                elapsed = (datetime.now() - start_time).total_seconds() * 1000
-                return DetectionResult(
-                    detector_name=self.name,
-                    anomalias=[],
-                    execution_time_ms=elapsed,
-                )
-
             # Converter para matriz
             X = np.array([f.to_array() for f in features_list])
 
@@ -338,7 +392,7 @@ class DBSCANOutlierDetector(BaseDetector):
                     if anomalia:
                         anomalias.append(anomalia)
 
-        except Exception as e:
+        except Exception:
             elapsed = (datetime.now() - start_time).total_seconds() * 1000
             # SEC-001: Usar exception() para log seguro
             logger.exception("Erro no DBSCAN")
@@ -346,7 +400,7 @@ class DBSCANOutlierDetector(BaseDetector):
                 detector_name=self.name,
                 anomalias=[],
                 execution_time_ms=elapsed,
-                error=str(e),
+                error="Erro interno no DBSCAN",
             )
 
         elapsed = (datetime.now() - start_time).total_seconds() * 1000
