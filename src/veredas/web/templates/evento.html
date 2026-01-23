@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}{{ evento.tipo.value }} - {{ evento.if_nome }} | veredas de papel{% endblock %}
+
+{% block content %}
+<h1>Evento Regulatorio</h1>
+
+<!-- Dados do Evento -->
+<section>
+    <div class="section-header">
+        <h2>{{ evento.tipo.value }}</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value">{{ evento.data_evento.strftime('%d/%m/%Y') if evento.data_evento else '-' }}</div>
+            <div class="label">Data</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ evento.if_nome or '-' }}</div>
+            <div class="label">Instituicao</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ evento.fonte or '-' }}</div>
+            <div class="label">Fonte</div>
+        </div>
+    </div>
+</section>
+
+<!-- Descricao -->
+<section>
+    <div class="section-header">
+        <h2>Descricao</h2>
+    </div>
+    <div class="content-box">
+        <p>{{ evento.descricao or 'Sem descricao disponivel.' }}</p>
+    </div>
+</section>
+
+<!-- Instituicao Relacionada -->
+{% if evento.instituicao %}
+<section>
+    <div class="section-header">
+        <h2>Instituicao Relacionada</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value" style="font-size: 1rem;">
+                <a href="/instituicoes/{{ evento.instituicao.cnpj }}">{{ evento.instituicao.nome }}</a>
+            </div>
+            <div class="label">Nome</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ evento.instituicao.cnpj }}</div>
+            <div class="label">CNPJ</div>
+        </div>
+        <div class="stat-card">
+            <div class="value {% if evento.instituicao.indice_basileia and evento.instituicao.indice_basileia < 11 %}severity-critical{% endif %}">
+                {{ "%.1f"|format(evento.instituicao.indice_basileia) if evento.instituicao.indice_basileia else "-" }}%
+            </div>
+            <div class="label">Basileia</div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Navegacao -->
+<div class="actions" style="margin-top: 2rem;">
+    <a href="/timeline/" class="btn">&laquo; Voltar para Timeline</a>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+<!-- Partial: Grafico de evolucao de taxas da IF (HTMX) -->
+{% if chart_data.dates %}
+<div id="taxa-chart-{{ instituicao.id }}"></div>
+<script>
+    (function() {
+        var data = [{
+            x: {{ chart_data.dates | tojson }},
+            y: {{ chart_data.values | tojson }},
+            text: {{ chart_data.labels | tojson }},
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: { color: '#0066cc', width: 2 },
+            marker: { size: 6 }
+        }];
+
+        var layout = {
+            margin: { t: 20, r: 20, b: 40, l: 50 },
+            xaxis: { title: 'Data' },
+            yaxis: { title: 'Taxa (%)' },
+            hovermode: 'closest',
+            plot_bgcolor: '#fafafa',
+            paper_bgcolor: '#fafafa'
+        };
+
+        Plotly.newPlot('taxa-chart-{{ instituicao.id }}', data, layout, { responsive: true });
+    })();
+</script>
+{% else %}
+<div class="empty-state">
+    <p>Sem dados de taxas para exibir grafico</p>
+</div>
+{% endif %}

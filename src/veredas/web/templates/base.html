@@ -14,6 +14,9 @@
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
+    <!-- CSRF Token -->
+    <meta name="csrf-token" content="{{ get_csrf_token(request) }}">
+
     {% block head %}{% endblock %}
 </head>
 <body>
@@ -43,6 +46,14 @@
             Dados atualizados em: {{ now.strftime('%d/%m/%Y %H:%M') if now else 'N/A' }}
         </small>
     </footer>
+
+    <!-- HTMX CSRF configuration -->
+    <script>
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            var token = document.querySelector('meta[name="csrf-token"]').content;
+            evt.detail.headers['X-CSRF-Token'] = token;
+        });
+    </script>
 
     {% block scripts %}{% endblock %}
 </body>

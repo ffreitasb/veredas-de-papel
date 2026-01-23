@@ -67,7 +67,8 @@ class InstituicaoRepository:
         if order_by == "nome":
             stmt = stmt.order_by(InstituicaoFinanceira.nome)
         elif order_by == "risco_desc":
-            stmt = stmt.order_by(desc(InstituicaoFinanceira.risk_score))
+            # Menor Basileia = maior risco (ordena por Basileia crescente)
+            stmt = stmt.order_by(InstituicaoFinanceira.indice_basileia.asc().nullslast())
         elif order_by == "basileia_asc":
             stmt = stmt.order_by(InstituicaoFinanceira.indice_basileia)
 

@@ -25,7 +25,7 @@
             <div class="label">Segmento</div>
         </div>
         <div class="stat-card">
-            <div class="value">{{ instituicao.tipo_instituicao or '-' }}</div>
+            <div class="value">{{ instituicao.segmento.value if instituicao.segmento else '-' }}</div>
             <div class="label">Tipo</div>
         </div>
     </div>
@@ -48,10 +48,8 @@
             <div class="label">Liquidez</div>
         </div>
         <div class="stat-card">
-            <div class="value {% if instituicao.risk_score and instituicao.risk_score >= 7 %}severity-critical{% elif instituicao.risk_score and instituicao.risk_score >= 5 %}severity-high{% else %}severity-low{% endif %}">
-                {{ instituicao.risk_score if instituicao.risk_score else "-" }}
-            </div>
-            <div class="label">Risk Score</div>
+            <div class="value">{{ "%.1f"|format(instituicao.captacoes_total / 1000000) if instituicao.captacoes_total else "-" }}M</div>
+            <div class="label">Captacoes (R$)</div>
         </div>
     </div>
 </section>
@@ -127,7 +125,7 @@
             <p>{{ anomalia.descricao }}</p>
             <div class="meta">
                 {{ anomalia.detectado_em.strftime('%d/%m/%Y %H:%M') if anomalia.detectado_em else 'N/A' }}
-                {% if anomalia.resolvida %} | <strong>Resolvida</strong>{% endif %}
+                {% if anomalia.resolvido %} | <strong>Resolvida</strong>{% endif %}
             </div>
         </div>
         {% endfor %}

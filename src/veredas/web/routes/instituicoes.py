@@ -140,7 +140,7 @@ def _prepare_chart_data(taxas: list) -> dict:
 
     for taxa in sorted(taxas, key=lambda t: t.data_coleta):
         dates.append(taxa.data_coleta.isoformat())
-        values.append(float(taxa.taxa_percentual))
+        values.append(float(taxa.percentual))
         labels.append(f"{taxa.indexador.value} - {taxa.prazo_dias}d")
 
     return {
