@@ -4,6 +4,7 @@ Interface base para senders de alertas.
 Define o contrato que todos os canais de alerta devem implementar.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -11,6 +12,8 @@ from enum import Enum
 from typing import Optional
 
 from veredas.storage.models import Anomalia
+
+logger = logging.getLogger(__name__)
 
 
 class AlertChannel(str, Enum):
@@ -192,14 +195,17 @@ class ConsoleSender(AlertSender):
         return True
 
     async def send(self, message: AlertMessage) -> AlertResult:
-        """Imprime alerta no console."""
-        print(f"\n{'='*50}")
-        print(f"ALERTA [{message.prioridade.value.upper()}]")
-        print(f"{'='*50}")
-        print(f"Titulo: {message.titulo}")
-        print(f"Corpo:\n{message.corpo}")
-        print(f"Timestamp: {message.timestamp}")
-        print(f"{'='*50}\n")
+        """Imprime alerta no console via logging."""
+        log_message = (
+            f"\n{'='*50}\n"
+            f"ALERTA [{message.prioridade.value.upper()}]\n"
+            f"{'='*50}\n"
+            f"Titulo: {message.titulo}\n"
+            f"Corpo:\n{message.corpo}\n"
+            f"Timestamp: {message.timestamp}\n"
+            f"{'='*50}\n"
+        )
+        logger.info(log_message)
 
         return AlertResult(
             success=True,
