@@ -13,7 +13,7 @@
         <a href="/instituicoes/{{ anomalia.instituicao.cnpj }}">{{ anomalia.instituicao.nome }}</a> |
         {% endif %}
         {{ anomalia.detectado_em.strftime('%d/%m/%Y %H:%M') if anomalia.detectado_em else 'N/A' }}
-        {% if anomalia.resolvida %}
+        {% if anomalia.resolvido %}
         | <strong style="color: var(--severity-low);">Resolvida</strong>
         {% else %}
         | <button hx-post="/anomalias/{{ anomalia.id }}/resolver"

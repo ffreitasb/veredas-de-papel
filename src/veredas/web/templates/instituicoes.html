@@ -23,7 +23,7 @@
             <th>CNPJ</th>
             <th>Basileia</th>
             <th>Liquidez</th>
-            <th>Risk Score</th>
+            <th>Segmento</th>
             <th>Acoes</th>
         </tr>
     </thead>
@@ -36,21 +36,7 @@
                 {{ "%.1f"|format(inst.indice_basileia) if inst.indice_basileia else "-" }}%
             </td>
             <td class="num">{{ "%.1f"|format(inst.indice_liquidez) if inst.indice_liquidez else "-" }}%</td>
-            <td>
-                {% if inst.risk_score %}
-                    {% if inst.risk_score >= 7 %}
-                    <span class="badge badge-critical">{{ inst.risk_score }}</span>
-                    {% elif inst.risk_score >= 5 %}
-                    <span class="badge badge-high">{{ inst.risk_score }}</span>
-                    {% elif inst.risk_score >= 3 %}
-                    <span class="badge badge-medium">{{ inst.risk_score }}</span>
-                    {% else %}
-                    <span class="badge badge-low">{{ inst.risk_score }}</span>
-                    {% endif %}
-                {% else %}
-                    -
-                {% endif %}
-            </td>
+            <td>{{ inst.segmento.value if inst.segmento else '-' }}</td>
             <td><a href="/instituicoes/{{ inst.cnpj }}">Ver</a></td>
         </tr>
         {% else %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Taxa CDB - {{ taxa.instituicao.nome if taxa.instituicao else 'N/A' }} | veredas de papel{% endblock %}
+
+{% block content %}
+<h1>Detalhe da Taxa</h1>
+
+<!-- Dados da Taxa -->
+<section>
+    <div class="section-header">
+        <h2>Informacoes</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value">{{ taxa.data_coleta.strftime('%d/%m/%Y') if taxa.data_coleta else '-' }}</div>
+            <div class="label">Data Coleta</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ taxa.indexador.value if taxa.indexador else '-' }}</div>
+            <div class="label">Indexador</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ taxa.prazo_dias }}d</div>
+            <div class="label">Prazo</div>
+        </div>
+    </div>
+</section>
+
+<!-- Valores -->
+<section>
+    <div class="section-header">
+        <h2>Valores</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value {% if taxa.percentual and taxa.percentual > 130 %}severity-high{% elif taxa.percentual and taxa.percentual > 115 %}severity-medium{% else %}severity-low{% endif %}">
+                {{ "%.2f"|format(taxa.percentual) if taxa.percentual else "-" }}%
+            </div>
+            <div class="label">Taxa (% CDI)</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ "%.4f"|format(taxa.taxa_anual) if taxa.taxa_anual else "-" }}%</div>
+            <div class="label">Taxa Anual</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">R$ {{ "%.2f"|format(taxa.valor_minimo) if taxa.valor_minimo else "-" }}</div>
+            <div class="label">Valor Minimo</div>
+        </div>
+    </div>
+</section>
+
+<!-- Instituicao -->
+{% if taxa.instituicao %}
+<section>
+    <div class="section-header">
+        <h2>Instituicao</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value" style="font-size: 1rem;">
+                <a href="/instituicoes/{{ taxa.instituicao.cnpj }}">{{ taxa.instituicao.nome }}</a>
+            </div>
+            <div class="label">Nome</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" style="font-size: 0.9rem;">{{ taxa.instituicao.cnpj }}</div>
+            <div class="label">CNPJ</div>
+        </div>
+        <div class="stat-card">
+            <div class="value {% if taxa.instituicao.indice_basileia and taxa.instituicao.indice_basileia < 11 %}severity-critical{% endif %}">
+                {{ "%.1f"|format(taxa.instituicao.indice_basileia) if taxa.instituicao.indice_basileia else "-" }}%
+            </div>
+            <div class="label">Basileia</div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Metadados -->
+<section>
+    <div class="section-header">
+        <h2>Metadados</h2>
+    </div>
+    <div class="content-box">
+        <p><strong>Fonte:</strong> {{ taxa.fonte or 'N/A' }}</p>
+        <p><strong>ID:</strong> {{ taxa.id }}</p>
+        <p><strong>Criado em:</strong> {{ taxa.created_at.strftime('%d/%m/%Y %H:%M') if taxa.created_at else '-' }}</p>
+    </div>
+</section>
+
+<!-- Navegacao -->
+<div class="actions" style="margin-top: 2rem;">
+    <a href="/taxas/" class="btn">&laquo; Voltar para Taxas</a>
+    {% if taxa.instituicao %}
+    <a href="/instituicoes/{{ taxa.instituicao.cnpj }}" class="btn">Ver Instituicao</a>
+    {% endif %}
+</div>
+{% endblock %}

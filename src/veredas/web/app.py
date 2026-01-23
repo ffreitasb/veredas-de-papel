@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 
 from veredas.config import get_settings
 from veredas.storage.database import DatabaseManager
+from veredas.web.csrf import CSRFMiddleware, csrf_token_input, get_csrf_token
 
 # Paths
 WEB_DIR = Path(__file__).parent
@@ -22,6 +23,10 @@ STATIC_DIR = WEB_DIR / "static"
 
 # Templates singleton
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+# Add CSRF helper to templates
+templates.env.globals["csrf_token_input"] = csrf_token_input
+templates.env.globals["get_csrf_token"] = get_csrf_token
 
 
 @asynccontextmanager
@@ -53,6 +58,9 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+
+    # CSRF protection middleware
+    app.add_middleware(CSRFMiddleware)
 
     # Static files
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

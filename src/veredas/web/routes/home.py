@@ -48,9 +48,9 @@ async def home(request: Request, session=Depends(get_db)):
     taxa_cdb_repo = TaxaCDBRepository(session)
 
     # Taxas de referencia atuais
-    selic = taxa_ref_repo.get_latest("SELIC")
-    cdi = taxa_ref_repo.get_latest("CDI")
-    ipca = taxa_ref_repo.get_latest("IPCA")
+    selic = taxa_ref_repo.get_latest("selic")
+    cdi = taxa_ref_repo.get_latest("cdi")
+    ipca = taxa_ref_repo.get_latest("ipca")
 
     taxas_referencia = {
         "selic": {"valor": selic.valor if selic else None, "data": selic.data if selic else None},
