@@ -116,12 +116,16 @@ def create_app() -> FastAPI:
 
     # Register routes
     from veredas.web.routes import home, taxas, anomalias, instituicoes, timeline
+    from veredas.api import detection_router
 
     app.include_router(home.router)
     app.include_router(taxas.router, prefix="/taxas", tags=["taxas"])
     app.include_router(anomalias.router, prefix="/anomalias", tags=["anomalias"])
     app.include_router(instituicoes.router, prefix="/instituicoes", tags=["instituicoes"])
     app.include_router(timeline.router, prefix="/timeline", tags=["timeline"])
+
+    # API REST para detecção
+    app.include_router(detection_router)
 
     return app
 
