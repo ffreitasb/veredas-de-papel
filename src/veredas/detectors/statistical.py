@@ -7,6 +7,7 @@ Implementa algoritmos estatísticos para detecção de anomalias:
 - Rolling Z-Score: Detecta outliers locais em janelas móveis
 """
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -16,6 +17,8 @@ from typing import Optional, Sequence
 import numpy as np
 import pandas as pd
 from statsmodels.tsa.seasonal import STL
+
+logger = logging.getLogger(__name__)
 
 from veredas.detectors.base import AnomaliaDetectada, BaseDetector, DetectionResult
 from veredas.storage.models import Severidade, TaxaCDB, TipoAnomalia
@@ -199,7 +202,8 @@ class STLDecompositionDetector(BaseDetector):
             residuals = result.resid
             residual_std = residuals.std()
 
-            if residual_std == 0:
+            # BUG-003: Verificar também NaN além de zero
+            if residual_std == 0 or pd.isna(residual_std):
                 return []
 
             # Calcular z-scores dos resíduos
@@ -218,8 +222,8 @@ class STLDecompositionDetector(BaseDetector):
                     anomalias.append(anomalia)
 
         except Exception:
-            # STL pode falhar com dados insuficientes ou irregulares
-            pass
+            # BUG-002: Log da exceção para debug (não silenciar completamente)
+            logger.debug("STL falhou para IF %s (dados insuficientes ou irregulares)", if_id)
 
         return anomalias
 
@@ -439,8 +443,8 @@ class ChangePointDetector(BaseDetector):
                 anomalias.append(anomalia)
 
         except Exception:
-            # PELT pode falhar com dados insuficientes
-            pass
+            # BUG-002: Log da exceção para debug (não silenciar completamente)
+            logger.debug("PELT falhou para IF %s (dados insuficientes)", if_id)
 
         return anomalias
 

@@ -55,11 +55,30 @@ def _taxa_input_to_model(taxa_input: TaxaInput) -> TaxaCDB:
     )
 
 
+def _safe_tipo_enum(tipo_value: str) -> TipoAnomaliaEnum:
+    """BUG-015: Conversão segura de TipoAnomalia com fallback."""
+    try:
+        return TipoAnomaliaEnum(tipo_value)
+    except ValueError:
+        # Fallback para tipo mais genérico se enum não existir
+        logger.warning("TipoAnomalia desconhecido: %s", tipo_value)
+        return TipoAnomaliaEnum.SPREAD_ALTO  # Fallback seguro
+
+
+def _safe_severidade_enum(sev_value: str) -> SeveridadeEnum:
+    """BUG-015: Conversão segura de Severidade com fallback."""
+    try:
+        return SeveridadeEnum(sev_value)
+    except ValueError:
+        logger.warning("Severidade desconhecida: %s", sev_value)
+        return SeveridadeEnum.MEDIUM  # Fallback seguro
+
+
 def _anomalia_to_response(anomalia: Any) -> AnomaliaResponse:
     """Converte AnomaliaDetectada para AnomaliaResponse."""
     return AnomaliaResponse(
-        tipo=TipoAnomaliaEnum(anomalia.tipo.value),
-        severidade=SeveridadeEnum(anomalia.severidade.value),
+        tipo=_safe_tipo_enum(anomalia.tipo.value),
+        severidade=_safe_severidade_enum(anomalia.severidade.value),
         valor_detectado=anomalia.valor_detectado,
         descricao=anomalia.descricao,
         if_id=anomalia.if_id,

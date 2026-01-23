@@ -364,10 +364,11 @@ class DetectionEngine:
             all_anomalias = self._deduplicate(all_anomalias)
 
         # Ordenar por severidade (mais críticas primeiro) e depois por data
+        # BUG-012: Tratar detectado_em None para evitar TypeError na comparação
         all_anomalias.sort(
             key=lambda a: (
                 -severity_order.index(a.severidade),
-                a.detectado_em,
+                a.detectado_em or datetime.min,
             )
         )
 
