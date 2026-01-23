@@ -265,30 +265,83 @@ class TestCollectCommand:
 class TestAnalyzeCommand:
     """Testes do comando analyze."""
 
-    def test_analyze_shows_development_warning(self, runner: CliRunner):
-        """Deve mostrar aviso de funcionalidade em desenvolvimento."""
-        result = runner.invoke(app, ["analyze"])
+    def test_analyze_shows_detectors_table(self, runner: CliRunner, tmp_path: Path):
+        """Deve mostrar tabela de detectores disponíveis."""
+        db_path = tmp_path / "analyze.db"
+        db_path.touch()  # Create a dummy DB file
+
+        result = runner.invoke(app, ["analyze", "--db", str(db_path)])
 
         assert result.exit_code == 0
-        assert "desenvolvimento" in result.output.lower()
+        # Deve mostrar detectores habilitados ou informações de análise
+        assert "Detectores" in result.output or "Análise" in result.output
 
-    def test_analyze_shows_example_table(self, runner: CliRunner):
-        """Deve mostrar tabela de exemplo de anomalias."""
-        result = runner.invoke(app, ["analyze"])
+    def test_analyze_shows_instructions(self, runner: CliRunner, tmp_path: Path):
+        """Deve mostrar instruções de uso da API."""
+        db_path = tmp_path / "analyze.db"
+        db_path.touch()
 
-        assert "Banco Exemplo" in result.output or "Anomalias" in result.output
+        result = runner.invoke(app, ["analyze", "--db", str(db_path)])
 
-    def test_analyze_with_if_filter(self, runner: CliRunner):
-        """Deve aceitar filtro por instituição."""
-        result = runner.invoke(app, ["analyze", "--if", "Banco Master"])
+        assert result.exit_code == 0
+        # Deve mencionar a API REST ou web
+        assert "API" in result.output or "web" in result.output or "Detectores" in result.output
+
+    def test_analyze_with_if_filter(self, runner: CliRunner, tmp_path: Path):
+        """Deve aceitar filtro por ID de instituição."""
+        db_path = tmp_path / "analyze.db"
+        db_path.touch()
+
+        result = runner.invoke(app, ["analyze", "--if-id", "123", "--db", str(db_path)])
 
         assert result.exit_code == 0
 
-    def test_analyze_short_options(self, runner: CliRunner):
+    def test_analyze_short_options(self, runner: CliRunner, tmp_path: Path):
         """Deve aceitar opções curtas."""
-        result = runner.invoke(app, ["analyze", "-i", "Banco XYZ"])
+        db_path = tmp_path / "analyze.db"
+        db_path.touch()
+
+        result = runner.invoke(app, ["analyze", "-i", "456", "--db", str(db_path)])
 
         assert result.exit_code == 0
+
+    def test_analyze_with_ml_flag(self, runner: CliRunner, tmp_path: Path):
+        """Deve aceitar flag --ml para habilitar detectores ML."""
+        db_path = tmp_path / "analyze.db"
+        db_path.touch()
+
+        result = runner.invoke(app, ["analyze", "--ml", "--db", str(db_path)])
+
+        assert result.exit_code == 0
+        assert "Machine Learning" in result.output
+
+    def test_analyze_with_severity(self, runner: CliRunner, tmp_path: Path):
+        """Deve aceitar filtro de severidade mínima."""
+        db_path = tmp_path / "analyze.db"
+        db_path.touch()
+
+        result = runner.invoke(app, ["analyze", "--severity", "high", "--db", str(db_path)])
+
+        assert result.exit_code == 0
+
+    def test_analyze_invalid_severity(self, runner: CliRunner, tmp_path: Path):
+        """Deve rejeitar severidade inválida."""
+        db_path = tmp_path / "analyze.db"
+        db_path.touch()
+
+        result = runner.invoke(app, ["analyze", "--severity", "invalid", "--db", str(db_path)])
+
+        assert result.exit_code == 1
+        assert "inválida" in result.output.lower()
+
+    def test_analyze_db_not_found(self, runner: CliRunner, tmp_path: Path):
+        """Deve avisar quando banco não existe."""
+        db_path = tmp_path / "nonexistent.db"
+
+        result = runner.invoke(app, ["analyze", "--db", str(db_path)])
+
+        assert result.exit_code == 1
+        assert "não encontrado" in result.output.lower() or "init" in result.output.lower()
 
 
 class TestAlertsCommand:

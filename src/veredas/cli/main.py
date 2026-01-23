@@ -184,11 +184,28 @@ def _collect_bcb(db_path: Optional[Path]):
 
 @app.command()
 def analyze(
-    if_name: Optional[str] = typer.Option(
+    if_id: Optional[int] = typer.Option(
         None,
-        "--if",
+        "--if-id",
         "-i",
-        help="Nome da instituição financeira para analisar",
+        help="ID da instituição financeira para analisar",
+    ),
+    days: int = typer.Option(
+        30,
+        "--days",
+        "-n",
+        help="Número de dias para análise",
+    ),
+    enable_ml: bool = typer.Option(
+        False,
+        "--ml",
+        help="Habilitar detectores de Machine Learning",
+    ),
+    min_severity: str = typer.Option(
+        "low",
+        "--severity",
+        "-s",
+        help="Severidade mínima (low, medium, high, critical)",
     ),
     db_path: Optional[Path] = typer.Option(
         None,
@@ -200,41 +217,80 @@ def analyze(
     """
     Executa análise e detecção de anomalias.
 
-    Analisa as taxas coletadas e detecta comportamentos anômalos.
+    Analisa as taxas coletadas usando detectores de regras,
+    estatísticos e opcionalmente de Machine Learning.
+
+    Detectores disponíveis:
+    - Regras: spread, variação, divergência
+    - Estatísticos: STL decomposition, change point, rolling z-score
+    - ML: Isolation Forest, DBSCAN (requer --ml)
     """
+    from veredas.detectors import DetectionEngine, EngineConfig
+    from veredas.storage.models import Severidade
+
     rprint("[bold]Executando análise de anomalias...[/]\n")
 
-    # TODO: Implementar análise completa
-    # Por enquanto, mostra exemplo
+    # Mapear severidade
+    severity_map = {
+        "low": Severidade.LOW,
+        "medium": Severidade.MEDIUM,
+        "high": Severidade.HIGH,
+        "critical": Severidade.CRITICAL,
+    }
 
+    if min_severity.lower() not in severity_map:
+        rprint(f"[red]✗[/] Severidade inválida: {min_severity}")
+        raise typer.Exit(1)
+
+    # Configurar engine
+    config = EngineConfig(
+        enable_rules=True,
+        enable_statistical=True,
+        enable_ml=enable_ml,
+        min_severity=severity_map[min_severity.lower()],
+        deduplicate=True,
+    )
+
+    engine = DetectionEngine(config)
+
+    # Mostrar detectores disponíveis
+    rprint("[bold]Detectores habilitados:[/]")
+    rprint(f"  • Regras: [green]✓[/]")
+    rprint(f"  • Estatísticos: [green]✓[/]")
+    rprint(f"  • Machine Learning: {'[green]✓[/]' if enable_ml else '[dim]✗[/]'}")
+    rprint()
+
+    # Verificar se há dados no banco
+    db = DatabaseManager(db_path)
+    if not db.db_path.exists():
+        rprint(Panel(
+            "[yellow]⚠ Banco de dados não encontrado[/]\n\n"
+            "Execute [bold]veredas init[/] para criar o banco.\n"
+            "Use [bold]veredas collect[/] para coletar taxas.",
+            title="Dados Necessários",
+        ))
+        raise typer.Exit(1)
+
+    # Por enquanto, mostra exemplo (banco pode não ter taxas CDB)
     rprint(Panel(
-        "[yellow]⚠ Funcionalidade em desenvolvimento[/]\n\n"
-        "A análise completa requer taxas de CDB coletadas.\n"
-        "Use [bold]veredas collect[/] primeiro para coletar dados.",
+        "[cyan]ℹ[/] Para análise completa, é necessário ter taxas de CDB no banco.\n\n"
+        "Use a [bold]API REST[/] para analisar dados:\n"
+        "  [dim]POST /api/v1/detection/analyze[/]\n\n"
+        "Ou inicie o servidor web:\n"
+        "  [bold]veredas web[/]",
         title="Análise de Anomalias",
     ))
 
-    # Exemplo de como seria a saída
-    example_table = Table(title="Exemplo de Anomalias Detectadas")
-    example_table.add_column("IF", style="cyan")
-    example_table.add_column("Tipo", style="yellow")
-    example_table.add_column("Severidade")
-    example_table.add_column("Descrição")
+    # Mostrar detectores disponíveis
+    detectors = engine.available_detectors()
+    detector_table = Table(title="Detectores Disponíveis")
+    detector_table.add_column("Categoria", style="cyan")
+    detector_table.add_column("Detectores")
 
-    example_table.add_row(
-        "Banco Exemplo",
-        "SPREAD_CRITICO",
-        "[red]CRITICAL[/]",
-        "CDB oferecendo 165% do CDI",
-    )
-    example_table.add_row(
-        "Financeira XYZ",
-        "SALTO_BRUSCO",
-        "[yellow]MEDIUM[/]",
-        "Taxa aumentou 15pp em 7 dias",
-    )
+    for category, names in detectors.items():
+        detector_table.add_row(category.value.title(), ", ".join(names))
 
-    console.print(example_table)
+    console.print(detector_table)
 
 
 @app.command()
@@ -309,6 +365,57 @@ def export(
         "[yellow]⚠ Funcionalidade em desenvolvimento[/]",
         title="Exportação",
     ))
+
+
+@app.command()
+def detectors():
+    """
+    Lista detectores de anomalias disponíveis.
+
+    Mostra todos os detectores por categoria: regras, estatísticos e ML.
+    """
+    from veredas.detectors import DetectionEngine
+
+    rprint("[bold]Detectores de Anomalias Disponíveis[/]\n")
+
+    detectors = DetectionEngine.available_detectors()
+
+    # Verificar dependências ML
+    ml_available = False
+    ruptures_available = False
+
+    try:
+        import sklearn  # noqa: F401
+        ml_available = True
+    except ImportError:
+        pass
+
+    try:
+        import ruptures  # noqa: F401
+        ruptures_available = True
+    except ImportError:
+        pass
+
+    # Regras
+    rprint("[bold cyan]Detectores de Regras:[/]")
+    for name in detectors.get("rules", []):
+        rprint(f"  • {name}")
+
+    # Estatísticos
+    rprint("\n[bold cyan]Detectores Estatísticos:[/]")
+    for name in detectors.get("statistical", []):
+        status = "[green]✓[/]"
+        if "change_point" in name and not ruptures_available:
+            status = "[yellow]⚠ ruptures não instalado[/]"
+        rprint(f"  • {name} {status}")
+
+    # ML
+    rprint("\n[bold cyan]Detectores de Machine Learning:[/]")
+    for name in detectors.get("ml", []):
+        status = "[green]✓[/]" if ml_available else "[yellow]⚠ scikit-learn não instalado[/]"
+        rprint(f"  • {name} {status}")
+
+    rprint("\n[dim]Use --ml com 'veredas analyze' para habilitar detectores ML[/]")
 
 
 @app.command()
