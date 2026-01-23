@@ -174,7 +174,8 @@ class IsolationForestDetector(BaseDetector):
 
         except Exception as e:
             elapsed = (datetime.now() - start_time).total_seconds() * 1000
-            logger.error(f"Erro no Isolation Forest: {e}")
+            # SEC-001: Usar exception() para log seguro (não expõe em mensagem)
+            logger.exception("Erro no Isolation Forest")
             return DetectionResult(
                 detector_name=self.name,
                 anomalias=[],
@@ -337,7 +338,8 @@ class DBSCANOutlierDetector(BaseDetector):
 
         except Exception as e:
             elapsed = (datetime.now() - start_time).total_seconds() * 1000
-            logger.error(f"Erro no DBSCAN: {e}")
+            # SEC-001: Usar exception() para log seguro
+            logger.exception("Erro no DBSCAN")
             return DetectionResult(
                 detector_name=self.name,
                 anomalias=[],
