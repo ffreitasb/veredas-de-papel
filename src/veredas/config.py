@@ -103,6 +103,69 @@ class CollectorSettings(BaseSettings):
     )
 
 
+class WebSettings(BaseSettings):
+    """Configuracoes do servidor web."""
+
+    model_config = SettingsConfigDict(env_prefix="VEREDAS_WEB_")
+
+    host: str = Field(
+        default="127.0.0.1",
+        description="Host para bind do servidor",
+    )
+    port: int = Field(
+        default=8000,
+        description="Porta para bind do servidor",
+    )
+
+
+class AlertSettings(BaseSettings):
+    """Configuracoes do sistema de alertas."""
+
+    model_config = SettingsConfigDict(env_prefix="VEREDAS_")
+
+    # Email (SMTP)
+    smtp_host: Optional[str] = Field(
+        default=None,
+        description="Servidor SMTP",
+    )
+    smtp_port: int = Field(
+        default=587,
+        description="Porta SMTP",
+    )
+    smtp_user: Optional[str] = Field(
+        default=None,
+        description="Usuario SMTP",
+    )
+    smtp_password: Optional[str] = Field(
+        default=None,
+        description="Senha SMTP",
+    )
+    alert_email_to: Optional[str] = Field(
+        default=None,
+        description="Email destino para alertas",
+    )
+
+    # Telegram
+    telegram_bot_token: Optional[str] = Field(
+        default=None,
+        description="Token do bot Telegram",
+    )
+    telegram_chat_id: Optional[str] = Field(
+        default=None,
+        description="Chat ID do Telegram",
+    )
+
+    # Configuracoes gerais
+    alert_min_severity: str = Field(
+        default="HIGH",
+        description="Severidade minima para alertar (LOW, MEDIUM, HIGH, CRITICAL)",
+    )
+    alert_cooldown_minutes: int = Field(
+        default=60,
+        description="Minutos entre alertas da mesma anomalia",
+    )
+
+
 # CNPJs dos maiores bancos brasileiros
 # Usado como fallback quando API IF.Data nao retorna lista atualizada
 # Fonte: Ranking BCB por ativos totais (atualizado periodicamente)
@@ -159,6 +222,18 @@ class Settings(BaseSettings):
     detection: DetectionThresholds = Field(default_factory=DetectionThresholds)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     collector: CollectorSettings = Field(default_factory=CollectorSettings)
+    web: WebSettings = Field(default_factory=WebSettings)
+
+    # Alertas (campos diretos para facilitar acesso)
+    smtp_host: Optional[str] = Field(default=None)
+    smtp_port: int = Field(default=587)
+    smtp_user: Optional[str] = Field(default=None)
+    smtp_password: Optional[str] = Field(default=None)
+    alert_email_to: Optional[str] = Field(default=None)
+    telegram_bot_token: Optional[str] = Field(default=None)
+    telegram_chat_id: Optional[str] = Field(default=None)
+    alert_min_severity: str = Field(default="HIGH")
+    alert_cooldown_minutes: int = Field(default=60)
 
     def ensure_data_dir(self) -> Path:
         """Garante que o diretorio de dados existe."""

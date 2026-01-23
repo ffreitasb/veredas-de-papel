@@ -19,6 +19,7 @@ from veredas.storage.repository import (
     TaxaCDBRepository,
     AnomaliaRepository,
 )
+from veredas.validators import parse_cnpj
 
 router = APIRouter()
 
@@ -73,12 +74,15 @@ async def instituicao_detail(
     - Historico de taxas
     - Anomalias relacionadas
     """
+    # Validar e normalizar CNPJ (levanta HTTPException se invalido)
+    cnpj_normalizado = parse_cnpj(cnpj, required=True, validate=False)
+
     if_repo = InstituicaoFinanceiraRepository(session)
     taxa_repo = TaxaCDBRepository(session)
     anomalia_repo = AnomaliaRepository(session)
 
     # Buscar IF
-    instituicao = if_repo.get_by_cnpj(cnpj)
+    instituicao = if_repo.get_by_cnpj(cnpj_normalizado)
     if not instituicao:
         return templates.TemplateResponse(
             "errors/404.html",
@@ -148,10 +152,13 @@ async def instituicao_chart_partial(
     """
     Partial HTMX para grafico de evolucao da IF.
     """
+    # Validar e normalizar CNPJ
+    cnpj_normalizado = parse_cnpj(cnpj, required=True, validate=False)
+
     if_repo = InstituicaoFinanceiraRepository(session)
     taxa_repo = TaxaCDBRepository(session)
 
-    instituicao = if_repo.get_by_cnpj(cnpj)
+    instituicao = if_repo.get_by_cnpj(cnpj_normalizado)
     if not instituicao:
         return HTMLResponse("<p>IF nao encontrada</p>", status_code=404)
 
