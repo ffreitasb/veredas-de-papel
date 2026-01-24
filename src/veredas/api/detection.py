@@ -287,23 +287,13 @@ async def analyze_single_detector(request: SingleDetectorRequest) -> DetectionRe
         # Converter anomalias
         anomalias_response = [_anomalia_to_response(a) for a in result.anomalias]
 
-        # Contar por severidade
-        critical_count = sum(1 for a in result.anomalias if a.severidade == Severidade.CRITICAL)
-        high_count = sum(
-            1 for a in result.anomalias if a.severidade in (Severidade.HIGH, Severidade.CRITICAL)
-        )
-        medium_count = sum(
-            1
-            for a in result.anomalias
-            if a.severidade in (Severidade.MEDIUM, Severidade.HIGH, Severidade.CRITICAL)
-        )
-
+        # CODE-005: Usar properties de DetectionResult para contagem
         return DetectionResponse(
             anomalias=anomalias_response,
             anomalias_count=len(result.anomalias),
-            critical_count=critical_count,
-            high_count=high_count,
-            medium_count=medium_count,
+            critical_count=result.critical_count,
+            high_count=result.high_count,
+            medium_count=result.medium_count,
             taxas_analyzed=len(taxas),
             detectors_used=[result.detector_name],
             execution_time_ms=result.execution_time_ms,

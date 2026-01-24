@@ -33,6 +33,9 @@ from veredas.storage.models import Severidade, TaxaCDB
 
 logger = logging.getLogger(__name__)
 
+# PERF-007: Constante de módulo (evita recriação em cada chamada)
+SEVERITY_ORDER = [Severidade.LOW, Severidade.MEDIUM, Severidade.HIGH, Severidade.CRITICAL]
+
 
 class DetectorCategory(StrEnum):
     """Categorias de detectores disponíveis."""
@@ -362,11 +365,10 @@ class DetectionEngine:
             if result.success:
                 all_anomalias.extend(result.anomalias)
 
-        # Filtrar por severidade mínima
-        severity_order = [Severidade.LOW, Severidade.MEDIUM, Severidade.HIGH, Severidade.CRITICAL]
-        min_idx = severity_order.index(self.config.min_severity)
+        # Filtrar por severidade mínima (PERF-007: usa constante de módulo)
+        min_idx = SEVERITY_ORDER.index(self.config.min_severity)
         all_anomalias = [
-            a for a in all_anomalias if severity_order.index(a.severidade) >= min_idx
+            a for a in all_anomalias if SEVERITY_ORDER.index(a.severidade) >= min_idx
         ]
 
         # Deduplicar se configurado
@@ -377,7 +379,7 @@ class DetectionEngine:
         # BUG-012: Tratar detectado_em None para evitar TypeError na comparação
         all_anomalias.sort(
             key=lambda a: (
-                -severity_order.index(a.severidade),
+                -SEVERITY_ORDER.index(a.severidade),
                 a.detectado_em or datetime.min,
             )
         )
@@ -400,14 +402,13 @@ class DetectionEngine:
                 groups[key] = []
             groups[key].append(anomalia)
 
-        # Manter apenas a mais severa de cada grupo
-        severity_order = [Severidade.LOW, Severidade.MEDIUM, Severidade.HIGH, Severidade.CRITICAL]
+        # Manter apenas a mais severa de cada grupo (PERF-007: usa constante de módulo)
         deduplicated = []
 
         for group_anomalias in groups.values():
             # Ordenar por severidade (maior primeiro)
             group_anomalias.sort(
-                key=lambda a: severity_order.index(a.severidade), reverse=True
+                key=lambda a: SEVERITY_ORDER.index(a.severidade), reverse=True
             )
             deduplicated.append(group_anomalias[0])
 
