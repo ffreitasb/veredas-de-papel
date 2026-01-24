@@ -51,6 +51,11 @@ class AnomaliaDetectada:
         """Verifica se a anomalia é HIGH ou CRITICAL."""
         return self.severidade in (Severidade.HIGH, Severidade.CRITICAL)
 
+    @property
+    def is_medium_or_above(self) -> bool:
+        """Verifica se a anomalia é MEDIUM, HIGH ou CRITICAL."""
+        return self.severidade in (Severidade.MEDIUM, Severidade.HIGH, Severidade.CRITICAL)
+
 
 @dataclass
 class DetectionResult:
@@ -81,6 +86,11 @@ class DetectionResult:
     def high_count(self) -> int:
         """Conta anomalias HIGH ou CRITICAL."""
         return sum(1 for a in self.anomalias if a.is_high_or_above)
+
+    @property
+    def medium_count(self) -> int:
+        """Conta anomalias MEDIUM, HIGH ou CRITICAL."""
+        return sum(1 for a in self.anomalias if a.is_medium_or_above)
 
 
 class BaseDetector(ABC):

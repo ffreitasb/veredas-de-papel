@@ -6,6 +6,7 @@ modelos de detecção de anomalias baseados em Machine Learning.
 """
 
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -233,10 +234,9 @@ class FeatureExtractor:
 
     def _group_by_if(self, taxas: Sequence[TaxaCDB]) -> dict[int, list[TaxaCDB]]:
         """Agrupa taxas por instituição financeira."""
-        grouped: dict[int, list[TaxaCDB]] = {}
+        # CODE-002: Padronizado com defaultdict (consistente com statistical.py)
+        grouped: dict[int, list[TaxaCDB]] = defaultdict(list)
         for taxa in taxas:
-            if taxa.if_id not in grouped:
-                grouped[taxa.if_id] = []
             grouped[taxa.if_id].append(taxa)
         return grouped
 
