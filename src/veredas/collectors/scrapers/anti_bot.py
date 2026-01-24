@@ -87,7 +87,7 @@ FINGERPRINTS = [
 @dataclass
 class RateLimiter:
     """
-    Rate limiter adaptativo.
+    Rate limiter adaptativo (thread-safe).
 
     Ajusta delays baseado em respostas do servidor.
     """
@@ -98,16 +98,18 @@ class RateLimiter:
     success_decrease: float = 0.9  # Fator de redução em sucesso
     failure_increase: float = 2.0  # Fator de aumento em falha
     _last_request: float = field(default=0.0, init=False)
+    _lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False)
 
     async def wait(self) -> None:
-        """Aguarda o delay necessário antes da próxima requisição."""
-        now = time.time()
-        elapsed = now - self._last_request
+        """Aguarda o delay necessário antes da próxima requisição (thread-safe)."""
+        async with self._lock:
+            now = time.time()
+            elapsed = now - self._last_request
 
-        if elapsed < self.current_delay:
-            await asyncio.sleep(self.current_delay - elapsed)
+            if elapsed < self.current_delay:
+                await asyncio.sleep(self.current_delay - elapsed)
 
-        self._last_request = time.time()
+            self._last_request = time.time()
 
     def on_success(self) -> None:
         """Reduz delay após sucesso."""
@@ -199,6 +201,7 @@ class SessionManager:
         self.proxy = proxy
         self._cookies: dict[str, str] = {}
         self._client: Optional[httpx.AsyncClient] = None
+        self._client_lock = asyncio.Lock()  # Prevents race condition in get_client
         self._session_id = hashlib.md5(
             f"{time.time()}{random.random()}".encode()
         ).hexdigest()[:8]
@@ -221,17 +224,18 @@ class SessionManager:
         }
 
     async def get_client(self) -> httpx.AsyncClient:
-        """Retorna cliente HTTP com sessão configurada."""
-        if self._client is None or self._client.is_closed:
-            proxy_url = self.proxy.url if self.proxy else None
-            self._client = httpx.AsyncClient(
-                headers=self.headers,
-                cookies=self._cookies,
-                proxy=proxy_url,
-                follow_redirects=True,
-                timeout=30.0,
-            )
-        return self._client
+        """Retorna cliente HTTP com sessão configurada (thread-safe)."""
+        async with self._client_lock:
+            if self._client is None or self._client.is_closed:
+                proxy_url = self.proxy.url if self.proxy else None
+                self._client = httpx.AsyncClient(
+                    headers=self.headers,
+                    cookies=self._cookies,
+                    proxy=proxy_url,
+                    follow_redirects=True,
+                    timeout=30.0,
+                )
+            return self._client
 
     async def close(self) -> None:
         """Fecha a sessão."""

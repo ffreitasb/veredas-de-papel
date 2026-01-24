@@ -94,6 +94,7 @@ class BaseScraper(BaseCollector):
         self.base_delay = base_delay
         self.jitter = jitter
         self._client: Optional[httpx.AsyncClient] = None
+        self._client_lock = asyncio.Lock()  # Prevents race condition in _get_client
 
     @property
     @abstractmethod
@@ -128,14 +129,23 @@ class BaseScraper(BaseCollector):
         }
 
     async def _get_client(self) -> httpx.AsyncClient:
-        """Retorna cliente HTTP reutilizável."""
-        if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
-                timeout=self.timeout,
-                follow_redirects=True,
-                headers=self._get_headers(),
-            )
-        return self._client
+        """Retorna cliente HTTP reutilizável (thread-safe)."""
+        async with self._client_lock:
+            if self._client is None or self._client.is_closed:
+                self._client = httpx.AsyncClient(
+                    timeout=self.timeout,
+                    follow_redirects=True,
+                    headers=self._get_headers(),
+                )
+            return self._client
+
+    async def __aenter__(self) -> "BaseScraper":
+        """Context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Context manager exit - ensures client cleanup."""
+        await self._close_client()
 
     async def _close_client(self) -> None:
         """Fecha o cliente HTTP."""
