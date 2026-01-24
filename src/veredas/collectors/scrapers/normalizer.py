@@ -22,6 +22,10 @@ from veredas.storage.models import Indexador
 logger = logging.getLogger(__name__)
 
 
+# CNPJ placeholder para instituições não identificadas
+# Formato válido mas claramente artificial (indica "desconhecido")
+CNPJ_DESCONHECIDO: str = "00.000.000/0001-00"
+
 # Mapeamento de nomes comuns para CNPJs
 CNPJ_MAP: dict[str, str] = {
     # Grandes bancos
@@ -296,7 +300,7 @@ class TaxaNormalizer:
 
         # Usa CNPJ placeholder se não encontrado
         if not cnpj:
-            cnpj = "00.000.000/0000-00"
+            cnpj = CNPJ_DESCONHECIDO
 
         # Valida percentual
         if not validate_percentual(taxa.percentual, taxa.indexador):

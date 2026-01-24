@@ -293,6 +293,7 @@ class SignalAggregator:
         processos_bc: Optional[SinalProcessosBC] = None,
         mercado_secundario: Optional[SinalMercadoSecundario] = None,
         sentimento: Optional[SinalSentimento] = None,
+        score_anterior: Optional[float] = None,  # H10 FIX: Para cálculo de tendência
     ) -> RiskSignal:
         """
         Agrega sinais de múltiplas fontes.
@@ -385,9 +386,18 @@ class SignalAggregator:
 
             # Confiança baseada no número de sinais
             signal.confianca = signal.sinais_disponiveis / 4
+        else:
+            # H9 FIX: Sem sinais disponíveis - score neutro mas confiança zero
+            signal.score_consolidado = 50.0  # Neutro
+            signal.confianca = 0.0
+            signal.fatores_risco.append("Nenhum sinal de risco disponível")
 
         # Classifica nível de risco
         signal.nivel_risco = self._classificar_risco(signal.score_consolidado)
+
+        # H10 FIX: Calcula tendência se score anterior disponível
+        if score_anterior is not None:
+            signal.tendencia = self._calcular_tendencia(signal.score_consolidado, score_anterior)
 
         # Gera recomendações
         signal.recomendacoes = self._gerar_recomendacoes(signal)
@@ -406,6 +416,32 @@ class SignalAggregator:
             return NivelRisco.ALTO
         else:
             return NivelRisco.CRITICO
+
+    def _calcular_tendencia(
+        self,
+        score_atual: float,
+        score_anterior: float,
+        threshold: float = 5.0,
+    ) -> TendenciaRisco:
+        """
+        Calcula tendência baseada na diferença de scores.
+
+        Args:
+            score_atual: Score atual consolidado
+            score_anterior: Score anterior consolidado
+            threshold: Limiar para considerar mudança significativa
+
+        Returns:
+            TendenciaRisco
+        """
+        diff = score_atual - score_anterior
+
+        if diff < -threshold:
+            return TendenciaRisco.MELHORANDO
+        elif diff > threshold:
+            return TendenciaRisco.PIORANDO
+        else:
+            return TendenciaRisco.ESTAVEL
 
     def _gerar_recomendacoes(self, signal: RiskSignal) -> list[str]:
         """Gera recomendações baseadas no nível de risco."""

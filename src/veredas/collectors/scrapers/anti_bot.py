@@ -131,7 +131,7 @@ class RateLimiter:
 
 class ProxyRotator:
     """
-    Rotacionador de proxies.
+    Rotacionador de proxies (thread-safe).
 
     Gerencia pool de proxies e remove proxies com falha.
     """
@@ -142,40 +142,49 @@ class ProxyRotator:
 
         Args:
             proxies: Lista de configurações de proxy
+
+        Raises:
+            ValueError: Se lista de proxies estiver vazia
         """
+        if not proxies:
+            raise ValueError("ProxyRotator requer ao menos um proxy")
         self._proxies = list(proxies)
         self._failed: set[str] = set()
         self._current_index = 0
+        self._lock = asyncio.Lock()
 
-    def get_next(self) -> Optional[ProxyConfig]:
+    async def get_next(self) -> Optional[ProxyConfig]:
         """
-        Retorna o próximo proxy disponível.
+        Retorna o próximo proxy disponível (thread-safe).
 
         Returns:
             ProxyConfig ou None se não houver proxies
         """
-        available = [p for p in self._proxies if p.url not in self._failed]
+        async with self._lock:
+            available = [p for p in self._proxies if p.url not in self._failed]
 
-        if not available:
-            # Reset failures e tenta novamente
-            logger.warning("Todos os proxies falharam, resetando...")
-            self._failed.clear()
-            available = self._proxies
+            if not available:
+                # Reset failures e tenta novamente
+                logger.warning("Todos os proxies falharam, resetando...")
+                self._failed.clear()
+                available = self._proxies
 
-        if not available:
-            return None
+            if not available:
+                return None
 
-        self._current_index = (self._current_index + 1) % len(available)
-        return available[self._current_index]
+            self._current_index = (self._current_index + 1) % len(available)
+            return available[self._current_index]
 
-    def mark_failed(self, proxy: ProxyConfig) -> None:
-        """Marca um proxy como falho."""
-        self._failed.add(proxy.url)
-        logger.warning(f"Proxy marcado como falho: {proxy.host}:{proxy.port}")
+    async def mark_failed(self, proxy: ProxyConfig) -> None:
+        """Marca um proxy como falho (thread-safe)."""
+        async with self._lock:
+            self._failed.add(proxy.url)
+            logger.warning(f"Proxy marcado como falho: {proxy.host}:{proxy.port}")
 
-    def mark_success(self, proxy: ProxyConfig) -> None:
-        """Remove proxy da lista de falhos após sucesso."""
-        self._failed.discard(proxy.url)
+    async def mark_success(self, proxy: ProxyConfig) -> None:
+        """Remove proxy da lista de falhos após sucesso (thread-safe)."""
+        async with self._lock:
+            self._failed.discard(proxy.url)
 
 
 class SessionManager:

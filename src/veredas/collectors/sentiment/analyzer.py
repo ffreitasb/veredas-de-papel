@@ -96,11 +96,15 @@ class SentimentAnalyzer:
         "bom", "boa", "excelente", "ótimo", "ótima", "maravilhoso", "perfeito",
         "satisfeito", "satisfeita", "recomendo", "recomendado", "confiável",
         "eficiente", "rápido", "rápida", "fácil", "simples", "prático",
+        "parabéns", "obrigado", "obrigada", "agradeço", "funciona", "funcionou",
+        "resolvido", "resolvida", "atencioso", "atenciosa", "gentil", "educado",
         # Financeiras
         "lucro", "crescimento", "rentabilidade", "alta", "valorização",
         "sólido", "sólida", "estável", "seguro", "segura", "capitalizado",
         "liquidez", "aprovado", "aprovada", "liberado", "liberada",
         "investimento", "retorno", "ganho", "positivo", "positiva",
+        "rendimento", "dividendo", "lucrativo", "rentável", "vantajoso",
+        "transparente", "confiança", "credibilidade", "competitivo",
     }
 
     # Palavras negativas (contexto financeiro)
@@ -110,15 +114,20 @@ class SentimentAnalyzer:
         "decepcionada", "insatisfeito", "insatisfeita", "não recomendo",
         "problema", "problemas", "erro", "erros", "falha", "falhas",
         "demora", "demorado", "difícil", "complicado", "complicada",
+        "absurdo", "vergonha", "vergonhoso", "lamentável", "frustrante",
+        "irritante", "descaso", "desrespeito", "incompetente", "inaceitável",
         # Financeiras
         "prejuízo", "perda", "queda", "desvalorização", "crise",
         "inadimplência", "calote", "fraude", "golpe", "bloqueio",
         "bloqueado", "negado", "negada", "recusado", "recusada",
         "multa", "penalidade", "intervenção", "liquidação",
         "falência", "insolvência", "risco", "arriscado",
+        "endividado", "dívida", "atraso", "atrasado", "vencido",
+        "negativado", "spc", "serasa", "protesto", "default",
         # Reclamações
         "reclamação", "processo", "procon", "advogado", "justiça",
         "cobrança", "indevida", "abusivo", "abusiva",
+        "enganação", "mentira", "enganado", "lesado", "prejudicado",
     }
 
     # Palavras intensificadoras
@@ -146,27 +155,16 @@ class SentimentAnalyzer:
         "segurança": ["segurança", "fraude", "golpe", "clonado", "hackeado"],
     }
 
-    # Nomes de IFs para detecção
-    INSTITUICOES = {
-        "banco do brasil": "00.000.000/0001-91",
-        "bb": "00.000.000/0001-91",
-        "bradesco": "60.746.948/0001-12",
-        "itau": "60.701.190/0001-04",
-        "itaú": "60.701.190/0001-04",
-        "santander": "33.657.248/0001-89",
-        "caixa": "00.360.305/0001-04",
-        "nubank": "18.236.120/0001-58",
-        "inter": "00.416.968/0001-01",
-        "banco inter": "00.416.968/0001-01",
-        "c6": "10.573.521/0001-91",
-        "c6 bank": "10.573.521/0001-91",
-        "btg": "30.306.294/0001-45",
-        "xp": "04.902.979/0001-44",
-        "xp investimentos": "04.902.979/0001-44",
-        "rico": "04.902.979/0001-44",
-        "original": "01.181.521/0001-55",
-        "pan": "92.874.270/0001-40",
-    }
+    # Nomes de IFs para detecção - importado de normalizer para fonte única de verdade
+    # Convertido para lowercase para matching case-insensitive
+    @property
+    def INSTITUICOES(self) -> dict[str, str]:
+        """Retorna mapa de instituições (lazy-loaded do normalizer)."""
+        if not hasattr(self, "_instituicoes_cache"):
+            from veredas.collectors.scrapers.normalizer import CNPJ_MAP
+            # Converte para lowercase para matching case-insensitive
+            self._instituicoes_cache = {k.lower(): v for k, v in CNPJ_MAP.items()}
+        return self._instituicoes_cache
 
     def __init__(self, usar_ml: bool = False):
         """
@@ -254,16 +252,23 @@ class SentimentAnalyzer:
             data_texto=data_texto,
         )
 
+    # Limite de caracteres para prevenir ReDoS em padrões de URL
+    _MAX_URL_LENGTH = 2000
+
     def _normalizar_texto(self, texto: str) -> str:
         """Normaliza texto para análise."""
+        # Trunca entrada muito longa para evitar DoS
+        if len(texto) > 50000:
+            texto = texto[:50000]
+
         # Lowercase
         texto = texto.lower()
 
-        # Remove URLs
-        texto = re.sub(r"https?://\S+", "", texto)
+        # Remove URLs (padrão limitado para evitar ReDoS)
+        texto = re.sub(r"https?://[^\s]{1,2000}", "", texto)
 
-        # Remove menções e hashtags
-        texto = re.sub(r"[@#]\w+", "", texto)
+        # Remove menções e hashtags (limite de 100 caracteres)
+        texto = re.sub(r"[@#]\w{1,100}", "", texto)
 
         # Remove caracteres especiais (mantém acentos)
         texto = re.sub(r"[^\w\sáàâãéèêíìîóòôõúùûç]", " ", texto)
@@ -272,6 +277,9 @@ class SentimentAnalyzer:
         texto = " ".join(texto.split())
 
         return texto
+
+    # Janela de palavras afetadas por negação (em português negação pode afetar 2-3 palavras)
+    NEGATION_WINDOW = 3
 
     def _analisar_lexico(
         self,
@@ -283,21 +291,24 @@ class SentimentAnalyzer:
         Returns:
             (score, confianca, contagem_positivas, contagem_negativas)
         """
-        positivas = 0
-        negativas = 0
+        positivas = 0.0
+        negativas = 0.0
         intensidade = 1.0
-        negacao_ativa = False
+        negacao_contador = 0  # Contador de janela de negação
 
         for i, palavra in enumerate(palavras):
-            # Verifica negador
+            # Verifica negador - ativa janela de negação
             if palavra in self.NEGADORES:
-                negacao_ativa = True
+                negacao_contador = self.NEGATION_WINDOW
                 continue
 
             # Verifica intensificador
             if palavra in self.INTENSIFICADORES:
                 intensidade = 1.5
                 continue
+
+            # Determina se negação está ativa (dentro da janela)
+            negacao_ativa = negacao_contador > 0
 
             # Conta positivas/negativas
             if palavra in self.PALAVRAS_POSITIVAS:
@@ -312,9 +323,10 @@ class SentimentAnalyzer:
                 else:
                     negativas += intensidade
 
-            # Reset
+            # Decrementa janela de negação e reset intensidade
+            if negacao_contador > 0:
+                negacao_contador -= 1
             intensidade = 1.0
-            negacao_ativa = False
 
         # Calcula score (-1 a +1)
         total = positivas + negativas

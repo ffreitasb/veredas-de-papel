@@ -4,11 +4,13 @@ Interface base para detectores de anomalias.
 Define o contrato que todos os detectores devem implementar.
 """
 
+import time
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, Generator, Optional
 
 from veredas.storage.models import Severidade, TipoAnomalia
 
@@ -128,3 +130,25 @@ class BaseDetector(ABC):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={self.name}>"
+
+
+@contextmanager
+def measure_execution_time() -> Generator[dict[str, float], None, None]:
+    """
+    Context manager para medir tempo de execução de detectores.
+
+    Usage:
+        with measure_execution_time() as timing:
+            # ... código de detecção ...
+        elapsed_ms = timing["elapsed_ms"]
+
+    Returns:
+        Dict com "elapsed_ms" após o bloco executar
+    """
+    timing: dict[str, float] = {"elapsed_ms": 0.0}
+    start = time.perf_counter()
+    try:
+        yield timing
+    finally:
+        elapsed = time.perf_counter() - start
+        timing["elapsed_ms"] = elapsed * 1000

@@ -18,6 +18,64 @@ from typing import Any, Optional
 
 import httpx
 
+# H12 FIX: Feriados nacionais brasileiros e fechamentos da B3
+# Feriados fixos (mês, dia)
+FERIADOS_FIXOS: set[tuple[int, int]] = {
+    (1, 1),    # Confraternização Universal
+    (4, 21),   # Tiradentes
+    (5, 1),    # Dia do Trabalho
+    (9, 7),    # Independência do Brasil
+    (10, 12),  # Nossa Senhora Aparecida
+    (11, 2),   # Finados
+    (11, 15),  # Proclamação da República
+    (12, 25),  # Natal
+}
+
+# Feriados móveis por ano (calculados/conhecidos)
+# Formato: {ano: [(mês, dia), ...]}
+FERIADOS_MOVEIS: dict[int, list[tuple[int, int]]] = {
+    2024: [
+        (2, 12), (2, 13),  # Carnaval
+        (3, 29),           # Sexta-feira Santa
+        (5, 30),           # Corpus Christi
+        (11, 20),          # Consciência Negra (se aplicável)
+    ],
+    2025: [
+        (3, 3), (3, 4),    # Carnaval
+        (4, 18),           # Sexta-feira Santa
+        (6, 19),           # Corpus Christi
+        (11, 20),          # Consciência Negra
+    ],
+    2026: [
+        (2, 16), (2, 17),  # Carnaval
+        (4, 3),            # Sexta-feira Santa
+        (6, 4),            # Corpus Christi
+        (11, 20),          # Consciência Negra
+    ],
+}
+
+
+def eh_feriado(data: date) -> bool:
+    """
+    Verifica se uma data é feriado nacional ou fechamento da B3.
+
+    Args:
+        data: Data a verificar
+
+    Returns:
+        True se for feriado
+    """
+    # Verifica feriados fixos
+    if (data.month, data.day) in FERIADOS_FIXOS:
+        return True
+
+    # Verifica feriados móveis do ano
+    feriados_ano = FERIADOS_MOVEIS.get(data.year, [])
+    if (data.month, data.day) in feriados_ano:
+        return True
+
+    return False
+
 from veredas import TZ_BRASIL
 from veredas.collectors.base import BaseCollector, CollectionResult
 from veredas.collectors.b3.models import (
@@ -329,22 +387,26 @@ class B3MarketDataCollector(BaseCollector):
         )
 
     def _ultimo_dia_util(self) -> date:
-        """Retorna o último dia útil."""
-        hoje = date.today()
-        if hoje.weekday() == 0:  # Segunda
-            return hoje - timedelta(days=3)
-        elif hoje.weekday() == 6:  # Domingo
-            return hoje - timedelta(days=2)
-        elif hoje.weekday() == 5:  # Sábado
-            return hoje - timedelta(days=1)
-        else:
-            return hoje - timedelta(days=1)
+        """Retorna o último dia útil (considerando feriados)."""
+        data = date.today() - timedelta(days=1)
+
+        # Retrocede até encontrar um dia útil
+        while not self._eh_dia_util(data):
+            data -= timedelta(days=1)
+
+        return data
 
     def _eh_dia_util(self, data: date) -> bool:
-        """Verifica se é dia útil (simplificado)."""
-        # Ignora fins de semana
-        # TODO: Implementar calendário de feriados
-        return data.weekday() < 5
+        """Verifica se é dia útil (considera fins de semana e feriados)."""
+        # Fins de semana
+        if data.weekday() >= 5:
+            return False
+
+        # Feriados
+        if eh_feriado(data):
+            return False
+
+        return True
 
 
 # Dados mock para testes
