@@ -123,4 +123,5 @@ credentials.json
 scratch/
 tmp/
 plans/
+!plans/history/
 .claude-flow/

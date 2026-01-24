@@ -27,6 +27,21 @@ from veredas.detectors.statistical import (
     StatisticalThresholds,
     STLDecompositionDetector,
 )
+from veredas.detectors.platform_discrepancy import (
+    PlatformDiscrepancyConfig,
+    PlatformDiscrepancyDetector,
+    TaxaPorPlataforma,
+)
+from veredas.detectors.price_drop import (
+    PriceDropConfig,
+    PriceDropDetector,
+    detectar_quedas_mercado,
+)
+from veredas.detectors.sentiment_risk import (
+    SentimentRiskConfig,
+    SentimentRiskDetector,
+    detectar_risco_sentimento,
+)
 
 __all__ = [
     # Base
@@ -59,4 +74,16 @@ __all__ = [
     "IsolationForestDetector",
     "DBSCANOutlierDetector",
     "MLEngine",
+    # Platform Discrepancy (F4.1)
+    "PlatformDiscrepancyConfig",
+    "PlatformDiscrepancyDetector",
+    "TaxaPorPlataforma",
+    # Price Drop (F4.2)
+    "PriceDropConfig",
+    "PriceDropDetector",
+    "detectar_quedas_mercado",
+    # Sentiment Risk (F4.3)
+    "SentimentRiskConfig",
+    "SentimentRiskDetector",
+    "detectar_risco_sentimento",
 ]
