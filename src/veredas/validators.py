@@ -4,12 +4,35 @@ Validadores de entrada para o veredas de papel.
 Implementa validacao de formatos brasileiros:
 - CNPJ
 - CPF (futuro)
+- Decimal precision utilities
 """
 
 import re
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Optional
 
 from fastapi import HTTPException
+
+
+# L5 FIX: Constantes para precisão decimal consistente
+DECIMAL_PLACES_RATE = 2  # Taxas (ex: 110.50%)
+DECIMAL_PLACES_MONEY = 2  # Valores monetários (ex: R$ 1000.00)
+DECIMAL_PLACES_SCORE = 1  # Scores (ex: 7.5)
+
+
+def round_decimal(value: Decimal, places: int = DECIMAL_PLACES_RATE) -> Decimal:
+    """
+    Arredonda Decimal com precisão consistente.
+
+    Args:
+        value: Valor decimal a arredondar
+        places: Número de casas decimais (padrão: 2)
+
+    Returns:
+        Decimal arredondado
+    """
+    quantize_str = "0." + "0" * places if places > 0 else "0"
+    return value.quantize(Decimal(quantize_str), rounding=ROUND_HALF_UP)
 
 
 def _calcular_digito_cnpj(cnpj_parcial: str, pesos: list[int]) -> int:

@@ -55,28 +55,28 @@ class BrowserFingerprint:
     webgl_renderer: str = "ANGLE (Intel, Intel(R) UHD Graphics)"
 
 
-# Fingerprints pré-configurados (Windows, Mac, Linux)
+# L1 FIX: Fingerprints atualizados (2024/2025)
 FINGERPRINTS = [
     BrowserFingerprint(
-        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
         platform="Win32",
         viewport_width=1920,
         viewport_height=1080,
     ),
     BrowserFingerprint(
-        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
         platform="MacIntel",
         viewport_width=1440,
         viewport_height=900,
     ),
     BrowserFingerprint(
-        user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+        user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
         platform="Linux x86_64",
         viewport_width=1920,
         viewport_height=1080,
     ),
     BrowserFingerprint(
-        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0",
         platform="Win32",
         viewport_width=1366,
         viewport_height=768,

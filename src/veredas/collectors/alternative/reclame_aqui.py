@@ -105,6 +105,7 @@ class ReclameAquiCollector(BaseCollector):
 
     @property
     def source_name(self) -> str:
+        """L2 FIX: Nome identificador da fonte de dados."""
         return "reclame_aqui"
 
     # Mapeamento de instituições para slugs do Reclame Aqui
@@ -127,8 +128,9 @@ class ReclameAquiCollector(BaseCollector):
     async def _get_client(self) -> httpx.AsyncClient:
         """Retorna cliente HTTP."""
         if self._client is None or self._client.is_closed:
+            # L1 FIX: User agent atualizado
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0.0.0",
                 "Accept": "text/html,application/xhtml+xml,*/*",
                 "Accept-Language": "pt-BR,pt;q=0.9",
             }

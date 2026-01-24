@@ -83,6 +83,9 @@ class EngineConfig:
     min_observations_statistical: int = 14
     min_observations_ml: int = 30
 
+    # L4 FIX: Timeout configurável para detecção (ms)
+    detection_timeout_ms: int = 30000  # 30 segundos padrão
+
 
 @dataclass
 class EngineResult:

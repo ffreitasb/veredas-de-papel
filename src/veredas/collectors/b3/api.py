@@ -137,8 +137,9 @@ class B3MarketDataCollector(BaseCollector):
         """Retorna cliente HTTP (thread-safe)."""
         async with self._client_lock:
             if self._client is None or self._client.is_closed:
+                # L1 FIX: User agent atualizado
                 headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0.0.0",
                     "Accept": "application/json, text/html, */*",
                     "Accept-Language": "pt-BR,pt;q=0.9",
                 }
