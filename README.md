@@ -14,7 +14,7 @@ Inspirado na obra-prima de Guimarães Rosa, *Grande Sertão: Veredas*, o nome re
 
 ## O Problema
 
-O caso do Banco Master (2025) demonstrou que taxas extremamente atrativas (120-185% CDI, IPCA+30%) eram sinais claros de risco que muitos investidores ignoraram. O banco oferecia retornos absurdos porque estava desesperado por liquidez — um padrão que se repetiu com BVA (2014), Cruzeiro do Sul (2012) e outros.
+O caso do Banco Master/Will Bank (2025) demonstrou que taxas extremamente atrativas (120-185% CDI, IPCA+30%) eram sinais claros de risco que muitos investidores ignoraram. O banco oferecia retornos absurdos porque estava desesperado por liquidez — um padrão que se repetiu com BVA (2014), Cruzeiro do Sul (2012) e outros.
 
 ## A Solução
 
