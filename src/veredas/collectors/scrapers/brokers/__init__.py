@@ -35,7 +35,11 @@ SCRAPERS = {
 SCRAPERS_REGISTRY = SCRAPERS
 
 
-def get_scraper(name: str):
+from veredas.collectors.scrapers.base import BaseScraper
+
+
+# M12 FIX: Adicionados type hints nas funções
+def get_scraper(name: str) -> BaseScraper:
     """
     Retorna instância do scraper pelo nome.
 
@@ -55,6 +59,6 @@ def get_scraper(name: str):
     return SCRAPERS[name_lower]()
 
 
-def get_all_scrapers():
+def get_all_scrapers() -> list[BaseScraper]:
     """Retorna instâncias de todos os scrapers."""
     return [scraper_class() for scraper_class in SCRAPERS.values()]

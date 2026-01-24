@@ -31,6 +31,9 @@ logger = logging.getLogger(__name__)
 class PriceDropConfig:
     """Configuração para detecção de quedas de preço."""
 
+    # M13 FIX: Valor nominal configurável (padrão R$ 1000 para CDBs)
+    valor_nominal: Decimal = Decimal("1000")
+
     # Queda em relação ao PU de emissão (valor nominal)
     queda_medium: Decimal = Decimal("5")  # > 5% = MEDIUM
     queda_high: Decimal = Decimal("10")  # > 10% = HIGH
@@ -132,13 +135,14 @@ class PriceDropDetector(BaseDetector):
         preco: PrecoSecundario,
     ) -> Optional[AnomaliaDetectada]:
         """
-        Verifica queda em relação ao valor nominal (1000).
+        Verifica queda em relação ao valor nominal.
 
         O PU de um CDB deveria, em condições normais, estar próximo
         ou acima do valor nominal. Quedas significativas indicam
         que o mercado está precificando risco adicional.
         """
-        valor_nominal = Decimal("1000")
+        # M13 FIX: Usa valor nominal configurável
+        valor_nominal = self.config.valor_nominal
         pu = preco.pu_fechamento
 
         if pu >= valor_nominal:

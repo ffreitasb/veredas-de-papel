@@ -11,6 +11,7 @@ Estende BaseCollector com funcionalidades específicas para web scraping:
 import asyncio
 import logging
 import random
+import re
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -202,12 +203,17 @@ class BaseScraper(BaseCollector):
 
             except httpx.HTTPStatusError as e:
                 last_error = e
+                status = e.response.status_code
                 logger.warning(
-                    f"[{self.broker_name}] HTTP {e.response.status_code} em {url}"
+                    f"[{self.broker_name}] HTTP {status} em {url}"
                 )
-                if e.response.status_code in (401, 403, 429):
+                if status in (401, 403, 429):
                     # Auth error ou rate limit - backoff maior
                     await asyncio.sleep(self.base_delay * 5)
+                elif status >= 500:
+                    # M3 FIX: Erros 5xx são transientes - retry com backoff
+                    logger.info(f"[{self.broker_name}] Erro de servidor {status}, tentando novamente...")
+                    await asyncio.sleep(self.base_delay * 2)
 
             except httpx.RequestError as e:
                 last_error = e
@@ -339,8 +345,7 @@ class BaseScraper(BaseCollector):
         try:
             if isinstance(value, str):
                 value_lower = value.lower().strip()
-                # Extrai número
-                import re
+                # M4 FIX: import moved to top of file
                 numbers = re.findall(r"\d+", value_lower)
                 if not numbers:
                     return 365

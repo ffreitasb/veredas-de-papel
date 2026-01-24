@@ -490,6 +490,8 @@ class BacenProcessosCollector(BaseCollector):
                     return datetime.strptime(value.strip()[:10], fmt).date()
                 except ValueError:
                     continue
+            # M6 FIX: Log quando parse de data falha
+            logger.debug(f"[{self.source_name}] Falha ao parsear data: '{value}'")
 
         return None
 

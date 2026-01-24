@@ -148,19 +148,38 @@ class PlatformDiscrepancyDetector(BaseDetector):
         return dict(grupos)
 
     def _normalizar_prazo(self, dias: int) -> str:
-        """Normaliza prazo para faixa."""
+        """
+        Normaliza prazo para faixa.
+
+        M15 FIX: Faixas ajustadas para cobrir todos os prazos típicos de CDB:
+        - 1-45 dias: 30d (curto prazo)
+        - 46-75 dias: 60d
+        - 76-120 dias: 90d
+        - 121-270 dias: 180d
+        - 271-450 dias: 360d (1 ano)
+        - 451-630 dias: 540d (18 meses)
+        - 631-900 dias: 720d (2 anos)
+        - 901-1260 dias: 1080d (3 anos)
+        - 1261+ dias: 1440d+ (4+ anos)
+        """
         if dias <= 45:
             return "30d"
+        elif dias <= 75:
+            return "60d"
         elif dias <= 120:
             return "90d"
         elif dias <= 270:
             return "180d"
-        elif dias <= 540:
+        elif dias <= 450:
             return "360d"
+        elif dias <= 630:
+            return "540d"
         elif dias <= 900:
             return "720d"
+        elif dias <= 1260:
+            return "1080d"
         else:
-            return "1080d+"
+            return "1440d+"
 
     def _encontrar_discrepancias(
         self,

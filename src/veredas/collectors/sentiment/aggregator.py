@@ -183,12 +183,13 @@ class SinalSentimento:
         else:
             score_negativos = 50  # Neutro sem dados
 
-        # Tendência
-        if self.tendencia == "PIORANDO":
+        # M8 FIX: Compara com valores do enum para consistência
+        tendencia_upper = str(self.tendencia).upper()
+        if tendencia_upper == TendenciaRisco.PIORANDO.value:
             score_tendencia = 80
-        elif self.tendencia == "ESTAVEL":
+        elif tendencia_upper == TendenciaRisco.ESTAVEL.value:
             score_tendencia = 50
-        else:  # MELHORANDO
+        else:  # MELHORANDO ou desconhecido
             score_tendencia = 20
 
         # Confiança baseada no volume de textos
@@ -280,10 +281,16 @@ class SignalAggregator:
         self.weights = weights or self.DEFAULT_WEIGHTS.copy()
         self.thresholds = thresholds or self.THRESHOLDS.copy()
 
-        # Normaliza pesos para somar 1
+        # M7 FIX: Normaliza pesos para somar 1 (protege contra div by zero)
         total = sum(self.weights.values())
         if total > 0:
             self.weights = {k: v / total for k, v in self.weights.items()}
+        else:
+            # Se todos pesos são zero, usa pesos iguais
+            logger.warning("Todos os pesos são zero, usando pesos iguais")
+            num_keys = len(self.weights)
+            if num_keys > 0:
+                self.weights = {k: 1.0 / num_keys for k in self.weights}
 
     def agregar(
         self,

@@ -223,14 +223,19 @@ class TaxaNormalizer:
     Padroniza, valida e deduplica taxas de diferentes fontes.
     """
 
-    def __init__(self, strict: bool = False):
+    # M1 FIX: Limite máximo para evitar memory leak
+    MAX_SEEN_SIZE: int = 10000
+
+    def __init__(self, strict: bool = False, max_seen: int = MAX_SEEN_SIZE):
         """
         Inicializa o normalizador.
 
         Args:
             strict: Se True, rejeita taxas sem CNPJ
+            max_seen: Tamanho máximo do cache de deduplicação
         """
         self.strict = strict
+        self._max_seen = max_seen
         self._seen: set[str] = set()
 
     def _generate_key(self, taxa: TaxaColetada, fonte: str) -> str:
@@ -259,9 +264,13 @@ class TaxaNormalizer:
             try:
                 norm = self.normalize_single(taxa, result.fonte, result.timestamp)
                 if norm:
-                    # Deduplicação
+                    # Deduplicação com limite de memória
                     key = self._generate_key(taxa, result.fonte)
                     if key not in self._seen:
+                        # M1 FIX: Limpa cache se atingir limite
+                        if len(self._seen) >= self._max_seen:
+                            logger.debug(f"Cache de deduplicação cheio ({self._max_seen}), limpando...")
+                            self._seen.clear()
                         self._seen.add(key)
                         normalized.append(norm)
             except Exception as e:

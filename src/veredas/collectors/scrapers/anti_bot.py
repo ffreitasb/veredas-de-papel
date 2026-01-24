@@ -9,9 +9,9 @@ Implementa técnicas para evitar detecção e bloqueio:
 """
 
 import asyncio
-import hashlib
 import logging
 import random
+import secrets
 import time
 from dataclasses import dataclass, field
 from typing import Optional
@@ -211,9 +211,8 @@ class SessionManager:
         self._cookies: dict[str, str] = {}
         self._client: Optional[httpx.AsyncClient] = None
         self._client_lock = asyncio.Lock()  # Prevents race condition in get_client
-        self._session_id = hashlib.md5(
-            f"{time.time()}{random.random()}".encode()
-        ).hexdigest()[:8]
+        # M2 FIX: Use secrets instead of MD5
+        self._session_id = secrets.token_hex(4)
 
     @property
     def headers(self) -> dict[str, str]:
