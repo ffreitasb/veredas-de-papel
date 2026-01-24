@@ -311,8 +311,19 @@ class BacenProcessosCollector(BaseCollector):
             response = await client.get(url, params=params)
 
             if response.status_code == 200:
-                data = response.json()
-                items = data.get("value", [])
+                try:
+                    data = response.json()
+                    # Validate response structure before accessing
+                    if not isinstance(data, dict):
+                        logger.warning(f"[{self.source_name}] Formato inesperado: esperado dict, recebido {type(data).__name__}")
+                        return processos
+                    items = data.get("value", [])
+                    if not isinstance(items, list):
+                        logger.warning(f"[{self.source_name}] Campo 'value' não é lista")
+                        return processos
+                except (ValueError, TypeError) as e:
+                    logger.error(f"[{self.source_name}] Erro ao decodificar JSON: {e}")
+                    return processos
 
                 for item in items:
                     processo = self._parse_processo_api(item)

@@ -69,25 +69,27 @@ class B3MarketDataCollector(BaseCollector):
         self.config = config or B3Config()
         self.parser = B3DataParser()
         self._client: Optional[httpx.AsyncClient] = None
+        self._client_lock = asyncio.Lock()  # Prevents race condition in _get_client
 
     @property
     def source_name(self) -> str:
         return "b3_market_data"
 
     async def _get_client(self) -> httpx.AsyncClient:
-        """Retorna cliente HTTP."""
-        if self._client is None or self._client.is_closed:
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
-                "Accept": "application/json, text/html, */*",
-                "Accept-Language": "pt-BR,pt;q=0.9",
-            }
-            self._client = httpx.AsyncClient(
-                timeout=self.config.timeout,
-                headers=headers,
-                follow_redirects=True,
-            )
-        return self._client
+        """Retorna cliente HTTP (thread-safe)."""
+        async with self._client_lock:
+            if self._client is None or self._client.is_closed:
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+                    "Accept": "application/json, text/html, */*",
+                    "Accept-Language": "pt-BR,pt;q=0.9",
+                }
+                self._client = httpx.AsyncClient(
+                    timeout=self.config.timeout,
+                    headers=headers,
+                    follow_redirects=True,
+                )
+            return self._client
 
     async def _close_client(self) -> None:
         """Fecha cliente HTTP."""

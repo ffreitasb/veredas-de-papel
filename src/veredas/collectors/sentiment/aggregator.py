@@ -52,18 +52,23 @@ class SinalReclameAqui:
     score: float = 0.0
 
     def calcular_score(self) -> float:
-        """Calcula score de risco normalizado."""
+        """Calcula score de risco normalizado (bounds-validated)."""
+        # Clamp inputs to valid ranges to prevent invalid scores
+        nota = max(Decimal("0"), min(Decimal("10"), self.nota_geral))
+        solucao = max(Decimal("0"), min(Decimal("100"), self.indice_solucao))
+        reclamacoes = max(0, self.reclamacoes_30d)
+
         # Nota invertida (10 = bom -> 0 risco, 0 = ruim -> 100 risco)
-        score_nota = (10 - float(self.nota_geral)) * 10
+        score_nota = (10 - float(nota)) * 10
 
         # Índice de solução invertido
-        score_solucao = 100 - float(self.indice_solucao)
+        score_solucao = 100 - float(solucao)
 
         # Volume de reclamações (normalizado)
-        score_volume = min(100, self.reclamacoes_30d / 10)
+        score_volume = min(100.0, reclamacoes / 10.0)
 
         # Tendência (variação positiva = mais reclamações = mais risco)
-        score_tendencia = min(100, max(-100, float(self.variacao_30d)))
+        score_tendencia = min(100.0, max(-100.0, float(self.variacao_30d)))
         score_tendencia = (score_tendencia + 100) / 2  # Normaliza para 0-100
 
         # Peso: nota (40%), solução (30%), volume (20%), tendência (10%)
@@ -339,7 +344,7 @@ class SignalAggregator:
             if score > 60:
                 fatores.append(f"Processos regulatórios ativos ({processos_bc.processos_ativos})")
             if float(processos_bc.valor_total_multas) > 1_000_000:
-                fatores.append(f"Multas significativas (R$ {processos_bc.valor_total_multas:,.2f})")
+                fatores.append(f"Multas significativas (R$ {float(processos_bc.valor_total_multas):,.2f})")
 
         if mercado_secundario:
             score = mercado_secundario.calcular_score()
