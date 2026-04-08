@@ -1,6 +1,7 @@
 # veredas de papel
 
-> *"Nem todo atalho leva ao destino. Monitore o risco."*
+> *"“O real não está no início nem no fim, ele se mostra pra gente é no meio da travessia”."*
+   > ROSA, João Guimarães. Grande sertão: veredas. 19. ed. Rio de Janeiro: Nova Fronteira, 1986.
 
 Monitor de taxas de CDB e detecção de anomalias no mercado de renda fixa brasileiro.
 
