@@ -123,5 +123,9 @@ credentials.json
 scratch/
 tmp/
 plans/
-!plans/history/
 .claude-flow/
+
+# Development only (not for distribution)
+backup/
+CLAUDE.md
+.secrets.baseline

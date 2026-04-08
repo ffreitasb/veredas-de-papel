@@ -29,12 +29,6 @@ from veredas.detectors.statistical import (
     StatisticalThresholds,
     STLDecompositionDetector,
 )
-from veredas.detectors.platform_discrepancy import (
-    PlatformDiscrepancyConfig,
-    PlatformDiscrepancyDetector,
-)
-from veredas.detectors.price_drop import PriceDropConfig, PriceDropDetector
-from veredas.detectors.sentiment_risk import SentimentRiskConfig, SentimentRiskDetector
 from veredas.storage.models import Severidade, TaxaCDB
 
 logger = logging.getLogger(__name__)
@@ -49,7 +43,6 @@ class DetectorCategory(StrEnum):
     RULES = "rules"
     STATISTICAL = "statistical"
     ML = "ml"
-    ALTERNATIVE = "alternative"  # Fase 4: scrapers, B3, dados alternativos
 
 
 @dataclass
@@ -60,7 +53,6 @@ class EngineConfig:
     enable_rules: bool = True
     enable_statistical: bool = True
     enable_ml: bool = True
-    enable_alternative: bool = True  # Fase 4: scrapers, B3, dados alternativos
 
     # Detectores específicos (se False, usa todos da categoria)
     detectors: dict[DetectorCategory, list[str]] = field(default_factory=dict)
@@ -69,11 +61,6 @@ class EngineConfig:
     rule_thresholds: Optional[RuleThresholds] = None
     statistical_thresholds: Optional[StatisticalThresholds] = None
     ml_thresholds: Optional[MLThresholds] = None
-
-    # Thresholds Fase 4
-    platform_discrepancy_config: Optional[PlatformDiscrepancyConfig] = None
-    price_drop_config: Optional[PriceDropConfig] = None
-    sentiment_risk_config: Optional[SentimentRiskConfig] = None
 
     # Filtros de saída
     min_severity: Severidade = Severidade.LOW
@@ -200,17 +187,6 @@ class DetectionEngine:
             thresholds=ml_thresholds,
             feature_extractor=feature_extractor,
             min_samples=self.config.min_observations_ml - 10,
-        )
-
-        # Alternative (Phase 4)
-        self.platform_discrepancy_detector = PlatformDiscrepancyDetector(
-            config=self.config.platform_discrepancy_config
-        )
-        self.price_drop_detector = PriceDropDetector(
-            config=self.config.price_drop_config
-        )
-        self.sentiment_risk_detector = SentimentRiskDetector(
-            config=self.config.sentiment_risk_config
         )
 
     def analyze(
@@ -459,68 +435,4 @@ class DetectionEngine:
                 "isolation_forest_detector",
                 "dbscan_outlier_detector",
             ],
-            DetectorCategory.ALTERNATIVE: [
-                "platform_discrepancy_detector",
-                "price_drop_detector",
-                "sentiment_risk_detector",
-            ],
         }
-
-    def analyze_alternative(
-        self,
-        taxas_por_plataforma: Optional[dict] = None,
-        precos_secundarios: Optional[list] = None,
-        sinais_risco: Optional[list] = None,
-    ) -> EngineResult:
-        """
-        Executa análise com detectores alternativos (Fase 4).
-
-        Args:
-            taxas_por_plataforma: Dict de plataforma -> lista de taxas para discrepância.
-            precos_secundarios: Lista de PrecoSecundario para detecção de quedas.
-            sinais_risco: Lista de RiskSignal para análise de sentimento.
-
-        Returns:
-            EngineResult com anomalias encontradas.
-        """
-        start_time = datetime.now()
-        results: list[DetectionResult] = []
-        detectors_used: list[str] = []
-
-        if not self.config.enable_alternative:
-            return EngineResult(
-                results=[],
-                anomalias=[],
-                detectors_used=[],
-            )
-
-        # Platform Discrepancy Detector
-        if taxas_por_plataforma and self._should_run("alternative", "platform_discrepancy_detector"):
-            result = self.platform_discrepancy_detector.detect(taxas_por_plataforma)
-            results.append(result)
-            detectors_used.append("platform_discrepancy_detector")
-
-        # Price Drop Detector
-        if precos_secundarios and self._should_run("alternative", "price_drop_detector"):
-            result = self.price_drop_detector.detect(precos_secundarios)
-            results.append(result)
-            detectors_used.append("price_drop_detector")
-
-        # Sentiment Risk Detector
-        if sinais_risco and self._should_run("alternative", "sentiment_risk_detector"):
-            result = self.sentiment_risk_detector.detect(sinais_risco)
-            results.append(result)
-            detectors_used.append("sentiment_risk_detector")
-
-        # Consolidar anomalias
-        anomalias = self._consolidate_anomalias(results)
-
-        elapsed = (datetime.now() - start_time).total_seconds() * 1000
-
-        return EngineResult(
-            results=results,
-            anomalias=anomalias,
-            execution_time_ms=elapsed,
-            detectors_used=detectors_used,
-            taxas_analyzed=0,
-        )

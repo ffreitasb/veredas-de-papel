@@ -1,10 +1,8 @@
 """
 Sistema de alertas do veredas de papel.
 
-Suporta multiplos canais:
-- Email (SMTP)
-- Telegram (Bot API)
-- Console (debug)
+Suporta:
+- Console (debug/desenvolvimento)
 """
 
 from veredas.alerts.base import (
@@ -15,9 +13,6 @@ from veredas.alerts.base import (
     AlertSender,
     ConsoleSender,
 )
-from veredas.alerts.email import EmailAlertSender
-from veredas.alerts.telegram import TelegramAlertSender
-from veredas.alerts.manager import AlertManager
 
 __all__ = [
     # Base
@@ -27,9 +22,4 @@ __all__ = [
     "AlertResult",
     "AlertSender",
     "ConsoleSender",
-    # Senders
-    "EmailAlertSender",
-    "TelegramAlertSender",
-    # Manager
-    "AlertManager",
 ]
