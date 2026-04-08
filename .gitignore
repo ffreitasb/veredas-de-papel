@@ -127,5 +127,5 @@ plans/
 
 # Development only (not for distribution)
 backup/
-CLAUDE.md
+**/CLAUDE.md
 .secrets.baseline
