@@ -1,6 +1,6 @@
 # veredas de papel
 
-> *"“O real não está no início nem no fim, ele se mostra pra gente é no meio da travessia”."*
+> *"O real não está no início nem no fim, ele se mostra pra gente é no meio da travessia."*
    > ROSA, João Guimarães. Grande sertão: veredas. 19. ed. Rio de Janeiro: Nova Fronteira, 1986.
 
 Monitor de taxas de CDB e detecção de anomalias no mercado de renda fixa brasileiro.
@@ -20,9 +20,10 @@ O caso do Banco Master/Will Bank (2025) demonstrou que taxas extremamente atrati
 
 **veredas de papel** é uma ferramenta open-source (FOSS) que:
 
-1. **Monitora** o mercado de renda fixa (iniciando com dados macroeconômicos do Banco Central).
+1. **Monitora** o mercado de renda fixa com dados macroeconômicos do Banco Central e indicadores prudenciais oficiais das IFs (IFData/Banco Central).
 2. **Detecta** anomalias e padrões de risco através de um motor robusto que combina Regras Determinísticas, Modelos Estatísticos e Machine Learning.
-3. **Visualiza** o cenário de forma limpa e objetiva através de um Dashboard Web nativo.
+3. **Visualiza** o cenário de forma limpa e objetiva através de um Dashboard Web com filtros, ordenação e exportação CSV.
+4. **Alerta** via Telegram e Email quando anomalias críticas são detectadas.
 
 ---
 
@@ -41,132 +42,192 @@ cd veredas-de-papel
 
 ### 2. Ambiente Virtual
 
-Recomenda-se fortemente o uso de um ambiente virtual para isolar as dependências do projeto.
-
-**Linux/macOS:**
 ```bash
+# Linux/macOS
 python -m venv .venv
 source .venv/bin/activate
-```
 
-**Windows:**
-```powershell
+# Windows
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
 ### 3. Instalando as Dependências
 
-Instale o projeto em modo editável com todas as dependências extras necessárias (Machine Learning e Web Dashboard):
-
 ```bash
-pip install -e ".[dev,web,ml]"
+# Instalação completa (recomendada)
+pip install -e ".[dev,web,ml,alerts]"
 ```
 
 ### 4. Configuração de Variáveis de Ambiente
 
-O projeto utiliza um arquivo `.env` para gerenciar configurações (banco de dados, portas, chaves de API para alertas, etc). 
-
 Copie o arquivo de exemplo e edite conforme necessário:
 
-**Linux/macOS/Windows:**
 ```bash
 cp .env.example .env
 ```
-*(Para uso local básico usando SQLite, as configurações padrão contidas no arquivo já são suficientes e podem permanecer comentadas).*
+
+Para uso local básico (SQLite), as configurações padrão já são suficientes.
+
+Para habilitar alertas, adicione ao `.env`:
+
+```env
+# Telegram
+VEREDAS_TELEGRAM_BOT_TOKEN=seu_token_aqui
+VEREDAS_TELEGRAM_CHAT_ID=seu_chat_id_aqui
+
+# Email (SMTP)
+VEREDAS_SMTP_HOST=smtp.gmail.com
+VEREDAS_SMTP_PORT=587
+VEREDAS_SMTP_USER=seu@email.com
+VEREDAS_SMTP_PASSWORD=sua_senha_app
+VEREDAS_ALERT_EMAIL_TO=destinatario@email.com
+```
+
+### 5. Inicializando o Banco de Dados
+
+```bash
+# Cria o esquema via Alembic (migrações versionadas)
+veredas init
+```
 
 ---
 
 ## 💻 Como Usar
 
-O ecossistema é dividido em uma CLI (`veredas`) para ingestão/análise de dados e um servidor Web (`uvicorn`) para o dashboard.
-
 ### Fluxo Básico de Operação
 
-**1. Inicialize o Banco de Dados:**
-Prepara a estrutura local (SQLite salvo em `data/veredas.db`).
-```bash
-veredas init
-```
-
-**2. Colete os Dados de Base:**
-Faz a ingestão dos dados macroeconômicos (Selic, CDI, IPCA) da API pública do Banco Central.
+**1. Colete os Dados Macroeconômicos:**
 ```bash
 veredas collect bcb
 ```
+Sincroniza Selic, CDI e IPCA da API pública do Banco Central.
+
+**2. Colete Dados de Saúde das IFs:**
+```bash
+veredas collect ifdata
+```
+Importa indicadores prudenciais (Índice de Basileia, Liquidez, ROA/ROE) do portal IFData do Banco Central. Permite cruzar taxas altas com fragilidade financeira real.
 
 **3. Execute o Motor de Análise:**
-Avalia os dados armazenados em busca de anomalias usando o motor de regras, Z-Score, STL e Isolation Forest.
 ```bash
 veredas analyze
 ```
+Avalia os dados em busca de anomalias usando regras determinísticas, Z-Score, STL, Isolation Forest e detectores de saúde financeira.
 
 **4. Inicie o Dashboard Web:**
-Suba o servidor para visualizar os relatórios e as anomalias detectadas.
 ```bash
 uvicorn veredas.web.app:app --reload
 ```
 Acesse: [http://localhost:8000](http://localhost:8000)
 
-### Comandos Úteis da CLI
+### Comandos da CLI
 
 | Comando | Descrição |
 |---------|-----------|
-| `veredas init` | Cria/atualiza o esquema do banco de dados. |
+| `veredas init` | Cria/atualiza o esquema do banco de dados via Alembic. |
 | `veredas collect bcb` | Sincroniza dados históricos com o Banco Central. |
-| `veredas analyze` | Executa o pipeline de detecção de anomalias. |
-| `veredas detectors` | Lista todos os algoritmos de detecção registrados e seus parâmetros. |
-| `veredas status` | Exibe a integridade do banco e a quantidade de registros. |
+| `veredas collect ifdata` | Importa indicadores prudenciais das IFs do portal IFData. |
+| `veredas analyze` | Executa o pipeline completo de detecção de anomalias. |
+| `veredas detectors` | Lista todos os algoritmos de detecção registrados. |
+| `veredas status` | Exibe integridade do banco e quantidade de registros. |
+| `veredas alerts status` | Mostra os canais de alerta configurados (Telegram, Email). |
+| `veredas alerts test` | Envia mensagem de teste pelos canais configurados. |
 
 ---
 
-## 🧠 Motor de Detecção (MVP)
+## 🌐 Dashboard Web
 
-Atualmente, o motor de detecção é classificado em três verticais:
+O dashboard oferece visualização interativa de todas as informações coletadas, com atualizações parciais via HTMX (sem recarregar a página inteira).
 
-1. **Regras Determinísticas**:
-   - `SPREAD_ALTO`: Discrepância alta em relação à taxa CDI atual.
-   - `SALTO_BRUSCO`: Variações anormais (ex: >10pp) num curto espaço de tempo.
-2. **Estatística Avançada**:
-   - `DIVERGENCIA` / `Z-SCORE`: Detecta taxas que fogem do desvio padrão do mercado.
-   - `STL_RESIDUAL`: Decomposição Sazonal para encontrar anomalias isoladas da tendência macro.
-   - `CHANGEPOINT`: Detecção algorítmica de quebra estrutural nas curvas de juros das instituições.
-3. **Machine Learning**:
-   - `ISOLATION_FOREST`: Detecção de outliers em espaço multivariável (Taxa, Prazo, Risco).
-   - `DBSCAN_OUTLIER`: Agrupamento de densidade espacial (identifica instituições "isoladas" dos clusters do mercado).
+### Telas disponíveis
+
+| Rota | Conteúdo |
+|------|----------|
+| `/` | Resumo geral: totais, anomalias críticas, alertas recentes |
+| `/taxas/` | Tabela de taxas de CDB com filtros e ordenação por coluna |
+| `/anomalias/` | Lista de anomalias com filtros por severidade, tipo e IF |
+| `/instituicoes/` | Lista de instituições financeiras monitoradas |
+| `/instituicoes/{cnpj}` | Perfil completo da IF com histórico de saúde financeira trimestral |
+
+### Exportação CSV
+
+Todas as listagens possuem botão **↓ CSV** que gera arquivos compatíveis com Excel brasileiro (UTF-8-BOM, delimitador `;`):
+
+- `/taxas/export.csv` — até 10.000 registros com os filtros ativos
+- `/anomalias/export.csv` — até 10.000 anomalias com os filtros ativos
 
 ---
 
-## 🗺️ Roadmap e Visão de Futuro
+## 🧠 Motor de Detecção
 
-O projeto está em constante evolução. O plano de desenvolvimento é o seguinte:
+O motor combina três verticais de análise:
 
-- [x] **Fase 1 (MVP)**: Estrutura base, CLI, integração BCB e núcleo de detecção (Regras, Estatística, ML).
-- [x] **Fase 2**: Interface gráfica limpa (FastAPI + Jinja2) para análise visual.
-- [ ] **Fase 3**: Implementação do coletor do portal **IFData**, cruzando taxas altas com a saúde financeira oficial do banco (Índice de Basileia, Liquidez).
-- [ ] **Fase 4 (Scrapers e Mercado Secundário)**: Integração de coletores de prateleiras de corretoras (XP, BTG, Inter) e consumo de dados do Mercado Secundário da **B3**. *(Código draft presente em `future_work/`)*.
-- [ ] **Fase 5 (Dados Alternativos)**: Integração com fontes de reputação e risco social (**Reclame Aqui**, **Processos Sancionadores do Bacen**).
-- [ ] **Fase 6**: Restauração da **API REST** para uso programático e sistema de notificação em tempo real (**Telegram e SMTP Email**).
+### Regras Determinísticas
+| Tipo | Condição | Severidade |
+|------|----------|------------|
+| `SPREAD_ALTO` | CDB > 130% CDI | HIGH |
+| `SPREAD_CRITICO` | CDB > 150% CDI | CRITICAL |
+| `SALTO_BRUSCO` | Variação > 10pp em 7 dias | MEDIUM |
+| `SALTO_EXTREMO` | Variação > 20pp em 7 dias | HIGH |
+
+### Estatística Avançada
+| Tipo | Método |
+|------|--------|
+| `DIVERGENCIA` / `DIVERGENCIA_EXTREMA` | Z-Score (2σ / 3σ acima da média) |
+| `STL_RESIDUAL` | Decomposição sazonal STL — anomalia isolada da tendência macro |
+| `CHANGEPOINT` | Detecção de quebra estrutural na curva de juros da IF |
+
+### Machine Learning
+| Tipo | Método |
+|------|--------|
+| `ISOLATION_FOREST` | Detecção de outliers multivariável (Taxa, Prazo, Risco) |
+| `DBSCAN_OUTLIER` | Agrupamento de densidade — IFs "isoladas" dos clusters do mercado |
+
+### Saúde Financeira (IFData)
+| Tipo | Condição | Severidade |
+|------|----------|------------|
+| `BASILEIA_BAIXO` | Basileia < 11% **e** taxa CDI > 120% | HIGH |
+| `BASILEIA_BAIXO` | Basileia < 9% **e** taxa CDI > 120% | CRITICAL |
+| `LIQUIDEZ_CRITICA` | Liquidez < 110% **e** taxa CDI > 115% | HIGH |
+| `LIQUIDEZ_CRITICA` | Liquidez < 100% **e** taxa CDI > 115% | CRITICAL |
+
+---
+
+## 🗺️ Roadmap
+
+- [x] **Fase 1 (MVP)**: Estrutura base, CLI, integração BCB, núcleo de detecção (Regras, Estatística, ML).
+- [x] **Fase 2**: Dashboard web (FastAPI + Jinja2 + HTMX) para análise visual.
+- [x] **Fase 3**: Coletor IFData — cruzamento de taxas altas com saúde financeira oficial (Basileia, Liquidez, ROA/ROE).
+- [x] **Fase B (atual)**: Suite de testes, migrações Alembic, sistema de alertas (Telegram/Email), detectores de saúde, CSV export, filtros e ordenação no dashboard.
+- [ ] **Fase 4 (Scrapers)**: Integração de prateleiras de corretoras (XP, BTG, Inter) e Mercado Secundário B3.
+- [ ] **Fase 5 (Dados Alternativos)**: Reclame Aqui, Processos Sancionadores Bacen.
+- [ ] **Fase C**: GitHub Actions CI/CD, empacotamento PyInstaller, deploy demo.
+
+---
 
 ## 🛠️ Desenvolvimento
 
-Se você deseja contribuir (e encorajamos que o faça!), o ambiente de desenvolvimento já possui as ferramentas necessárias configuradas.
-
 ```bash
-# Testes unitários (pytest)
+# Testes (pytest)
 pytest
 
 # Linting e Formatação (ruff)
 ruff check src/
 ruff format src/
 
-# Checagem Estática de Tipagem (mypy)
+# Checagem de Tipagem (mypy)
 mypy src/
+
+# Migrações de banco de dados (Alembic)
+python -m alembic upgrade head          # Aplicar migrações
+python -m alembic revision --autogenerate -m "descricao"  # Nova migração
+python -m alembic history               # Histórico de versões
 ```
 
 ## 🤝 Contribuindo
 
-Sinta-se à vontade para abrir *Issues* relatando bugs ou sugerindo features. Se quiser colocar a mão na massa, faça um Fork do projeto, crie uma branch e envie seu *Pull Request*. 
+Sinta-se à vontade para abrir *Issues* relatando bugs ou sugerindo features. Se quiser colocar a mão na massa, faça um Fork do projeto, crie uma branch e envie seu *Pull Request*.
 
 Nosso objetivo primário é fornecer inteligência de dados transparente para o investidor brasileiro.
 
@@ -176,7 +237,7 @@ Distribuído sob a licença **GPL-3.0-or-later**. Veja o arquivo `pyproject.toml
 
 ## ⚠️ Disclaimer
 
-**Este software tem caráter puramente educacional e analítico.** 
+**Este software tem caráter puramente educacional e analítico.**
 Não constitui, de forma alguma, recomendação de investimento, compra, venda ou retenção de ativos financeiros. Os dados processados podem conter atrasos, distorções ou incorreções inerentes às fontes públicas. Sempre consulte um profissional certificado e faça sua própria diligência antes de investir.
 
 ---
