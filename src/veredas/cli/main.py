@@ -293,40 +293,73 @@ def analyze(
     console.print(detector_table)
 
 
-@app.command()
-def alerts(
-    list_all: bool = typer.Option(
-        False,
-        "--list",
-        "-l",
-        help="Lista todos os alertas ativos",
-    ),
-    severity: Optional[str] = typer.Option(
+alerts_app = typer.Typer(name="alerts", help="Gerencia canais de alerta", no_args_is_help=True)
+app.add_typer(alerts_app)
+
+
+@alerts_app.command("status")
+def alerts_status():
+    """Mostra canais de alerta configurados e seu estado."""
+    from veredas.alerts import AlertManager, AlertChannel
+
+    manager = AlertManager()
+    channels = manager.channels_configured
+
+    table = Table(title="Canais de Alerta")
+    table.add_column("Canal", style="cyan")
+    table.add_column("Estado")
+
+    all_channels = [AlertChannel.TELEGRAM, AlertChannel.EMAIL]
+    for ch in all_channels:
+        if ch in channels:
+            table.add_row(ch.value, "[green]✓ Configurado[/]")
+        else:
+            table.add_row(ch.value, "[dim]✗ Não configurado[/]")
+
+    console.print(table)
+
+    if not channels:
+        rprint(
+            "\n[yellow]⚠[/] Nenhum canal configurado. Defina as variáveis de ambiente:\n"
+            "  [dim]VEREDAS_TELEGRAM_BOT_TOKEN / VEREDAS_TELEGRAM_CHAT_ID[/]\n"
+            "  [dim]VEREDAS_SMTP_HOST / VEREDAS_SMTP_USER / VEREDAS_SMTP_PASSWORD / VEREDAS_ALERT_EMAIL_TO[/]"
+        )
+
+
+@alerts_app.command("test")
+def alerts_test(
+    channel: Optional[str] = typer.Option(
         None,
-        "--severity",
-        "-s",
-        help="Filtra por severidade (low, medium, high, critical)",
-    ),
-    db_path: Optional[Path] = typer.Option(
-        None,
-        "--db",
-        "-d",
-        help="Caminho para o banco de dados",
+        "--channel",
+        "-c",
+        help="Canal específico: telegram, email (padrão: todos)",
     ),
 ):
-    """
-    Gerencia alertas de anomalias.
+    """Envia alerta de teste para canal(is) configurado(s)."""
+    from veredas.alerts import AlertManager, AlertChannel
 
-    Lista e filtra alertas ativos no sistema.
-    """
-    if list_all:
-        rprint("[bold]Alertas Ativos[/]\n")
+    manager = AlertManager()
 
-        # TODO: Buscar do banco
-        rprint("[dim]Nenhum alerta ativo no momento.[/]")
-        rprint("\nUse [bold]veredas analyze[/] para detectar anomalias.")
-    else:
-        rprint("Use [bold]--list[/] para ver alertas ativos.")
+    if not manager.senders:
+        rprint("[red]✗[/] Nenhum canal configurado. Use [bold]veredas alerts status[/] para detalhes.")
+        raise typer.Exit(1)
+
+    target: Optional[AlertChannel] = None
+    if channel:
+        try:
+            target = AlertChannel(channel.lower())
+        except ValueError:
+            rprint(f"[red]✗[/] Canal inválido: {channel}. Use: telegram, email")
+            raise typer.Exit(1)
+
+    rprint("[bold]Enviando alerta de teste...[/]")
+    results = asyncio.run(manager.send_test_alert(target))
+
+    for result in results:
+        if result.success:
+            rprint(f"  [green]✓[/] {result.channel.value}: enviado (id={result.message_id})")
+        else:
+            rprint(f"  [red]✗[/] {result.channel.value}: {result.error}")
 
 
 @app.command()

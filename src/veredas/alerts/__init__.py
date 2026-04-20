@@ -3,6 +3,8 @@ Sistema de alertas do veredas de papel.
 
 Suporta:
 - Console (debug/desenvolvimento)
+- Telegram Bot
+- Email SMTP
 """
 
 from veredas.alerts.base import (
@@ -13,6 +15,9 @@ from veredas.alerts.base import (
     AlertSender,
     ConsoleSender,
 )
+from veredas.alerts.manager import AlertManager
+from veredas.alerts.telegram import TelegramAlertSender
+from veredas.alerts.email import EmailAlertSender
 
 __all__ = [
     # Base
@@ -22,4 +27,9 @@ __all__ = [
     "AlertResult",
     "AlertSender",
     "ConsoleSender",
+    # Senders
+    "TelegramAlertSender",
+    "EmailAlertSender",
+    # Manager
+    "AlertManager",
 ]
