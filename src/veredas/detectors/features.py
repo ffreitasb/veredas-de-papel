@@ -20,6 +20,15 @@ from veredas.storage.models import TaxaCDB
 logger = logging.getLogger(__name__)
 
 
+def _safe_get(s: pd.Series, idx: datetime) -> Optional[float]:
+    """Lê valor de uma Series por índice sem lançar exceção."""
+    try:
+        val = s.get(idx)
+        return float(val) if pd.notna(val) else None
+    except Exception:
+        return None
+
+
 @dataclass
 class TaxaFeatures:
     """Features extraídas de uma taxa para ML."""
@@ -275,15 +284,10 @@ class FeatureExtractor:
         diff_30d = series.diff(30) if len(series) > 30 else pd.Series([None] * len(series))
         pct_change_7d = series.pct_change(7) if len(series) > 7 else pd.Series([None] * len(series))
 
-        features: list[TaxaFeatures] = []
+        # Percentil rolling calculado uma vez para toda a série (evita O(N²))
+        rolling_percentile = series.rolling(window=30, min_periods=1).rank(pct=True) * 100
 
-        # BUG-006: Função movida para fora do loop (evita recriação a cada iteração)
-        def safe_get(s: pd.Series, idx: datetime) -> Optional[float]:
-            try:
-                val = s.get(idx)
-                return float(val) if pd.notna(val) else None
-            except Exception:
-                return None
+        features: list[TaxaFeatures] = []
 
         for i, taxa in enumerate(taxas):
             date = taxa.data_coleta
@@ -300,18 +304,18 @@ class FeatureExtractor:
             ultimo_dia = next_month - timedelta(days=next_month.day)
             fim_de_mes = date.day >= ultimo_dia.day - 2
 
-            rolling_mean_7d = safe_get(rolling_stats.get("mean_7d", pd.Series()), date)
-            rolling_std_7d = safe_get(rolling_stats.get("std_7d", pd.Series()), date)
-            rolling_mean_14d = safe_get(rolling_stats.get("mean_14d", pd.Series()), date)
-            rolling_std_14d = safe_get(rolling_stats.get("std_14d", pd.Series()), date)
-            rolling_mean_30d = safe_get(rolling_stats.get("mean_30d", pd.Series()), date)
-            rolling_std_30d = safe_get(rolling_stats.get("std_30d", pd.Series()), date)
+            rolling_mean_7d = _safe_get(rolling_stats.get("mean_7d", pd.Series()), date)
+            rolling_std_7d = _safe_get(rolling_stats.get("std_7d", pd.Series()), date)
+            rolling_mean_14d = _safe_get(rolling_stats.get("mean_14d", pd.Series()), date)
+            rolling_std_14d = _safe_get(rolling_stats.get("std_14d", pd.Series()), date)
+            rolling_mean_30d = _safe_get(rolling_stats.get("mean_30d", pd.Series()), date)
+            rolling_std_30d = _safe_get(rolling_stats.get("std_30d", pd.Series()), date)
 
             # Variações
-            d1 = safe_get(diff_1d, date)
-            d7 = safe_get(diff_7d, date)
-            d30 = safe_get(diff_30d, date)
-            pct7 = safe_get(pct_change_7d, date)
+            d1 = _safe_get(diff_1d, date)
+            d7 = _safe_get(diff_7d, date)
+            d30 = _safe_get(diff_30d, date)
+            pct7 = _safe_get(pct_change_7d, date)
 
             # Z-scores locais
             z_7d = None
@@ -322,15 +326,8 @@ class FeatureExtractor:
             if rolling_mean_30d is not None and rolling_std_30d and rolling_std_30d > 0:
                 z_30d = (value - rolling_mean_30d) / rolling_std_30d
 
-            # Percentil no período
-            percentile_30d = None
-            if i >= 30:
-                window_values = values[max(0, i - 30) : i + 1]
-                percentile_30d = (
-                    sum(1 for v in window_values if v <= value)
-                    / len(window_values)
-                    * 100
-                )
+            # Percentil no período (pré-computado)
+            percentile_30d = _safe_get(rolling_percentile, date) if i >= 1 else None
 
             # Contexto de mercado
             diff_market = None
