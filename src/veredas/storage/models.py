@@ -174,6 +174,9 @@ class TaxaCDB(Base):
     valor_minimo: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 2))
     liquidez_diaria: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # Score de risco calculado pelo pipeline de detecção (0.0 = normal, 1.0 = máximo risco)
+    risk_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 4))
+
     # Metadados da coleta
     fonte: Mapped[str] = mapped_column(String(50), nullable=False)  # xp, btg, rico, etc
     url_fonte: Mapped[Optional[str]] = mapped_column(Text)
