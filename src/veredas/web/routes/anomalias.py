@@ -73,7 +73,7 @@ async def anomalias_list(
     if instituicao:
         filters["cnpj"] = instituicao
     if status == "ativas":
-        filters["resolvida"] = False
+        filters["resolvido"] = False
 
     # Buscar anomalias (com eager loading para evitar N+1)
     offset = (pagina - 1) * por_pagina
@@ -165,7 +165,7 @@ async def anomalias_list_partial(
     if instituicao:
         filters["cnpj"] = instituicao
     if status == "ativas":
-        filters["resolvida"] = False
+        filters["resolvido"] = False
 
     offset = (pagina - 1) * por_pagina
     anomalias = anomalia_repo.list_with_filters(

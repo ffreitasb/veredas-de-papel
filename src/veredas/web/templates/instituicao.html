@@ -48,8 +48,8 @@
             <div class="label">Liquidez</div>
         </div>
         <div class="stat-card">
-            <div class="value">{{ "%.1f"|format(instituicao.captacoes_total / 1000000) if instituicao.captacoes_total else "-" }}M</div>
-            <div class="label">Captacoes (R$)</div>
+            <div class="value">{{ "%.1f"|format(instituicao.ativo_total / 1000000) if instituicao.ativo_total else "-" }}M</div>
+            <div class="label">Ativo Total (R$)</div>
         </div>
     </div>
 </section>

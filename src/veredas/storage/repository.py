@@ -457,8 +457,8 @@ class AnomaliaRepository:
                 stmt = stmt.join(InstituicaoFinanceira).where(
                     InstituicaoFinanceira.cnpj == filters["cnpj"]
                 )
-            if "resolvida" in filters:
-                stmt = stmt.where(Anomalia.resolvido == filters["resolvida"])
+            if "resolvido" in filters:
+                stmt = stmt.where(Anomalia.resolvido == filters["resolvido"])
 
         stmt = stmt.offset(offset).limit(limit)
         return self.session.execute(stmt).scalars().all()
@@ -476,8 +476,8 @@ class AnomaliaRepository:
                 stmt = stmt.join(InstituicaoFinanceira).where(
                     InstituicaoFinanceira.cnpj == filters["cnpj"]
                 )
-            if "resolvida" in filters:
-                stmt = stmt.where(Anomalia.resolvido == filters["resolvida"])
+            if "resolvido" in filters:
+                stmt = stmt.where(Anomalia.resolvido == filters["resolvido"])
 
         return self.session.execute(stmt).scalar() or 0
 
