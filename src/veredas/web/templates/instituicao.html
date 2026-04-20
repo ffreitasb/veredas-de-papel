@@ -54,6 +54,46 @@
     </div>
 </section>
 
+<!-- Evolução de Saúde Financeira (IFData) -->
+{% if health_historico %}
+<section>
+    <div class="section-header">
+        <h2>Evolução de Saúde Financeira</h2>
+        <small style="color: var(--text-muted)">Fonte: IFData / Banco Central — dados trimestrais</small>
+    </div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data Base</th>
+                    <th class="num">Basileia (%)</th>
+                    <th class="num">Liquidez (%)</th>
+                    <th class="num">Ativo Total (R$ mi)</th>
+                    <th class="num">PL (R$ mi)</th>
+                    <th class="num">Inadimplência (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in health_historico | reverse %}
+                <tr>
+                    <td>{{ h.data_base.strftime('%m/%Y') }}</td>
+                    <td class="num {% if h.indice_basileia and h.indice_basileia < 9 %}num-negative{% elif h.indice_basileia and h.indice_basileia < 11 %}severity-high{% endif %}">
+                        {{ "%.1f"|format(h.indice_basileia) if h.indice_basileia else "-" }}
+                    </td>
+                    <td class="num {% if h.indice_liquidez and h.indice_liquidez < 100 %}num-negative{% elif h.indice_liquidez and h.indice_liquidez < 110 %}severity-high{% endif %}">
+                        {{ "%.1f"|format(h.indice_liquidez) if h.indice_liquidez else "-" }}
+                    </td>
+                    <td class="num">{{ "%.1f"|format(h.ativo_total / 1000000) if h.ativo_total else "-" }}</td>
+                    <td class="num">{{ "%.1f"|format(h.patrimonio_liquido / 1000000) if h.patrimonio_liquido else "-" }}</td>
+                    <td class="num">{{ "%.2f"|format(h.inadimplencia) if h.inadimplencia else "-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
 <!-- Grafico de Evolucao -->
 <section>
     <div class="section-header">

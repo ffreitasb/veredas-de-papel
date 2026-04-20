@@ -15,6 +15,7 @@ from veredas import TZ_BRASIL
 from veredas.storage.models import (
     Anomalia,
     EventoRegulatorio,
+    HealthDataIF,
     InstituicaoFinanceira,
     Severidade,
     TaxaCDB,
@@ -669,6 +670,76 @@ class EventoRepository:
         stmt = select(func.distinct(EventoRegulatorio.tipo))
         result = self.session.execute(stmt).scalars().all()
         return [str(t) for t in result if t]
+
+
+class HealthDataRepository:
+    """Repositório para dados de saúde financeira (IFData)."""
+
+    def __init__(self, session: Session):
+        self.session = session
+
+    def get_latest(self, if_id: int) -> Optional[HealthDataIF]:
+        """Retorna o snapshot mais recente de uma IF."""
+        stmt = (
+            select(HealthDataIF)
+            .where(HealthDataIF.if_id == if_id)
+            .order_by(desc(HealthDataIF.data_base))
+            .limit(1)
+        )
+        return self.session.execute(stmt).scalar_one_or_none()
+
+    def list_historico(self, if_id: int, limit: int = 8) -> Sequence[HealthDataIF]:
+        """Lista histórico de snapshots de uma IF (ordem cronológica)."""
+        stmt = (
+            select(HealthDataIF)
+            .where(HealthDataIF.if_id == if_id)
+            .order_by(HealthDataIF.data_base)
+            .limit(limit)
+        )
+        return self.session.execute(stmt).scalars().all()
+
+    def upsert(self, if_id: int, data_base: date, **kwargs) -> HealthDataIF:
+        """Cria ou atualiza snapshot de saúde para uma IF/data_base."""
+        stmt = select(HealthDataIF).where(
+            and_(HealthDataIF.if_id == if_id, HealthDataIF.data_base == data_base)
+        )
+        existing = self.session.execute(stmt).scalar_one_or_none()
+        if existing:
+            for key, value in kwargs.items():
+                setattr(existing, key, value)
+            return existing
+
+        health = HealthDataIF(if_id=if_id, data_base=data_base, **kwargs)
+        self.session.add(health)
+        self.session.flush()
+        return health
+
+    def list_all_low_basileia(
+        self, threshold: Decimal = Decimal("11")
+    ) -> Sequence[HealthDataIF]:
+        """Lista IFs com Basileia abaixo do threshold no snapshot mais recente."""
+        subq = (
+            select(HealthDataIF.if_id, func.max(HealthDataIF.data_base).label("max_date"))
+            .group_by(HealthDataIF.if_id)
+            .subquery()
+        )
+        stmt = (
+            select(HealthDataIF)
+            .join(
+                subq,
+                and_(
+                    HealthDataIF.if_id == subq.c.if_id,
+                    HealthDataIF.data_base == subq.c.max_date,
+                ),
+            )
+            .where(
+                and_(
+                    HealthDataIF.indice_basileia.is_not(None),
+                    HealthDataIF.indice_basileia < threshold,
+                )
+            )
+        )
+        return self.session.execute(stmt).scalars().all()
 
 
 # Aliases para compatibilidade com web routes

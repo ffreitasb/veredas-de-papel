@@ -88,6 +88,10 @@ class TipoAnomalia(StrEnum):
     NEGATIVE_SENTIMENT = "negative_sentiment"  # Sentimento negativo
     COMPOSITE_RISK_CRITICAL = "composite_risk_critical"  # Risco composto crítico
 
+    # Saúde financeira (IFData)
+    BASILEIA_BAIXO = "basileia_baixo"  # Basileia < threshold com taxa elevada
+    LIQUIDEZ_CRITICA = "liquidez_critica"  # Liquidez abaixo do mínimo regulatório
+
 
 class Severidade(StrEnum):
     """Severidade da anomalia."""
@@ -279,6 +283,52 @@ class EventoRegulatorio(Base):
 
     def __repr__(self) -> str:
         return f"<Evento {self.tipo.value} - {self.if_nome} ({self.data_evento})>"
+
+
+class HealthDataIF(Base):
+    """
+    Snapshot de saúde financeira de uma IF em uma data base.
+
+    Armazena indicadores do IFData (trimestral) para rastrear evolução
+    de Basileia, liquidez e tamanho ao longo do tempo.
+    """
+
+    __tablename__ = "health_data_if"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    if_id: Mapped[int] = mapped_column(ForeignKey("instituicoes_financeiras.id"), index=True)
+
+    # Data de referência (trimestral, ex: 2024-03-01 = 1T2024)
+    data_base: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+
+    # Indicadores de capital
+    indice_basileia: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    patrimonio_liquido: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+
+    # Indicadores de liquidez
+    indice_liquidez: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    ativos_liquidos: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+
+    # Tamanho
+    ativo_total: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    depositos_totais: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+
+    # Qualidade da carteira
+    inadimplencia: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    # Rentabilidade
+    roa: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    roe: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    # Fonte
+    fonte: Mapped[str] = mapped_column(String(50), default="ifdata")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    # Relacionamentos
+    instituicao: Mapped["InstituicaoFinanceira"] = relationship()
+
+    def __repr__(self) -> str:
+        return f"<HealthDataIF if_id={self.if_id} {self.data_base} basileia={self.indice_basileia}>"
 
 
 class TaxaReferencia(Base):

@@ -126,7 +126,7 @@ def collect(
             _collect_bcb(db_path)
 
         if source in ("ifdata", "all"):
-            rprint("[yellow]⚠[/] Coletor IFData ainda não implementado")
+            _collect_ifdata(db_path)
 
         rprint("\n[green]✓[/] Coleta concluída")
 
@@ -180,6 +180,71 @@ def _collect_bcb(db_path: Optional[Path]):
                 repo.upsert("ipca", dados.ipca.data, dados.ipca.valor, fonte="bcb")
 
         rprint("[dim]Dados salvos no banco[/]")
+
+
+def _collect_ifdata(db_path: Optional[Path]):
+    """Coleta dados de saúde financeira do IFData e persiste no banco."""
+    from veredas.collectors.ifdata import IFDataCollector
+    from veredas.storage.repository import HealthDataRepository, InstituicaoRepository
+
+    async def _run():
+        async with IFDataCollector() as collector:
+            return await collector.collect()
+
+    with console.status("[bold blue]Coletando dados do IFData (BCB)..."):
+        result = asyncio.run(_run())
+
+    if not result.success:
+        rprint(f"[red]✗[/] Erro IFData: {result.error}")
+        return
+
+    dados = result.data
+    db = DatabaseManager(db_path)
+    db.init_db()
+
+    table = Table(title="Dados de Saúde — IFData")
+    table.add_column("Instituição", style="cyan")
+    table.add_column("Basileia", justify="right")
+    table.add_column("Liquidez", justify="right")
+    table.add_column("Ativo Total (R$ mi)", justify="right")
+
+    with db.session_scope() as session:
+        if_repo = InstituicaoRepository(session)
+        health_repo = HealthDataRepository(session)
+
+        for dados_if in dados.instituicoes:
+            # Upsert instituição
+            if_ = if_repo.upsert(
+                cnpj=dados_if.cnpj,
+                nome=dados_if.nome,
+                indice_basileia=dados_if.indice_basileia,
+                indice_liquidez=dados_if.indice_liquidez,
+                ativo_total=dados_if.ativo_total,
+                patrimonio_liquido=dados_if.patrimonio_liquido,
+            )
+
+            # Persiste snapshot histórico
+            health_repo.upsert(
+                if_id=if_.id,
+                data_base=dados_if.data_base,
+                indice_basileia=dados_if.indice_basileia,
+                indice_liquidez=dados_if.indice_liquidez,
+                ativo_total=dados_if.ativo_total,
+                patrimonio_liquido=dados_if.patrimonio_liquido,
+                ativos_liquidos=dados_if.ativos_liquidos,
+                depositos_totais=dados_if.depositos_totais,
+                inadimplencia=dados_if.inadimplencia,
+                roa=dados_if.roa,
+                roe=dados_if.roe,
+            )
+
+            ativo_mi = f"{float(dados_if.ativo_total) / 1_000_000:.1f}" if dados_if.ativo_total else "-"
+            basileia = f"{dados_if.indice_basileia:.1f}%" if dados_if.indice_basileia else "-"
+            liquidez = f"{dados_if.indice_liquidez:.1f}%" if dados_if.indice_liquidez else "-"
+            table.add_row(dados_if.nome[:40], basileia, liquidez, ativo_mi)
+
+    console.print(table)
+    rprint(f"[dim]{len(dados.instituicoes)} instituições salvas no banco[/]")
 
 
 @app.command()

@@ -15,9 +15,10 @@ from fastapi.responses import HTMLResponse
 from veredas.web.app import templates
 from veredas.web.dependencies import get_db
 from veredas.storage.repository import (
+    AnomaliaRepository,
+    HealthDataRepository,
     InstituicaoFinanceiraRepository,
     TaxaCDBRepository,
-    AnomaliaRepository,
 )
 from veredas.validators import parse_cnpj
 
@@ -80,6 +81,7 @@ async def instituicao_detail(
     if_repo = InstituicaoFinanceiraRepository(session)
     taxa_repo = TaxaCDBRepository(session)
     anomalia_repo = AnomaliaRepository(session)
+    health_repo = HealthDataRepository(session)
 
     # Buscar IF
     instituicao = if_repo.get_by_cnpj(cnpj_normalizado)
@@ -99,6 +101,9 @@ async def instituicao_detail(
     # Anomalias relacionadas
     anomalias = anomalia_repo.get_by_instituicao(instituicao.id, limit=20)
 
+    # Histórico de saúde financeira (IFData)
+    health_historico = health_repo.list_historico(instituicao.id, limit=8)
+
     # Dados para grafico de evolucao
     chart_data = _prepare_chart_data(taxas)
 
@@ -110,6 +115,7 @@ async def instituicao_detail(
             "taxas": taxas,
             "anomalias": anomalias,
             "chart_data": chart_data,
+            "health_historico": health_historico,
         },
     )
 
