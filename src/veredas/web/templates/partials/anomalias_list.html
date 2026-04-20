@@ -1,4 +1,7 @@
 <!-- Partial: Lista de anomalias (HTMX) -->
+{# Base de URL para paginação com filtros preservados #}
+{% set base_qs %}&severidade={{ filtros.severidade or '' }}&tipo={{ filtros.tipo or '' }}&instituicao={{ filtros.instituicao or '' }}&status={{ filtros.status or 'ativas' }}{% endset %}
+
 <p><small>{{ total }} anomalias encontradas</small></p>
 
 {% for anomalia in anomalias %}
@@ -31,21 +34,21 @@
 </div>
 {% endfor %}
 
-<!-- Paginacao -->
+<!-- Paginação com filtros preservados -->
 {% if total_paginas > 1 %}
 <div class="pagination">
     {% if pagina > 1 %}
-    <a href="#"
-       hx-get="/anomalias/partials/list?pagina={{ pagina - 1 }}"
-       hx-target="#anomalias-list">&laquo; Anterior</a>
+    <a href="/anomalias/partials/list?pagina={{ pagina - 1 }}{{ base_qs }}"
+       hx-get="/anomalias/partials/list?pagina={{ pagina - 1 }}{{ base_qs }}"
+       hx-target="#anomalias-list" hx-push-url="true">&laquo; Anterior</a>
     {% endif %}
 
     <span class="current">{{ pagina }} / {{ total_paginas }}</span>
 
     {% if pagina < total_paginas %}
-    <a href="#"
-       hx-get="/anomalias/partials/list?pagina={{ pagina + 1 }}"
-       hx-target="#anomalias-list">Proxima &raquo;</a>
+    <a href="/anomalias/partials/list?pagina={{ pagina + 1 }}{{ base_qs }}"
+       hx-get="/anomalias/partials/list?pagina={{ pagina + 1 }}{{ base_qs }}"
+       hx-target="#anomalias-list" hx-push-url="true">Próxima &raquo;</a>
     {% endif %}
 </div>
 {% endif %}

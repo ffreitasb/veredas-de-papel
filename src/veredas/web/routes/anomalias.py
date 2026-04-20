@@ -7,10 +7,12 @@ Exibe lista de anomalias:
 - Historico de anomalias
 """
 
+import csv
+import io
 from typing import Optional
 
 from fastapi import APIRouter, Request, Depends, Query, Form, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 from veredas.web.app import templates
 from veredas.web.dependencies import get_db
@@ -112,6 +114,69 @@ async def anomalias_list(
     )
 
 
+@router.get("/export.csv")
+async def export_anomalias_csv(
+    session=Depends(get_db),
+    severidade: Optional[str] = Query(None),
+    tipo: Optional[str] = Query(None),
+    instituicao: Optional[str] = Query(None),
+    status: str = Query("ativas"),
+):
+    """Exporta anomalias filtradas como CSV (UTF-8-BOM, compatível com Excel)."""
+    anomalia_repo = AnomaliaRepository(session)
+
+    filters: dict = {}
+    parsed_sev = _parse_severidade(severidade)
+    if parsed_sev:
+        filters["severidade"] = parsed_sev
+    if tipo:
+        filters["tipo"] = tipo
+    if instituicao:
+        filters["cnpj"] = instituicao
+    if status == "ativas":
+        filters["resolvido"] = False
+
+    anomalias = anomalia_repo.list_with_filters(
+        filters=filters, limit=10_000, offset=0, eager_load=True
+    )
+
+    def _gerar_csv():
+        buf = io.StringIO()
+        buf.write("\ufeff")  # UTF-8 BOM para Excel brasileiro
+        writer = csv.writer(buf, delimiter=";")
+        writer.writerow([
+            "ID", "Tipo", "Severidade", "Instituição", "CNPJ",
+            "Valor Detectado", "Valor Esperado", "Desvio",
+            "Descrição", "Detectado Em", "Resolvido", "Resolvido Em",
+        ])
+        yield buf.getvalue()
+
+        for a in anomalias:
+            buf = io.StringIO()
+            writer = csv.writer(buf, delimiter=";")
+            writer.writerow([
+                a.id,
+                a.tipo.value,
+                a.severidade.value,
+                a.instituicao.nome if a.instituicao else "",
+                a.instituicao.cnpj if a.instituicao else "",
+                str(a.valor_detectado).replace(".", ","),
+                str(a.valor_esperado).replace(".", ",") if a.valor_esperado else "",
+                str(a.desvio).replace(".", ",") if a.desvio else "",
+                a.descricao,
+                a.detectado_em.strftime("%d/%m/%Y %H:%M") if a.detectado_em else "",
+                "Sim" if a.resolvido else "Não",
+                a.resolvido_em.strftime("%d/%m/%Y %H:%M") if a.resolvido_em else "",
+            ])
+            yield buf.getvalue()
+
+    return StreamingResponse(
+        _gerar_csv(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=anomalias.csv"},
+    )
+
+
 @router.post("/{anomalia_id}/resolver", response_class=HTMLResponse)
 async def resolver_anomalia(
     request: Request,
@@ -184,5 +249,11 @@ async def anomalias_list_partial(
             "total": total,
             "pagina": pagina,
             "total_paginas": total_paginas,
+            "filtros": {
+                "severidade": severidade,
+                "tipo": tipo,
+                "instituicao": instituicao,
+                "status": status,
+            },
         },
     )

@@ -6,7 +6,7 @@
 <h1>Taxas de CDB</h1>
 
 <!-- Filtros -->
-<form class="filters" hx-get="/taxas/" hx-target="#taxas-table" hx-push-url="true">
+<form class="filters" hx-get="/taxas/" hx-target="#taxas-table" hx-push-url="true" id="filtros-taxas">
     <select name="indexador">
         <option value="">Todos indexadores</option>
         {% for idx in indexadores %}
@@ -34,6 +34,10 @@
     </select>
 
     <button type="submit">Filtrar</button>
+    <a href="/taxas/export.csv?indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&ordem={{ ordem }}"
+       class="btn-export" title="Exportar CSV (compatível com Excel)">
+        &#8595; CSV
+    </a>
 </form>
 
 <!-- Tabela de Taxas -->

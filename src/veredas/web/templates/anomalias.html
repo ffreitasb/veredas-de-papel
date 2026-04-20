@@ -34,6 +34,10 @@
     </select>
 
     <button type="submit">Filtrar</button>
+    <a href="/anomalias/export.csv?severidade={{ filtros.severidade or '' }}&tipo={{ filtros.tipo or '' }}&instituicao={{ filtros.instituicao or '' }}&status={{ filtros.status or 'ativas' }}"
+       class="btn-export" title="Exportar CSV (compatível com Excel)">
+        &#8595; CSV
+    </a>
 </form>
 
 <!-- Lista de Anomalias -->

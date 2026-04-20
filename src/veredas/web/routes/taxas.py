@@ -7,10 +7,12 @@ Exibe tabela filtravel de taxas coletadas:
 - Paginacao server-side
 """
 
+import csv
+import io
 from typing import Optional
 
 from fastapi import APIRouter, Request, Depends, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 from veredas.web.app import templates
 from veredas.web.dependencies import get_db
@@ -87,6 +89,66 @@ async def list_taxas(
         return templates.TemplateResponse("partials/taxas_table.html", context)
 
     return templates.TemplateResponse("taxas.html", context)
+
+
+@router.get("/export.csv")
+async def export_taxas_csv(
+    session=Depends(get_db),
+    indexador: Optional[str] = Query(None),
+    prazo_min: Optional[int] = Query(None),
+    prazo_max: Optional[int] = Query(None),
+    if_id: Optional[int] = Query(None),
+    ordem: str = Query("data_desc"),
+):
+    """Exporta taxas filtradas como CSV (UTF-8-BOM, compatível com Excel)."""
+    taxa_repo = TaxaCDBRepository(session)
+
+    filters = {}
+    if indexador:
+        filters["indexador"] = Indexador(indexador)
+    if prazo_min:
+        filters["prazo_min"] = prazo_min
+    if prazo_max:
+        filters["prazo_max"] = prazo_max
+    if if_id:
+        filters["instituicao_id"] = if_id
+
+    # Exporta até 10 000 linhas sem paginação
+    taxas, _ = taxa_repo.list_paginated(filters=filters, order_by=ordem, page=1, per_page=10_000)
+
+    def _gerar_csv():
+        buf = io.StringIO()
+        buf.write("\ufeff")  # UTF-8 BOM para Excel brasileiro
+        writer = csv.writer(buf, delimiter=";")
+        writer.writerow([
+            "Data Coleta", "Instituição", "CNPJ", "Indexador",
+            "Percentual (%)", "Taxa Adicional (%)", "Prazo (dias)",
+            "Liquidez Diária", "Fonte", "Risk Score",
+        ])
+        yield buf.getvalue()
+
+        for taxa in taxas:
+            buf = io.StringIO()
+            writer = csv.writer(buf, delimiter=";")
+            writer.writerow([
+                taxa.data_coleta.strftime("%d/%m/%Y"),
+                taxa.instituicao.nome if taxa.instituicao else "",
+                taxa.instituicao.cnpj if taxa.instituicao else "",
+                taxa.indexador.value,
+                str(taxa.percentual).replace(".", ","),
+                str(taxa.taxa_adicional).replace(".", ",") if taxa.taxa_adicional else "",
+                taxa.prazo_dias,
+                "Sim" if taxa.liquidez_diaria else "Não",
+                taxa.fonte,
+                str(taxa.risk_score).replace(".", ",") if taxa.risk_score else "",
+            ])
+            yield buf.getvalue()
+
+    return StreamingResponse(
+        _gerar_csv(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=taxas_cdb.csv"},
+    )
 
 
 @router.get("/{taxa_id}", response_class=HTMLResponse)
