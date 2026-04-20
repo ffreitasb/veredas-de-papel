@@ -39,8 +39,8 @@
             <div class="label">Taxa (% CDI)</div>
         </div>
         <div class="stat-card">
-            <div class="value">{{ "%.4f"|format(taxa.taxa_anual) if taxa.taxa_anual else "-" }}%</div>
-            <div class="label">Taxa Anual</div>
+            <div class="value">{{ "%.4f"|format(taxa.taxa_adicional) if taxa.taxa_adicional else "-" }}%</div>
+            <div class="label">Taxa Adicional</div>
         </div>
         <div class="stat-card">
             <div class="value">R$ {{ "%.2f"|format(taxa.valor_minimo) if taxa.valor_minimo else "-" }}</div>

@@ -8,8 +8,6 @@ Exibe visao geral do sistema:
 - Status do sistema
 """
 
-from datetime import datetime
-
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 
@@ -71,7 +69,6 @@ async def home(request: Request, session=Depends(get_db)):
             "ultimas_anomalias": ultimas_anomalias,
             "total_taxas": total_taxas,
             "total_ifs": total_ifs,
-            "now": datetime.now(),
         },
     )
 

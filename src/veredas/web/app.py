@@ -4,6 +4,7 @@ FastAPI application factory.
 Cria e configura a aplicacao web do veredas de papel.
 """
 
+from datetime import datetime
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -26,9 +27,10 @@ STATIC_DIR = WEB_DIR / "static"
 # Templates singleton
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-# Add CSRF helper to templates
+# Globals disponíveis em todos os templates
 templates.env.globals["csrf_token_input"] = csrf_token_input
 templates.env.globals["get_csrf_token"] = get_csrf_token
+templates.env.globals["now"] = datetime.now
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
