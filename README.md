@@ -1,9 +1,11 @@
 <div align="center">
-  <img src="assets/hero.png" alt="Mandacaru de papel com taxas de CDB no sertão — veredas de papel" width="720">
+  <img src="assets/veredas_hero.png" alt="Mandacaru de papel com taxas de CDB no sertão — veredas de papel" width="720">
   <br><br>
   <i>"O real não está no início nem no fim, ele se mostra pra gente é no meio da travessia."</i>
   <br>
   <sub>ROSA, João Guimarães. <i>Grande sertão: veredas</i>. 19. ed. Rio de Janeiro: Nova Fronteira, 1986.</sub>
+  <br><br>
+  <img src="assets/veredas_icon.png" alt="veredas de papel icon" width="72">
 </div>
 
 <br>

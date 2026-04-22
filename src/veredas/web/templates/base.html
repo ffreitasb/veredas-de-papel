@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}veredas de papel{% endblock %}</title>
+    <link rel="icon" type="image/png" href="/static/images/veredas_icon.png">
 
     <!-- Pico CSS (minimal) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
@@ -23,7 +24,7 @@
     <header class="container">
         <nav>
             <ul>
-                <li><a href="/" class="brand"><strong>veredas</strong></a></li>
+                <li><a href="/" class="brand"><img src="/static/images/veredas_icon.png" alt="" height="28" style="vertical-align:middle;margin-right:6px"><strong>veredas</strong></a></li>
             </ul>
             <ul>
                 <li><a href="/" {% if request.url.path == "/" %}class="active"{% endif %}>Home</a></li>
