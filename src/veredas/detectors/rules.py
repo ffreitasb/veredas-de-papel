@@ -7,10 +7,10 @@ Implementa regras simples e interpretáveis para detecção de anomalias:
 - Divergência: Taxa muito acima da média do mercado
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Sequence
 
 from veredas.detectors.base import AnomaliaDetectada, BaseDetector, DetectionResult
 from veredas.storage.models import Indexador, Severidade, TaxaCDB, TipoAnomalia
@@ -50,7 +50,7 @@ class SpreadDetector(BaseDetector):
     - SPREAD_CRITICO: CDB > 150% CDI (severidade CRITICAL)
     """
 
-    def __init__(self, thresholds: Optional[RuleThresholds] = None):
+    def __init__(self, thresholds: RuleThresholds | None = None):
         self.thresholds = thresholds or DEFAULT_THRESHOLDS
 
     @property
@@ -87,7 +87,7 @@ class SpreadDetector(BaseDetector):
             execution_time_ms=elapsed,
         )
 
-    def _check_taxa(self, taxa: TaxaCDB) -> Optional[AnomaliaDetectada]:
+    def _check_taxa(self, taxa: TaxaCDB) -> AnomaliaDetectada | None:
         """Verifica uma taxa individual."""
         # Apenas CDI por enquanto
         if taxa.indexador != Indexador.CDI:
@@ -141,7 +141,7 @@ class SpreadDetector(BaseDetector):
 
         return None
 
-    def _check_ipca(self, taxa: TaxaCDB) -> Optional[AnomaliaDetectada]:
+    def _check_ipca(self, taxa: TaxaCDB) -> AnomaliaDetectada | None:
         """Verifica taxas IPCA+."""
         if taxa.indexador != Indexador.IPCA or taxa.taxa_adicional is None:
             return None
@@ -204,7 +204,7 @@ class VariacaoDetector(BaseDetector):
 
     def __init__(
         self,
-        thresholds: Optional[RuleThresholds] = None,
+        thresholds: RuleThresholds | None = None,
         janela_dias: int = 7,
     ):
         self.thresholds = thresholds or DEFAULT_THRESHOLDS
@@ -266,7 +266,7 @@ class VariacaoDetector(BaseDetector):
         self,
         atual: TaxaCDB,
         anterior: TaxaCDB,
-    ) -> Optional[AnomaliaDetectada]:
+    ) -> AnomaliaDetectada | None:
         """Verifica variação entre duas taxas."""
         variacao = atual.percentual - anterior.percentual
 
@@ -332,7 +332,7 @@ class DivergenciaDetector(BaseDetector):
     - DIVERGENCIA_EXTREMA: Taxa > média + 3σ (severidade HIGH)
     """
 
-    def __init__(self, thresholds: Optional[RuleThresholds] = None):
+    def __init__(self, thresholds: RuleThresholds | None = None):
         self.thresholds = thresholds or DEFAULT_THRESHOLDS
 
     @property
@@ -389,7 +389,7 @@ class DivergenciaDetector(BaseDetector):
         taxa: TaxaCDB,
         media: Decimal,
         desvio_padrao: Decimal,
-    ) -> Optional[AnomaliaDetectada]:
+    ) -> AnomaliaDetectada | None:
         """Verifica divergência de uma taxa."""
         z_score = (taxa.percentual - media) / desvio_padrao
 
@@ -453,7 +453,7 @@ class RuleBasedEngine:
     Executa todos os detectores e agrega os resultados.
     """
 
-    def __init__(self, thresholds: Optional[RuleThresholds] = None):
+    def __init__(self, thresholds: RuleThresholds | None = None):
         self.thresholds = thresholds or DEFAULT_THRESHOLDS
         self.spread_detector = SpreadDetector(self.thresholds)
         self.variacao_detector = VariacaoDetector(self.thresholds)
@@ -483,9 +483,9 @@ class RuleBasedEngine:
     def run_all(
         self,
         taxas_atuais: Sequence[TaxaCDB],
-        taxas_anteriores: Optional[Sequence[TaxaCDB]] = None,
-        media_mercado: Optional[Decimal] = None,
-        desvio_padrao_mercado: Optional[Decimal] = None,
+        taxas_anteriores: Sequence[TaxaCDB] | None = None,
+        media_mercado: Decimal | None = None,
+        desvio_padrao_mercado: Decimal | None = None,
     ) -> list[DetectionResult]:
         """
         Executa todos os detectores.

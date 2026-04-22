@@ -17,11 +17,8 @@ Para obter chat_id:
 """
 
 import logging
-from typing import Optional
 
 import httpx
-
-logger = logging.getLogger(__name__)
 
 from veredas.alerts.base import (
     AlertChannel,
@@ -32,6 +29,7 @@ from veredas.alerts.base import (
 )
 from veredas.config import get_settings
 
+logger = logging.getLogger(__name__)
 
 TELEGRAM_API_URL = "https://api.telegram.org/bot{token}/{method}"
 
@@ -45,8 +43,8 @@ class TelegramAlertSender(AlertSender):
 
     def __init__(
         self,
-        bot_token: Optional[str] = None,
-        chat_id: Optional[str] = None,
+        bot_token: str | None = None,
+        chat_id: str | None = None,
     ):
         """
         Inicializa o sender de Telegram.
@@ -146,7 +144,7 @@ class TelegramAlertSender(AlertSender):
                 error="Timeout ao conectar com Telegram API",
             )
 
-        except Exception as e:
+        except Exception:
             # Log detalhado interno, mensagem generica para usuario
             logger.exception("Falha ao enviar alerta via Telegram")
             return AlertResult(
@@ -214,7 +212,7 @@ class TelegramAlertSender(AlertSender):
                     error=data.get("description", "Erro desconhecido"),
                 )
 
-        except Exception as e:
+        except Exception:
             logger.exception("Falha ao enviar mensagem simples via Telegram")
             return AlertResult(
                 success=False,

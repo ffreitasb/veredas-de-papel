@@ -14,17 +14,16 @@ API: https://www3.bcb.gov.br/ifdata/
 
 import logging
 from dataclasses import dataclass, field
-
-logger = logging.getLogger(__name__)
 from datetime import date
 from decimal import Decimal
 from types import TracebackType
-from typing import Optional, Type
 
 import httpx
 
 from veredas.collectors.base import BaseCollector, CollectionResult
 from veredas.config import PRINCIPAIS_BANCOS_CNPJ
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -36,23 +35,23 @@ class DadosIF:
     data_base: date  # Data de referencia dos dados (trimestral)
 
     # Indicadores de capital
-    indice_basileia: Optional[Decimal] = None  # Indice de Basileia (%)
-    patrimonio_liquido: Optional[Decimal] = None  # Em R$ mil
+    indice_basileia: Decimal | None = None  # Indice de Basileia (%)
+    patrimonio_liquido: Decimal | None = None  # Em R$ mil
 
     # Indicadores de liquidez
-    indice_liquidez: Optional[Decimal] = None  # Indice de liquidez (%)
-    ativos_liquidos: Optional[Decimal] = None  # Em R$ mil
+    indice_liquidez: Decimal | None = None  # Indice de liquidez (%)
+    ativos_liquidos: Decimal | None = None  # Em R$ mil
 
     # Tamanho
-    ativo_total: Optional[Decimal] = None  # Em R$ mil
-    depositos_totais: Optional[Decimal] = None  # Em R$ mil
+    ativo_total: Decimal | None = None  # Em R$ mil
+    depositos_totais: Decimal | None = None  # Em R$ mil
 
     # Qualidade da carteira
-    inadimplencia: Optional[Decimal] = None  # Taxa de inadimplencia (%)
+    inadimplencia: Decimal | None = None  # Taxa de inadimplencia (%)
 
     # Rentabilidade
-    roa: Optional[Decimal] = None  # Return on Assets (%)
-    roe: Optional[Decimal] = None  # Return on Equity (%)
+    roa: Decimal | None = None  # Return on Assets (%)
+    roe: Decimal | None = None  # Return on Equity (%)
 
 
 @dataclass
@@ -88,7 +87,7 @@ class IFDataCollector(BaseCollector):
             timeout: Timeout das requisicoes HTTP em segundos.
         """
         self.timeout = timeout
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     @property
     def source_name(self) -> str:
@@ -108,8 +107,8 @@ class IFDataCollector(BaseCollector):
 
     async def collect(
         self,
-        cnpjs: Optional[list[str]] = None,
-        data_base: Optional[date] = None,
+        cnpjs: list[str] | None = None,
+        data_base: date | None = None,
     ) -> CollectionResult[ResultadoIFData]:
         """
         Coleta dados do IF.Data para as instituicoes especificadas.
@@ -196,8 +195,8 @@ class IFDataCollector(BaseCollector):
         self,
         client: httpx.AsyncClient,
         cnpj: str,
-        data_base: Optional[date] = None,
-    ) -> Optional[DadosIF]:
+        data_base: date | None = None,
+    ) -> DadosIF | None:
         """
         Coleta dados de uma IF especifica.
 
@@ -232,7 +231,7 @@ class IFDataCollector(BaseCollector):
             logger.debug(f"Falha ao coletar dados da IF {cnpj}")
             return None
 
-    def _parse_dados_if(self, cnpj: str, data: dict) -> Optional[DadosIF]:
+    def _parse_dados_if(self, cnpj: str, data: dict) -> DadosIF | None:
         """
         Faz o parse dos dados JSON para DadosIF.
 
@@ -271,7 +270,7 @@ class IFDataCollector(BaseCollector):
         except Exception:
             return None
 
-    def _to_decimal(self, value) -> Optional[Decimal]:
+    def _to_decimal(self, value) -> Decimal | None:
         """Converte valor para Decimal de forma segura."""
         if value is None:
             return None
@@ -353,9 +352,9 @@ class IFDataCollector(BaseCollector):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         """
         Sai do context manager, fechando recursos.

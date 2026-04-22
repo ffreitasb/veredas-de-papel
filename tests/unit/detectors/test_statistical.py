@@ -5,7 +5,6 @@ import pytest
 from tests.conftest import make_taxa_serie
 from veredas.detectors.statistical import RollingZScoreDetector, StatisticalThresholds
 
-
 # ---------------------------------------------------------------------------
 # RollingZScoreDetector  (mais rápido e sem dependência de ruptures/sklearn)
 # ---------------------------------------------------------------------------
@@ -94,7 +93,7 @@ class TestSTLDecompositionDetector:
 
 class TestChangePointDetector:
     def test_sem_ruptures_retorna_erro_descritivo(self):
-        from veredas.detectors.statistical import ChangePointDetector, HAS_RUPTURES
+        from veredas.detectors.statistical import HAS_RUPTURES, ChangePointDetector
         if HAS_RUPTURES:
             pytest.skip("ruptures instalado — teste de fallback não se aplica")
         detector = ChangePointDetector(min_observations=20)
@@ -104,7 +103,7 @@ class TestChangePointDetector:
         assert "ruptures" in result.error.lower()
 
     def test_com_ruptures_detecta_mudanca_estrutural(self):
-        from veredas.detectors.statistical import ChangePointDetector, HAS_RUPTURES
+        from veredas.detectors.statistical import HAS_RUPTURES, ChangePointDetector
         if not HAS_RUPTURES:
             pytest.skip("ruptures não instalado")
         detector = ChangePointDetector(min_observations=20)

@@ -8,15 +8,11 @@ Fornece graficos para:
 - Score de risco
 """
 
-from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
-from veredas.storage.models import TaxaCDB, Anomalia, TaxaReferencia
-
+from veredas.storage.models import Anomalia, TaxaCDB, TaxaReferencia
 
 # Cores do tema veredas
 CORES = {
@@ -56,7 +52,7 @@ def grafico_evolucao_taxa(
     taxas: list[TaxaCDB],
     titulo: str = "Evolucao da Taxa",
     mostrar_referencia: bool = True,
-    taxa_referencia: Optional[Decimal] = None,
+    taxa_referencia: Decimal | None = None,
 ) -> str:
     """
     Gera grafico de evolucao de taxa ao longo do tempo.
@@ -301,7 +297,7 @@ def grafico_timeline_anomalias(
 
 def grafico_score_risco(
     score: float,
-    breakdown: Optional[dict] = None,
+    breakdown: dict | None = None,
     titulo: str = "Score de Risco",
 ) -> str:
     """
@@ -394,7 +390,7 @@ def grafico_taxas_referencia(
 
     for nome, dados in indicadores.items():
         # Ordenar por data
-        pares = sorted(zip(dados["datas"], dados["valores"]))
+        pares = sorted(zip(dados["datas"], dados["valores"], strict=False))
         datas_ord = [p[0] for p in pares]
         valores_ord = [p[1] for p in pares]
 

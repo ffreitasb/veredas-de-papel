@@ -2,18 +2,14 @@
 
 from decimal import Decimal
 
-import pytest
-
 from tests.conftest import make_taxa
 from veredas.detectors.rules import (
-    DEFAULT_THRESHOLDS,
     DivergenciaDetector,
     RuleThresholds,
     SpreadDetector,
     VariacaoDetector,
 )
 from veredas.storage.models import Indexador, Severidade, TipoAnomalia
-
 
 # ---------------------------------------------------------------------------
 # SpreadDetector — CDI

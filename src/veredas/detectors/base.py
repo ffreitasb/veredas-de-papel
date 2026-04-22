@@ -6,11 +6,12 @@ Define o contrato que todos os detectores devem implementar.
 
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Generator, Optional
+from typing import Any
 
 from veredas.storage.models import Severidade, TipoAnomalia
 
@@ -25,14 +26,14 @@ class AnomaliaDetectada:
     descricao: str
 
     # Contexto
-    if_id: Optional[int] = None
-    if_nome: Optional[str] = None
-    taxa_id: Optional[int] = None
+    if_id: int | None = None
+    if_nome: str | None = None
+    taxa_id: int | None = None
 
     # Valores de referência
-    valor_esperado: Optional[Decimal] = None
-    desvio: Optional[Decimal] = None
-    threshold: Optional[Decimal] = None
+    valor_esperado: Decimal | None = None
+    desvio: Decimal | None = None
+    threshold: Decimal | None = None
 
     # Metadados
     detector: str = ""
@@ -67,7 +68,7 @@ class DetectionResult:
     anomalias: list[AnomaliaDetectada]
     executed_at: datetime = field(default_factory=datetime.now)
     execution_time_ms: float = 0
-    error: Optional[str] = None
+    error: str | None = None
 
     @property
     def success(self) -> bool:

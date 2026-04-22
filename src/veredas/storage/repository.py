@@ -4,9 +4,9 @@ Repositórios para acesso aos dados.
 Implementa o padrão Repository para abstrair operações de banco de dados.
 """
 
+from collections.abc import Sequence
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Optional, Sequence
 
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.orm import Session, selectinload
@@ -30,16 +30,16 @@ class InstituicaoRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_by_id(self, if_id: int) -> Optional[InstituicaoFinanceira]:
+    def get_by_id(self, if_id: int) -> InstituicaoFinanceira | None:
         """Busca IF por ID."""
         return self.session.get(InstituicaoFinanceira, if_id)
 
-    def get_by_cnpj(self, cnpj: str) -> Optional[InstituicaoFinanceira]:
+    def get_by_cnpj(self, cnpj: str) -> InstituicaoFinanceira | None:
         """Busca IF por CNPJ."""
         stmt = select(InstituicaoFinanceira).where(InstituicaoFinanceira.cnpj == cnpj)
         return self.session.execute(stmt).scalar_one_or_none()
 
-    def get_by_nome(self, nome: str) -> Optional[InstituicaoFinanceira]:
+    def get_by_nome(self, nome: str) -> InstituicaoFinanceira | None:
         """Busca IF por nome (case-insensitive, parcial)."""
         stmt = select(InstituicaoFinanceira).where(
             InstituicaoFinanceira.nome.ilike(f"%{nome}%")
@@ -121,7 +121,7 @@ class TaxaCDBRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_by_id(self, taxa_id: int) -> Optional[TaxaCDB]:
+    def get_by_id(self, taxa_id: int) -> TaxaCDB | None:
         """Busca taxa por ID."""
         return self.session.get(TaxaCDB, taxa_id)
 
@@ -129,7 +129,7 @@ class TaxaCDBRepository:
         self,
         if_id: int,
         limit: int = 100,
-        desde: Optional[datetime] = None,
+        desde: datetime | None = None,
     ) -> Sequence[TaxaCDB]:
         """Lista taxas de uma IF."""
         stmt = (
@@ -145,7 +145,7 @@ class TaxaCDBRepository:
     def list_recent(
         self,
         dias: int = 7,
-        indexador: Optional[str] = None,
+        indexador: str | None = None,
     ) -> Sequence[TaxaCDB]:
         """Lista taxas recentes."""
         desde = datetime.now(TZ_BRASIL) - timedelta(days=dias)
@@ -162,7 +162,7 @@ class TaxaCDBRepository:
         self,
         indexador: str,
         dias: int = 7,
-    ) -> Optional[Decimal]:
+    ) -> Decimal | None:
         """Calcula média do mercado para um indexador."""
         desde = datetime.now(TZ_BRASIL) - timedelta(days=dias)
         stmt = select(func.avg(TaxaCDB.percentual)).where(
@@ -178,7 +178,7 @@ class TaxaCDBRepository:
         self,
         indexador: str,
         dias: int = 30,
-    ) -> Optional[Decimal]:
+    ) -> Decimal | None:
         """
         Calcula desvio padrão do mercado.
 
@@ -248,7 +248,7 @@ class TaxaCDBRepository:
 
     def list_paginated(
         self,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
         order_by: str = "data_desc",
         page: int = 1,
         per_page: int = 20,
@@ -310,13 +310,13 @@ class AnomaliaRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_by_id(self, anomalia_id: int) -> Optional[Anomalia]:
+    def get_by_id(self, anomalia_id: int) -> Anomalia | None:
         """Busca anomalia por ID."""
         return self.session.get(Anomalia, anomalia_id)
 
     def list_ativas(
         self,
-        severidade_minima: Optional[Severidade] = None,
+        severidade_minima: Severidade | None = None,
         limit: int = 100,
     ) -> Sequence[Anomalia]:
         """Lista anomalias não resolvidas.
@@ -385,8 +385,8 @@ class AnomaliaRepository:
     def resolver(
         self,
         anomalia_id: int,
-        notas: Optional[str] = None,
-    ) -> Optional[Anomalia]:
+        notas: str | None = None,
+    ) -> Anomalia | None:
         """Marca anomalia como resolvida."""
         anomalia = self.get_by_id(anomalia_id)
         if anomalia:
@@ -427,7 +427,7 @@ class AnomaliaRepository:
 
     def list_with_filters(
         self,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
         limit: int = 20,
         offset: int = 0,
         eager_load: bool = False,
@@ -464,7 +464,7 @@ class AnomaliaRepository:
         stmt = stmt.offset(offset).limit(limit)
         return self.session.execute(stmt).scalars().all()
 
-    def count_with_filters(self, filters: Optional[dict] = None) -> int:
+    def count_with_filters(self, filters: dict | None = None) -> int:
         """Conta anomalias com filtros."""
         stmt = select(func.count(Anomalia.id))
 
@@ -509,7 +509,7 @@ class TaxaReferenciaRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_ultima(self, tipo: str) -> Optional[TaxaReferencia]:
+    def get_ultima(self, tipo: str) -> TaxaReferencia | None:
         """Busca última taxa de um tipo."""
         stmt = (
             select(TaxaReferencia)
@@ -522,7 +522,7 @@ class TaxaReferenciaRepository:
     # Alias para compatibilidade com web routes
     get_latest = get_ultima
 
-    def get_por_data(self, tipo: str, data: date) -> Optional[TaxaReferencia]:
+    def get_por_data(self, tipo: str, data: date) -> TaxaReferencia | None:
         """Busca taxa por tipo e data."""
         stmt = select(TaxaReferencia).where(
             and_(
@@ -590,7 +590,7 @@ class EventoRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_by_id(self, evento_id: int) -> Optional[EventoRegulatorio]:
+    def get_by_id(self, evento_id: int) -> EventoRegulatorio | None:
         """Busca evento por ID."""
         return self.session.get(EventoRegulatorio, evento_id)
 
@@ -621,7 +621,7 @@ class EventoRepository:
 
     def list_with_filters(
         self,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
         order_by: str = "data_desc",
         limit: int = 100,
         eager_load: bool = False,
@@ -678,7 +678,7 @@ class HealthDataRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_latest(self, if_id: int) -> Optional[HealthDataIF]:
+    def get_latest(self, if_id: int) -> HealthDataIF | None:
         """Retorna o snapshot mais recente de uma IF."""
         stmt = (
             select(HealthDataIF)

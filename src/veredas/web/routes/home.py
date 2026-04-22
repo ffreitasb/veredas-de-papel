@@ -8,17 +8,17 @@ Exibe visao geral do sistema:
 - Status do sistema
 """
 
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 
-from veredas.web.app import templates
-from veredas.web.cache import get_cached_reference_rates
-from veredas.web.dependencies import get_db
+from veredas.storage.models import Severidade
 from veredas.storage.repository import (
     AnomaliaRepository,
     TaxaCDBRepository,
 )
-from veredas.storage.models import Severidade
+from veredas.web.app import templates
+from veredas.web.cache import get_cached_reference_rates
+from veredas.web.dependencies import get_db
 
 router = APIRouter()
 

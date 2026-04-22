@@ -8,12 +8,10 @@ Implements double-submit cookie pattern:
 """
 
 import secrets
-from typing import Optional
 
-from fastapi import Request, HTTPException, status
+from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
-
 
 CSRF_COOKIE_NAME = "csrf_token"
 CSRF_HEADER_NAME = "X-CSRF-Token"

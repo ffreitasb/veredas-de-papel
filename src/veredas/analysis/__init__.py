@@ -7,25 +7,17 @@ Fornece funcionalidades de:
 - Geracao de graficos
 """
 
-from veredas.analysis.risk_score import (
-    RiskScore,
-    RiskLevel,
-    ScoreBreakdown,
-    calcular_score_risco,
-    calcular_score_batch,
-)
 from veredas.analysis.health import (
     HealthAnalysis,
     analisar_saude_if,
     comparar_com_benchmark,
 )
-from veredas.analysis.charts import (
-    criar_grafico_evolucao_taxas,
-    criar_grafico_anomalias_por_severidade,
-    criar_grafico_anomalias_timeline,
-    criar_grafico_scores_risco,
-    criar_grafico_comparativo_spread,
-    criar_grafico_indicadores_saude,
+from veredas.analysis.risk_score import (
+    RiskLevel,
+    RiskScore,
+    ScoreBreakdown,
+    calcular_score_batch,
+    calcular_score_risco,
 )
 
 __all__ = [

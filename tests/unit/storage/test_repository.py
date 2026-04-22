@@ -3,17 +3,11 @@
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-import pytest
-
-from tests.conftest import make_taxa
 from veredas.storage.models import (
-    Anomalia,
+    Indexador,
     InstituicaoFinanceira,
     Severidade,
-    TaxaCDB,
-    TaxaReferencia,
     TipoAnomalia,
-    Indexador,
 )
 from veredas.storage.repository import (
     AnomaliaRepository,
@@ -21,7 +15,6 @@ from veredas.storage.repository import (
     TaxaCDBRepository,
     TaxaReferenciaRepository,
 )
-
 
 # ---------------------------------------------------------------------------
 # InstituicaoRepository
@@ -192,9 +185,9 @@ class TestTaxaCDBRepository:
         if_ = self._seed_if(db_session)
         repo = TaxaCDBRepository(db_session)
         taxas_data = [
-            dict(if_id=if_.id, data_coleta=datetime.now() - timedelta(days=i),
-                 indexador=Indexador.CDI, percentual=Decimal(f"{100 + i}.0"),
-                 prazo_dias=365, fonte="test")
+            {"if_id": if_.id, "data_coleta": datetime.now() - timedelta(days=i),
+                 "indexador": Indexador.CDI, "percentual": Decimal(f"{100 + i}.0"),
+                 "prazo_dias": 365, "fonte": "test"}
             for i in range(10)
         ]
         criadas = repo.bulk_create(taxas_data)

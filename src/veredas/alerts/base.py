@@ -8,15 +8,14 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 from veredas.storage.models import Anomalia
 
 logger = logging.getLogger(__name__)
 
 
-class AlertChannel(str, Enum):
+class AlertChannel(StrEnum):
     """Canais de alerta disponiveis."""
 
     EMAIL = "email"
@@ -25,7 +24,7 @@ class AlertChannel(str, Enum):
     CONSOLE = "console"
 
 
-class AlertPriority(str, Enum):
+class AlertPriority(StrEnum):
     """Prioridade do alerta."""
 
     LOW = "low"
@@ -52,10 +51,10 @@ class AlertMessage:
     titulo: str
     corpo: str
     prioridade: AlertPriority
-    anomalia_id: Optional[int] = None
-    if_nome: Optional[str] = None
-    tipo_anomalia: Optional[str] = None
-    valor_detectado: Optional[str] = None
+    anomalia_id: int | None = None
+    if_nome: str | None = None
+    tipo_anomalia: str | None = None
+    valor_detectado: str | None = None
     timestamp: datetime = None
 
     def __post_init__(self):
@@ -112,8 +111,8 @@ class AlertResult:
 
     success: bool
     channel: AlertChannel
-    message_id: Optional[str] = None
-    error: Optional[str] = None
+    message_id: str | None = None
+    error: str | None = None
     timestamp: datetime = None
 
     def __post_init__(self):

@@ -14,7 +14,6 @@ Comandos principais:
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich import print as rprint
@@ -63,7 +62,7 @@ def main(
 
 @app.command()
 def init(
-    db_path: Optional[Path] = typer.Option(
+    db_path: Path | None = typer.Option(
         None,
         "--db",
         "-d",
@@ -95,7 +94,7 @@ def init(
 
     except Exception as e:
         rprint(f"[red]✗[/] Erro ao inicializar banco: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -104,7 +103,7 @@ def collect(
         "bcb",
         help="Fonte de dados (bcb, ifdata, all)",
     ),
-    db_path: Optional[Path] = typer.Option(
+    db_path: Path | None = typer.Option(
         None,
         "--db",
         "-d",
@@ -132,10 +131,10 @@ def collect(
 
     except Exception as e:
         rprint(f"[red]✗[/] Erro na coleta: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
-def _collect_bcb(db_path: Optional[Path]):
+def _collect_bcb(db_path: Path | None):
     """Coleta dados do Banco Central."""
     with console.status("[bold blue]Coletando dados do BCB..."):
         collector = BCBCollector()
@@ -163,7 +162,7 @@ def _collect_bcb(db_path: Optional[Path]):
     console.print(table)
 
     # Salvar no banco
-    if db_path or True:  # Sempre salva no banco padrão
+    if True:  # Sempre salva no banco padrão
         db = DatabaseManager(db_path)
         db.init_db()
 
@@ -182,7 +181,7 @@ def _collect_bcb(db_path: Optional[Path]):
         rprint("[dim]Dados salvos no banco[/]")
 
 
-def _collect_ifdata(db_path: Optional[Path]):
+def _collect_ifdata(db_path: Path | None):
     """Coleta dados de saúde financeira do IFData e persiste no banco."""
     from veredas.collectors.ifdata import IFDataCollector
     from veredas.storage.repository import HealthDataRepository, InstituicaoRepository
@@ -249,7 +248,7 @@ def _collect_ifdata(db_path: Optional[Path]):
 
 @app.command()
 def analyze(
-    if_id: Optional[int] = typer.Option(
+    if_id: int | None = typer.Option(
         None,
         "--if-id",
         "-i",
@@ -272,7 +271,7 @@ def analyze(
         "-s",
         help="Severidade mínima (low, medium, high, critical)",
     ),
-    db_path: Optional[Path] = typer.Option(
+    db_path: Path | None = typer.Option(
         None,
         "--db",
         "-d",
@@ -320,8 +319,8 @@ def analyze(
 
     # Mostrar detectores disponíveis
     rprint("[bold]Detectores habilitados:[/]")
-    rprint(f"  • Regras: [green]✓[/]")
-    rprint(f"  • Estatísticos: [green]✓[/]")
+    rprint("  • Regras: [green]✓[/]")
+    rprint("  • Estatísticos: [green]✓[/]")
     rprint(f"  • Machine Learning: {'[green]✓[/]' if enable_ml else '[dim]✗[/]'}")
     rprint()
 
@@ -365,7 +364,7 @@ app.add_typer(alerts_app)
 @alerts_app.command("status")
 def alerts_status():
     """Mostra canais de alerta configurados e seu estado."""
-    from veredas.alerts import AlertManager, AlertChannel
+    from veredas.alerts import AlertChannel, AlertManager
 
     manager = AlertManager()
     channels = manager.channels_configured
@@ -393,7 +392,7 @@ def alerts_status():
 
 @alerts_app.command("test")
 def alerts_test(
-    channel: Optional[str] = typer.Option(
+    channel: str | None = typer.Option(
         None,
         "--channel",
         "-c",
@@ -401,7 +400,7 @@ def alerts_test(
     ),
 ):
     """Envia alerta de teste para canal(is) configurado(s)."""
-    from veredas.alerts import AlertManager, AlertChannel
+    from veredas.alerts import AlertChannel, AlertManager
 
     manager = AlertManager()
 
@@ -409,13 +408,13 @@ def alerts_test(
         rprint("[red]✗[/] Nenhum canal configurado. Use [bold]veredas alerts status[/] para detalhes.")
         raise typer.Exit(1)
 
-    target: Optional[AlertChannel] = None
+    target: AlertChannel | None = None
     if channel:
         try:
             target = AlertChannel(channel.lower())
         except ValueError:
             rprint(f"[red]✗[/] Canal inválido: {channel}. Use: telegram, email")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     rprint("[bold]Enviando alerta de teste...[/]")
     results = asyncio.run(manager.send_test_alert(target))
@@ -435,13 +434,13 @@ def export(
         "-f",
         help="Formato de exportação (csv, json)",
     ),
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None,
         "--output",
         "-o",
         help="Arquivo de saída",
     ),
-    db_path: Optional[Path] = typer.Option(
+    db_path: Path | None = typer.Option(
         None,
         "--db",
         "-d",
@@ -543,7 +542,7 @@ def web(
     Executa a interface web do veredas de papel.
     Acesse http://localhost:8000 após iniciar.
     """
-    rprint(f"[bold]Iniciando servidor web...[/]")
+    rprint("[bold]Iniciando servidor web...[/]")
     rprint(f"  Host: [cyan]{host}[/]")
     rprint(f"  Porta: [cyan]{port}[/]")
     rprint(f"  Reload: [cyan]{reload}[/]")
@@ -555,15 +554,15 @@ def web(
     except ImportError as e:
         rprint(f"[red]✗[/] Dependencias web nao instaladas: {e}")
         rprint("  Instale com: [bold]pip install veredas-de-papel[web][/]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     except Exception as e:
         rprint(f"[red]✗[/] Erro ao iniciar servidor: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
 def status(
-    db_path: Optional[Path] = typer.Option(
+    db_path: Path | None = typer.Option(
         None,
         "--db",
         "-d",

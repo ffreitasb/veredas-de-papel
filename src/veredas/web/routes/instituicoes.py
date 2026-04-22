@@ -7,13 +7,10 @@ Exibe lista de IFs monitoradas:
 - Historico de taxas
 """
 
-from typing import Optional
 
-from fastapi import APIRouter, Request, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 
-from veredas.web.app import templates
-from veredas.web.dependencies import get_db
 from veredas.storage.repository import (
     AnomaliaRepository,
     HealthDataRepository,
@@ -21,6 +18,8 @@ from veredas.storage.repository import (
     TaxaCDBRepository,
 )
 from veredas.validators import parse_cnpj
+from veredas.web.app import templates
+from veredas.web.dependencies import get_db
 
 router = APIRouter()
 

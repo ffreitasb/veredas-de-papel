@@ -9,10 +9,10 @@ Para producao com multiplas instancias, considere usar Redis.
 
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Optional
 
-from fastapi import Request, HTTPException, status
+from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
@@ -119,7 +119,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         app,
         requests_per_minute: int = 60,
         window_seconds: int = 60,
-        exclude_paths: Optional[list[str]] = None,
+        exclude_paths: list[str] | None = None,
     ):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
@@ -181,7 +181,7 @@ class StrictRateLimitMiddleware(RateLimitMiddleware):
         app,
         requests_per_minute: int = 10,
         window_seconds: int = 60,
-        strict_paths: Optional[list[str]] = None,
+        strict_paths: list[str] | None = None,
     ):
         super().__init__(
             app,

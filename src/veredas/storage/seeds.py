@@ -7,7 +7,6 @@ que passaram por intervencoes do Banco Central.
 
 from datetime import date
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -17,7 +16,6 @@ from veredas.storage.models import (
     Segmento,
     TipoEvento,
 )
-
 
 # Eventos regulatorios historicos de IFs brasileiras
 EVENTOS_HISTORICOS: list[dict] = [

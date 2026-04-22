@@ -9,15 +9,14 @@ Exibe tabela filtravel de taxas coletadas:
 
 import csv
 import io
-from typing import Optional
 
-from fastapi import APIRouter, Request, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 
+from veredas.storage.models import Indexador
+from veredas.storage.repository import InstituicaoRepository, TaxaCDBRepository
 from veredas.web.app import templates
 from veredas.web.dependencies import get_db
-from veredas.storage.repository import TaxaCDBRepository, InstituicaoRepository
-from veredas.storage.models import Indexador
 
 router = APIRouter()
 
@@ -26,10 +25,10 @@ router = APIRouter()
 async def list_taxas(
     request: Request,
     session=Depends(get_db),
-    indexador: Optional[str] = Query(None, description="Filtrar por indexador"),
-    prazo_min: Optional[int] = Query(None, description="Prazo minimo em dias"),
-    prazo_max: Optional[int] = Query(None, description="Prazo maximo em dias"),
-    if_id: Optional[int] = Query(None, description="ID da instituicao"),
+    indexador: str | None = Query(None, description="Filtrar por indexador"),
+    prazo_min: int | None = Query(None, description="Prazo minimo em dias"),
+    prazo_max: int | None = Query(None, description="Prazo maximo em dias"),
+    if_id: int | None = Query(None, description="ID da instituicao"),
     ordem: str = Query("data_desc", description="Ordenacao"),
     pagina: int = Query(1, ge=1, description="Pagina"),
     por_pagina: int = Query(20, ge=10, le=100, description="Itens por pagina"),
@@ -94,10 +93,10 @@ async def list_taxas(
 @router.get("/export.csv")
 async def export_taxas_csv(
     session=Depends(get_db),
-    indexador: Optional[str] = Query(None),
-    prazo_min: Optional[int] = Query(None),
-    prazo_max: Optional[int] = Query(None),
-    if_id: Optional[int] = Query(None),
+    indexador: str | None = Query(None),
+    prazo_min: int | None = Query(None),
+    prazo_max: int | None = Query(None),
+    if_id: int | None = Query(None),
     ordem: str = Query("data_desc"),
 ):
     """Exporta taxas filtradas como CSV (UTF-8-BOM, compatível com Excel)."""

@@ -9,20 +9,19 @@ Exibe lista de anomalias:
 
 import csv
 import io
-from typing import Optional
 
-from fastapi import APIRouter, Request, Depends, Query, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 
+from veredas.storage.models import Severidade
+from veredas.storage.repository import AnomaliaRepository, InstituicaoFinanceiraRepository
 from veredas.web.app import templates
 from veredas.web.dependencies import get_db
-from veredas.storage.repository import AnomaliaRepository, InstituicaoFinanceiraRepository
-from veredas.storage.models import Severidade
 
 router = APIRouter()
 
 
-def _parse_severidade(value: Optional[str]) -> Optional[Severidade]:
+def _parse_severidade(value: str | None) -> Severidade | None:
     """
     Converte string para Severidade enum de forma segura.
 
@@ -45,16 +44,16 @@ def _parse_severidade(value: Optional[str]) -> Optional[Severidade]:
         raise HTTPException(
             status_code=400,
             detail=f"Severidade invalida: '{value}'. Valores aceitos: {valid_values}",
-        )
+        ) from None
 
 
 @router.get("/", response_class=HTMLResponse)
 async def anomalias_list(
     request: Request,
     session=Depends(get_db),
-    severidade: Optional[str] = Query(None, description="Filtro por severidade"),
-    tipo: Optional[str] = Query(None, description="Filtro por tipo de anomalia"),
-    instituicao: Optional[str] = Query(None, description="Filtro por CNPJ da IF"),
+    severidade: str | None = Query(None, description="Filtro por severidade"),
+    tipo: str | None = Query(None, description="Filtro por tipo de anomalia"),
+    instituicao: str | None = Query(None, description="Filtro por CNPJ da IF"),
     status: str = Query("ativas", description="ativas ou todas"),
     pagina: int = Query(1, ge=1),
     por_pagina: int = Query(20, ge=10, le=100),
@@ -117,9 +116,9 @@ async def anomalias_list(
 @router.get("/export.csv")
 async def export_anomalias_csv(
     session=Depends(get_db),
-    severidade: Optional[str] = Query(None),
-    tipo: Optional[str] = Query(None),
-    instituicao: Optional[str] = Query(None),
+    severidade: str | None = Query(None),
+    tipo: str | None = Query(None),
+    instituicao: str | None = Query(None),
     status: str = Query("ativas"),
 ):
     """Exporta anomalias filtradas como CSV (UTF-8-BOM, compatível com Excel)."""
@@ -208,9 +207,9 @@ async def resolver_anomalia(
 async def anomalias_list_partial(
     request: Request,
     session=Depends(get_db),
-    severidade: Optional[str] = Query(None),
-    tipo: Optional[str] = Query(None),
-    instituicao: Optional[str] = Query(None),
+    severidade: str | None = Query(None),
+    tipo: str | None = Query(None),
+    instituicao: str | None = Query(None),
     status: str = Query("ativas"),
     pagina: int = Query(1, ge=1),
     por_pagina: int = Query(20, ge=10, le=100),

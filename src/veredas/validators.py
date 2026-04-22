@@ -9,10 +9,8 @@ Implementa validacao de formatos brasileiros:
 
 import re
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Optional
 
 from fastapi import HTTPException
-
 
 # L5 FIX: Constantes para precisão decimal consistente
 DECIMAL_PLACES_RATE = 2  # Taxas (ex: 110.50%)
@@ -37,7 +35,7 @@ def round_decimal(value: Decimal, places: int = DECIMAL_PLACES_RATE) -> Decimal:
 
 def _calcular_digito_cnpj(cnpj_parcial: str, pesos: list[int]) -> int:
     """Calcula um digito verificador do CNPJ."""
-    soma = sum(int(d) * p for d, p in zip(cnpj_parcial, pesos))
+    soma = sum(int(d) * p for d, p in zip(cnpj_parcial, pesos, strict=False))
     resto = soma % 11
     return 0 if resto < 2 else 11 - resto
 
@@ -106,10 +104,10 @@ def formatar_cnpj(cnpj: str) -> str:
 
 
 def parse_cnpj(
-    cnpj: Optional[str],
+    cnpj: str | None,
     required: bool = False,
     validate: bool = True,
-) -> Optional[str]:
+) -> str | None:
     """
     Valida e normaliza CNPJ para uso em APIs.
 
@@ -145,7 +143,7 @@ def parse_cnpj(
     if validate and not validar_cnpj(cnpj_normalizado):
         raise HTTPException(
             status_code=400,
-            detail=f"CNPJ invalido: digitos verificadores incorretos.",
+            detail="CNPJ invalido: digitos verificadores incorretos.",
         )
 
     return cnpj_normalizado

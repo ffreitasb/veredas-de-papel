@@ -8,15 +8,14 @@ Exibe historico de eventos:
 """
 
 from datetime import date
-from typing import Optional
 
-from fastapi import APIRouter, Request, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 
+from veredas.storage.models import Severidade
+from veredas.storage.repository import AnomaliaRepository, EventoRegulatorioRepository
 from veredas.web.app import templates
 from veredas.web.dependencies import get_db
-from veredas.storage.repository import EventoRegulatorioRepository, AnomaliaRepository
-from veredas.storage.models import Severidade
 
 router = APIRouter()
 
@@ -25,8 +24,8 @@ router = APIRouter()
 async def timeline_view(
     request: Request,
     session=Depends(get_db),
-    ano: Optional[int] = Query(None, description="Filtrar por ano"),
-    tipo: Optional[str] = Query(None, description="Filtrar por tipo de evento"),
+    ano: int | None = Query(None, description="Filtrar por ano"),
+    tipo: str | None = Query(None, description="Filtrar por tipo de evento"),
     pagina: int = Query(1, ge=1, description="Pagina atual"),
     por_pagina: int = Query(20, ge=10, le=100, description="Itens por pagina"),
 ):

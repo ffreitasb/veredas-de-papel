@@ -7,7 +7,6 @@ gerencia cooldowns e filtra por severidade.
 
 import asyncio
 from datetime import datetime, timedelta
-from typing import Optional
 
 from veredas.alerts.base import (
     AlertChannel,
@@ -15,7 +14,6 @@ from veredas.alerts.base import (
     AlertPriority,
     AlertResult,
     AlertSender,
-    ConsoleSender,
 )
 from veredas.alerts.email import EmailAlertSender
 from veredas.alerts.telegram import TelegramAlertSender
@@ -36,9 +34,9 @@ class AlertManager:
 
     def __init__(
         self,
-        senders: Optional[list[AlertSender]] = None,
-        min_severity: Optional[str] = None,
-        cooldown_minutes: Optional[int] = None,
+        senders: list[AlertSender] | None = None,
+        min_severity: str | None = None,
+        cooldown_minutes: int | None = None,
     ):
         """
         Inicializa o gerenciador de alertas.
@@ -86,7 +84,7 @@ class AlertManager:
         """Retorna lista de canais configurados."""
         return [s.channel for s in self.senders if s.is_configured]
 
-    def _should_alert(self, anomalia: Anomalia) -> tuple[bool, Optional[str]]:
+    def _should_alert(self, anomalia: Anomalia) -> tuple[bool, str | None]:
         """
         Verifica se deve enviar alerta para a anomalia.
 
@@ -215,7 +213,7 @@ class AlertManager:
 
     async def send_test_alert(
         self,
-        channel: Optional[AlertChannel] = None,
+        channel: AlertChannel | None = None,
     ) -> list[AlertResult]:
         """
         Envia alerta de teste.

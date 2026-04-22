@@ -4,8 +4,8 @@ Configuração do banco de dados.
 Gerencia a conexão com o banco SQLite e sessões.
 """
 
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker

@@ -8,9 +8,8 @@ Usa pydantic-settings para gerenciar configuracoes via:
 """
 
 from decimal import Decimal
-from pathlib import Path
 from functools import lru_cache
-from typing import Optional
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -188,7 +187,7 @@ class AlertSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="VEREDAS_")
 
     # Email (SMTP)
-    smtp_host: Optional[str] = Field(
+    smtp_host: str | None = Field(
         default=None,
         description="Servidor SMTP",
     )
@@ -196,25 +195,25 @@ class AlertSettings(BaseSettings):
         default=587,
         description="Porta SMTP",
     )
-    smtp_user: Optional[str] = Field(
+    smtp_user: str | None = Field(
         default=None,
         description="Usuario SMTP",
     )
-    smtp_password: Optional[str] = Field(
+    smtp_password: str | None = Field(
         default=None,
         description="Senha SMTP",
     )
-    alert_email_to: Optional[str] = Field(
+    alert_email_to: str | None = Field(
         default=None,
         description="Email destino para alertas",
     )
 
     # Telegram
-    telegram_bot_token: Optional[str] = Field(
+    telegram_bot_token: str | None = Field(
         default=None,
         description="Token do bot Telegram",
     )
-    telegram_chat_id: Optional[str] = Field(
+    telegram_chat_id: str | None = Field(
         default=None,
         description="Chat ID do Telegram",
     )
@@ -293,13 +292,13 @@ class Settings(BaseSettings):
     web: WebSettings = Field(default_factory=WebSettings)
 
     # Alertas (campos diretos para facilitar acesso)
-    smtp_host: Optional[str] = Field(default=None)
+    smtp_host: str | None = Field(default=None)
     smtp_port: int = Field(default=587)
-    smtp_user: Optional[str] = Field(default=None)
-    smtp_password: Optional[str] = Field(default=None)
-    alert_email_to: Optional[str] = Field(default=None)
-    telegram_bot_token: Optional[str] = Field(default=None)
-    telegram_chat_id: Optional[str] = Field(default=None)
+    smtp_user: str | None = Field(default=None)
+    smtp_password: str | None = Field(default=None)
+    alert_email_to: str | None = Field(default=None)
+    telegram_bot_token: str | None = Field(default=None)
+    telegram_chat_id: str | None = Field(default=None)
     alert_min_severity: str = Field(default="HIGH")
     alert_cooldown_minutes: int = Field(default=60)
 

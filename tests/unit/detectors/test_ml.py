@@ -2,9 +2,8 @@
 
 import pytest
 
-from tests.conftest import make_taxa, make_taxa_serie
-from veredas.detectors.ml import IsolationForestDetector, DBSCANOutlierDetector, HAS_SKLEARN
-
+from tests.conftest import make_taxa_serie
+from veredas.detectors.ml import HAS_SKLEARN, DBSCANOutlierDetector, IsolationForestDetector
 
 pytestmark = pytest.mark.skipif(not HAS_SKLEARN, reason="scikit-learn não instalado")
 

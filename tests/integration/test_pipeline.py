@@ -1,13 +1,10 @@
 """Testes de integração para o pipeline de detecção end-to-end."""
 
-from datetime import datetime, timedelta
-from decimal import Decimal
-
-import pytest
+from datetime import datetime
 
 from tests.conftest import make_taxa, make_taxa_serie
 from veredas.detectors.engine import DetectionEngine, EngineConfig, EngineResult
-from veredas.storage.models import Indexador, Severidade
+from veredas.storage.models import Severidade
 
 
 class TestDetectionEnginePipeline:

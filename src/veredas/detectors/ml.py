@@ -7,10 +7,11 @@ Implementa algoritmos de ML para detecção de anomalias:
 """
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -22,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 # BUG-008: TYPE_CHECKING guard para type hints do sklearn
 if TYPE_CHECKING:
-    from sklearn.cluster import DBSCAN as DBSCANType
     from sklearn.ensemble import IsolationForest as IsolationForestType
     from sklearn.preprocessing import StandardScaler as StandardScalerType
 
@@ -73,8 +73,8 @@ class IsolationForestDetector(BaseDetector):
 
     def __init__(
         self,
-        thresholds: Optional[MLThresholds] = None,
-        feature_extractor: Optional[FeatureExtractor] = None,
+        thresholds: MLThresholds | None = None,
+        feature_extractor: FeatureExtractor | None = None,
         min_samples: int = 30,
     ):
         """
@@ -88,8 +88,8 @@ class IsolationForestDetector(BaseDetector):
         self.thresholds = thresholds or DEFAULT_ML_THRESHOLDS
         self.feature_extractor = feature_extractor or FeatureExtractor()
         self.min_samples = min_samples
-        self._model: Optional["IsolationForestType"] = None
-        self._scaler: Optional["StandardScalerType"] = None
+        self._model: IsolationForestType | None = None
+        self._scaler: StandardScalerType | None = None
 
     @property
     def name(self) -> str:
@@ -137,7 +137,7 @@ class IsolationForestDetector(BaseDetector):
     def detect_with_features(
         self,
         features_list: list[TaxaFeatures],
-        start_time: Optional[datetime] = None,
+        start_time: datetime | None = None,
     ) -> DetectionResult:
         """
         Detecta anomalias usando features pré-computadas.
@@ -193,8 +193,8 @@ class IsolationForestDetector(BaseDetector):
             predictions = self._model.predict(X_scaled)
 
             # Criar anomalias para outliers
-            for i, (pred, score, features) in enumerate(
-                zip(predictions, scores, features_list)
+            for _i, (pred, score, features) in enumerate(
+                zip(predictions, scores, features_list, strict=False)
             ):
                 if pred == -1:  # Outlier
                     anomalia = self._create_anomalia(features, score)
@@ -221,7 +221,7 @@ class IsolationForestDetector(BaseDetector):
 
     def _create_anomalia(
         self, features: TaxaFeatures, score: float
-    ) -> Optional[AnomaliaDetectada]:
+    ) -> AnomaliaDetectada | None:
         """Cria anomalia baseada no score de isolamento."""
         # Determinar severidade baseado no score
         if score < self.thresholds.if_score_threshold_high:
@@ -267,8 +267,8 @@ class DBSCANOutlierDetector(BaseDetector):
 
     def __init__(
         self,
-        thresholds: Optional[MLThresholds] = None,
-        feature_extractor: Optional[FeatureExtractor] = None,
+        thresholds: MLThresholds | None = None,
+        feature_extractor: FeatureExtractor | None = None,
         min_samples: int = 20,
     ):
         """
@@ -329,7 +329,7 @@ class DBSCANOutlierDetector(BaseDetector):
     def detect_with_features(
         self,
         features_list: list[TaxaFeatures],
-        start_time: Optional[datetime] = None,
+        start_time: datetime | None = None,
     ) -> DetectionResult:
         """
         Detecta anomalias usando features pré-computadas.
@@ -381,7 +381,7 @@ class DBSCANOutlierDetector(BaseDetector):
             labels = dbscan.fit_predict(X_scaled)
 
             # Encontrar outliers (label = -1)
-            for i, (label, features) in enumerate(zip(labels, features_list)):
+            for i, (label, features) in enumerate(zip(labels, features_list, strict=False)):
                 if label == -1:  # Outlier
                     # Calcular distância ao cluster mais próximo
                     distance = self._calculate_min_cluster_distance(
@@ -437,10 +437,7 @@ class DBSCANOutlierDetector(BaseDetector):
         """Cria anomalia baseada na distância do cluster."""
         # Determinar severidade baseado na distância
         # Distância > 2.0 após normalização indica outlier mais extremo
-        if distance > 2.0:
-            severidade = Severidade.HIGH
-        else:
-            severidade = Severidade.MEDIUM
+        severidade = Severidade.HIGH if distance > 2.0 else Severidade.MEDIUM
 
         return AnomaliaDetectada(
             tipo=TipoAnomalia.CLUSTER_OUTLIER,
@@ -474,8 +471,8 @@ class MLEngine:
 
     def __init__(
         self,
-        thresholds: Optional[MLThresholds] = None,
-        feature_extractor: Optional[FeatureExtractor] = None,
+        thresholds: MLThresholds | None = None,
+        feature_extractor: FeatureExtractor | None = None,
     ):
         """
         Inicializa o motor de ML.

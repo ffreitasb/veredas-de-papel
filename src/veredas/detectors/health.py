@@ -5,9 +5,9 @@ Detecta anomalias cruzando taxas de CDB com indicadores de capitalização
 e liquidez das instituições financeiras (Índice de Basileia, Liquidez).
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional, Sequence
 
 from veredas.detectors.base import AnomaliaDetectada, DetectionResult
 from veredas.storage.models import HealthDataIF, Severidade, TaxaCDB, TipoAnomalia
@@ -40,7 +40,7 @@ class BasileiaBaixoDetector:
     da média (taxa alta) enquanto seu capital regulatório está próximo do mínimo.
     """
 
-    def __init__(self, thresholds: Optional[HealthThresholds] = None):
+    def __init__(self, thresholds: HealthThresholds | None = None):
         self.thresholds = thresholds or HealthThresholds()
 
     @property
@@ -131,7 +131,7 @@ class LiquidezCriticaDetector:
     de liquidez está abaixo do LCR mínimo regulatório.
     """
 
-    def __init__(self, thresholds: Optional[HealthThresholds] = None):
+    def __init__(self, thresholds: HealthThresholds | None = None):
         self.thresholds = thresholds or HealthThresholds()
 
     @property

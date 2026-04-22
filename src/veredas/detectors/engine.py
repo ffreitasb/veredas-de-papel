@@ -6,26 +6,22 @@ em uma interface única e consistente.
 """
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Optional, Sequence
 
 from veredas.detectors.base import AnomaliaDetectada, DetectionResult
 from veredas.detectors.features import FeatureExtractor, calculate_market_stats
 from veredas.detectors.ml import DBSCANOutlierDetector, IsolationForestDetector, MLThresholds
 from veredas.detectors.rules import (
-    DivergenciaDetector,
     RuleBasedEngine,
     RuleThresholds,
-    SpreadDetector,
-    VariacaoDetector,
 )
 from veredas.detectors.statistical import (
     ChangePointDetector,
     RollingZScoreDetector,
-    StatisticalEngine,
     StatisticalThresholds,
     STLDecompositionDetector,
 )
@@ -58,9 +54,9 @@ class EngineConfig:
     detectors: dict[DetectorCategory, list[str]] = field(default_factory=dict)
 
     # Thresholds
-    rule_thresholds: Optional[RuleThresholds] = None
-    statistical_thresholds: Optional[StatisticalThresholds] = None
-    ml_thresholds: Optional[MLThresholds] = None
+    rule_thresholds: RuleThresholds | None = None
+    statistical_thresholds: StatisticalThresholds | None = None
+    ml_thresholds: MLThresholds | None = None
 
     # Filtros de saída
     min_severity: Severidade = Severidade.LOW
@@ -145,7 +141,7 @@ class DetectionEngine:
         ```
     """
 
-    def __init__(self, config: Optional[EngineConfig] = None):
+    def __init__(self, config: EngineConfig | None = None):
         """
         Inicializa o motor de detecção.
 
@@ -192,9 +188,9 @@ class DetectionEngine:
     def analyze(
         self,
         taxas_atuais: Sequence[TaxaCDB],
-        taxas_anteriores: Optional[Sequence[TaxaCDB]] = None,
-        media_mercado: Optional[Decimal] = None,
-        desvio_padrao_mercado: Optional[Decimal] = None,
+        taxas_anteriores: Sequence[TaxaCDB] | None = None,
+        media_mercado: Decimal | None = None,
+        desvio_padrao_mercado: Decimal | None = None,
     ) -> EngineResult:
         """
         Executa análise completa de detecção de anomalias.

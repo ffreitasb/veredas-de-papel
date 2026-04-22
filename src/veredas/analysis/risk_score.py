@@ -10,13 +10,12 @@ Calcula um score de 0-100 baseado em multiplos fatores:
 
 from dataclasses import dataclass, field
 from decimal import Decimal
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 from veredas.storage.models import InstituicaoFinanceira, TaxaCDB
 
 
-class RiskLevel(str, Enum):
+class RiskLevel(StrEnum):
     """Niveis de risco."""
 
     BAIXO = "BAIXO"  # 0-25
@@ -52,8 +51,8 @@ class RiskScore:
     score: float  # 0-100
     level: RiskLevel
     breakdown: ScoreBreakdown
-    if_id: Optional[int] = None
-    if_nome: Optional[str] = None
+    if_id: int | None = None
+    if_nome: str | None = None
     detalhes: dict = field(default_factory=dict)
 
     @property
@@ -92,8 +91,8 @@ def _score_to_level(score: float) -> RiskLevel:
 
 
 def _calcular_spread_score(
-    percentual_cdi: Optional[Decimal],
-    cdi_atual: Optional[Decimal] = None,
+    percentual_cdi: Decimal | None,
+    cdi_atual: Decimal | None = None,
 ) -> float:
     """
     Calcula score baseado no spread vs CDI.
@@ -128,7 +127,7 @@ def _calcular_spread_score(
 
 
 def _calcular_basileia_score(
-    indice_basileia: Optional[Decimal],
+    indice_basileia: Decimal | None,
 ) -> float:
     """
     Calcula score baseado no indice de Basileia.
@@ -160,8 +159,8 @@ def _calcular_basileia_score(
 
 
 def _calcular_volatilidade_score(
-    variacao_7d: Optional[float] = None,
-    variacao_30d: Optional[float] = None,
+    variacao_7d: float | None = None,
+    variacao_30d: float | None = None,
 ) -> float:
     """
     Calcula score baseado na volatilidade das taxas.
@@ -194,7 +193,7 @@ def _calcular_volatilidade_score(
 
 
 def _calcular_tendencia_score(
-    tendencia: Optional[str] = None,
+    tendencia: str | None = None,
 ) -> float:
     """
     Calcula score baseado na tendencia das taxas.
@@ -225,13 +224,13 @@ def _calcular_tendencia_score(
 
 
 def calcular_score_risco(
-    if_data: Optional[InstituicaoFinanceira] = None,
-    taxa_atual: Optional[TaxaCDB] = None,
-    percentual_cdi: Optional[Decimal] = None,
-    indice_basileia: Optional[Decimal] = None,
-    variacao_7d: Optional[float] = None,
-    variacao_30d: Optional[float] = None,
-    tendencia: Optional[str] = None,
+    if_data: InstituicaoFinanceira | None = None,
+    taxa_atual: TaxaCDB | None = None,
+    percentual_cdi: Decimal | None = None,
+    indice_basileia: Decimal | None = None,
+    variacao_7d: float | None = None,
+    variacao_30d: float | None = None,
+    tendencia: str | None = None,
 ) -> RiskScore:
     """
     Calcula o score de risco de uma instituicao financeira.
@@ -249,14 +248,12 @@ def calcular_score_risco(
         RiskScore com score, nivel e breakdown.
     """
     # Extrair dados da IF se fornecida
-    if if_data:
-        if indice_basileia is None:
-            indice_basileia = if_data.indice_basileia
+    if if_data and indice_basileia is None:
+        indice_basileia = if_data.indice_basileia
 
     # Extrair dados da taxa se fornecida
-    if taxa_atual:
-        if percentual_cdi is None:
-            percentual_cdi = taxa_atual.percentual
+    if taxa_atual and percentual_cdi is None:
+        percentual_cdi = taxa_atual.percentual
 
     # Calcular cada componente
     spread_score = _calcular_spread_score(percentual_cdi)

@@ -7,10 +7,9 @@ modelos de detecção de anomalias baseados em Machine Learning.
 
 import logging
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Optional, Sequence
 
 import numpy as np
 import pandas as pd
@@ -20,7 +19,7 @@ from veredas.storage.models import TaxaCDB
 logger = logging.getLogger(__name__)
 
 
-def _safe_get(s: pd.Series, idx: datetime) -> Optional[float]:
+def _safe_get(s: pd.Series, idx: datetime) -> float | None:
     """Lê valor de uma Series por índice sem lançar exceção."""
     try:
         val = s.get(idx)
@@ -34,7 +33,7 @@ class TaxaFeatures:
     """Features extraídas de uma taxa para ML."""
 
     # Identificação
-    taxa_id: Optional[int]
+    taxa_id: int | None
     if_id: int
     data: datetime
 
@@ -49,27 +48,27 @@ class TaxaFeatures:
     fim_de_mes: bool  # últimos 3 dias
 
     # Features estatísticas (rolling)
-    rolling_mean_7d: Optional[float]
-    rolling_std_7d: Optional[float]
-    rolling_mean_14d: Optional[float]
-    rolling_std_14d: Optional[float]
-    rolling_mean_30d: Optional[float]
-    rolling_std_30d: Optional[float]
+    rolling_mean_7d: float | None
+    rolling_std_7d: float | None
+    rolling_mean_14d: float | None
+    rolling_std_14d: float | None
+    rolling_mean_30d: float | None
+    rolling_std_30d: float | None
 
     # Features de variação
-    diff_1d: Optional[float]  # Variação do dia anterior
-    diff_7d: Optional[float]  # Variação de 7 dias
-    diff_30d: Optional[float]  # Variação de 30 dias
-    pct_change_7d: Optional[float]  # Variação percentual 7d
+    diff_1d: float | None  # Variação do dia anterior
+    diff_7d: float | None  # Variação de 7 dias
+    diff_30d: float | None  # Variação de 30 dias
+    pct_change_7d: float | None  # Variação percentual 7d
 
     # Features de posição relativa
-    z_score_7d: Optional[float]  # Z-score local (7d)
-    z_score_30d: Optional[float]  # Z-score local (30d)
-    percentile_30d: Optional[float]  # Percentil no período
+    z_score_7d: float | None  # Z-score local (7d)
+    z_score_30d: float | None  # Z-score local (30d)
+    percentile_30d: float | None  # Percentil no período
 
     # Features de contexto de mercado
-    diff_from_market_mean: Optional[float]  # Diferença da média do mercado
-    market_z_score: Optional[float]  # Z-score em relação ao mercado
+    diff_from_market_mean: float | None  # Diferença da média do mercado
+    market_z_score: float | None  # Z-score em relação ao mercado
 
     def to_array(self) -> np.ndarray:
         """Converte features para array numpy para ML."""
@@ -150,8 +149,8 @@ class FeatureExtractor:
     def extract(
         self,
         taxas: Sequence[TaxaCDB],
-        market_mean: Optional[float] = None,
-        market_std: Optional[float] = None,
+        market_mean: float | None = None,
+        market_std: float | None = None,
     ) -> list[TaxaFeatures]:
         """
         Extrai features de uma sequência de taxas.
@@ -183,8 +182,8 @@ class FeatureExtractor:
     def extract_to_dataframe(
         self,
         taxas: Sequence[TaxaCDB],
-        market_mean: Optional[float] = None,
-        market_std: Optional[float] = None,
+        market_mean: float | None = None,
+        market_std: float | None = None,
     ) -> pd.DataFrame:
         """
         Extrai features e retorna como DataFrame.
@@ -209,7 +208,7 @@ class FeatureExtractor:
                 "if_id": f.if_id,
                 "data": f.data,
             }
-            record.update(dict(zip(TaxaFeatures.feature_names(), f.to_array())))
+            record.update(dict(zip(TaxaFeatures.feature_names(), f.to_array(), strict=False)))
             records.append(record)
 
         return pd.DataFrame(records)
@@ -217,9 +216,9 @@ class FeatureExtractor:
     def extract_to_matrix(
         self,
         taxas: Sequence[TaxaCDB],
-        market_mean: Optional[float] = None,
-        market_std: Optional[float] = None,
-    ) -> tuple[np.ndarray, list[tuple[Optional[int], int, datetime]]]:
+        market_mean: float | None = None,
+        market_std: float | None = None,
+    ) -> tuple[np.ndarray, list[tuple[int | None, int, datetime]]]:
         """
         Extrai features como matriz numpy para ML.
 
@@ -253,8 +252,8 @@ class FeatureExtractor:
         self,
         if_id: int,
         taxas: list[TaxaCDB],
-        market_mean: Optional[float],
-        market_std: Optional[float],
+        market_mean: float | None,
+        market_std: float | None,
     ) -> list[TaxaFeatures]:
         """Extrai features para taxas de uma IF específica."""
         if not taxas:

@@ -9,19 +9,19 @@ Implementa algoritmos estatísticos para detecção de anomalias:
 
 import logging
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Sequence
 
 import numpy as np
 import pandas as pd
 from statsmodels.tsa.seasonal import STL
 
-logger = logging.getLogger(__name__)
-
 from veredas.detectors.base import AnomaliaDetectada, BaseDetector, DetectionResult
 from veredas.storage.models import Severidade, TaxaCDB, TipoAnomalia
+
+logger = logging.getLogger(__name__)
 
 # Importação condicional do ruptures (opcional dependency)
 try:
@@ -112,7 +112,7 @@ class STLDecompositionDetector(BaseDetector):
 
     def __init__(
         self,
-        thresholds: Optional[StatisticalThresholds] = None,
+        thresholds: StatisticalThresholds | None = None,
         min_observations: int = 14,
     ):
         """
@@ -234,7 +234,7 @@ class STLDecompositionDetector(BaseDetector):
         taxa_map: dict[datetime, TaxaCDB],
         if_id: int,
         residual_std: float,
-    ) -> Optional[AnomaliaDetectada]:
+    ) -> AnomaliaDetectada | None:
         """Verifica se um resíduo é anômalo."""
         abs_z = abs(z_score)
         taxa = taxa_map.get(date)
@@ -301,7 +301,7 @@ class ChangePointDetector(BaseDetector):
 
     def __init__(
         self,
-        thresholds: Optional[StatisticalThresholds] = None,
+        thresholds: StatisticalThresholds | None = None,
         model: str = "rbf",
         min_observations: int = 20,
     ):
@@ -463,7 +463,7 @@ class RollingZScoreDetector(BaseDetector):
 
     def __init__(
         self,
-        thresholds: Optional[StatisticalThresholds] = None,
+        thresholds: StatisticalThresholds | None = None,
         min_observations: int = 7,
     ):
         """
@@ -571,11 +571,11 @@ class RollingZScoreDetector(BaseDetector):
         self,
         z_score: float,
         date: datetime,
-        taxa: Optional[TaxaCDB],
+        taxa: TaxaCDB | None,
         if_id: int,
-        rolling_mean: Optional[float],
-        rolling_std: Optional[float],
-    ) -> Optional[AnomaliaDetectada]:
+        rolling_mean: float | None,
+        rolling_std: float | None,
+    ) -> AnomaliaDetectada | None:
         """Verifica se um z-score indica anomalia."""
         abs_z = abs(z_score)
 
@@ -639,7 +639,7 @@ class StatisticalEngine:
     Executa todos os detectores estatísticos e agrega os resultados.
     """
 
-    def __init__(self, thresholds: Optional[StatisticalThresholds] = None):
+    def __init__(self, thresholds: StatisticalThresholds | None = None):
         """
         Inicializa o motor estatístico.
 

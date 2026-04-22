@@ -5,7 +5,7 @@ Implementa cache TTL simples para reduzir queries ao banco.
 """
 
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -20,7 +20,7 @@ class TTLCache:
         self._timestamps: dict[str, datetime] = {}
         self._default_ttl = default_ttl
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Busca valor do cache se ainda valido."""
         if key not in self._cache:
             return None

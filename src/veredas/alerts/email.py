@@ -14,9 +14,6 @@ import asyncio
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Optional
-
-logger = logging.getLogger(__name__)
 
 from veredas.alerts.base import (
     AlertChannel,
@@ -25,6 +22,8 @@ from veredas.alerts.base import (
     AlertSender,
 )
 from veredas.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class EmailAlertSender(AlertSender):
@@ -36,12 +35,12 @@ class EmailAlertSender(AlertSender):
 
     def __init__(
         self,
-        smtp_host: Optional[str] = None,
-        smtp_port: Optional[int] = None,
-        smtp_user: Optional[str] = None,
-        smtp_password: Optional[str] = None,
-        email_to: Optional[str] = None,
-        email_from: Optional[str] = None,
+        smtp_host: str | None = None,
+        smtp_port: int | None = None,
+        smtp_user: str | None = None,
+        smtp_password: str | None = None,
+        email_to: str | None = None,
+        email_from: str | None = None,
     ):
         """
         Inicializa o sender de email.
@@ -181,7 +180,7 @@ Timestamp: {alert.timestamp}
                 error="aiosmtplib nao instalado. Instale com: pip install aiosmtplib",
             )
 
-        except Exception as e:
+        except Exception:
             # Log detalhado interno, mensagem generica para usuario
             logger.exception("Falha ao enviar email de alerta")
             return AlertResult(

@@ -9,13 +9,12 @@ Fornece funcionalidades para:
 
 from dataclasses import dataclass, field
 from decimal import Decimal
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 from veredas.storage.models import InstituicaoFinanceira
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Status de saude da instituicao."""
 
     SAUDAVEL = "SAUDAVEL"
@@ -29,9 +28,9 @@ class IndicadorAnalise:
     """Analise de um indicador especifico."""
 
     nome: str
-    valor: Optional[Decimal]
+    valor: Decimal | None
     benchmark: Decimal
-    minimo_regulatorio: Optional[Decimal]
+    minimo_regulatorio: Decimal | None
     status: HealthStatus
     descricao: str
 
@@ -66,7 +65,7 @@ MINIMO_BASILEIA = Decimal("10.5")  # Regulatorio
 
 
 def _analisar_basileia(
-    valor: Optional[Decimal],
+    valor: Decimal | None,
 ) -> IndicadorAnalise:
     """Analisa indice de Basileia."""
     if valor is None:
@@ -103,7 +102,7 @@ def _analisar_basileia(
 
 
 def _analisar_liquidez(
-    valor: Optional[Decimal],
+    valor: Decimal | None,
 ) -> IndicadorAnalise:
     """Analisa indice de liquidez."""
     if valor is None:
@@ -211,20 +210,20 @@ class BenchmarkComparison:
     if_id: int
     if_nome: str
     segmento: str
-    basileia_if: Optional[Decimal]
+    basileia_if: Decimal | None
     basileia_benchmark: Decimal
-    basileia_diff: Optional[Decimal]
-    liquidez_if: Optional[Decimal]
+    basileia_diff: Decimal | None
+    liquidez_if: Decimal | None
     liquidez_benchmark: Decimal
-    liquidez_diff: Optional[Decimal]
-    posicao_ranking: Optional[int] = None
-    total_segmento: Optional[int] = None
+    liquidez_diff: Decimal | None
+    posicao_ranking: int | None = None
+    total_segmento: int | None = None
 
 
 def comparar_com_benchmark(
     if_data: InstituicaoFinanceira,
-    benchmark_basileia: Optional[Decimal] = None,
-    benchmark_liquidez: Optional[Decimal] = None,
+    benchmark_basileia: Decimal | None = None,
+    benchmark_liquidez: Decimal | None = None,
 ) -> BenchmarkComparison:
     """
     Compara indicadores da IF com benchmarks.

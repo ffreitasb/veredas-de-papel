@@ -5,11 +5,12 @@ Permite agendar coletas periodicas dos coletores de forma programatica.
 """
 
 import asyncio
+import contextlib
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import datetime, time, timedelta
-from enum import Enum
-from typing import Callable, Optional
+from enum import StrEnum
 
 from veredas import TZ_BRASIL
 from veredas.collectors.base import BaseCollector, CollectionResult
@@ -17,7 +18,7 @@ from veredas.collectors.base import BaseCollector, CollectionResult
 logger = logging.getLogger(__name__)
 
 
-class FrequencyType(str, Enum):
+class FrequencyType(StrEnum):
     """Tipos de frequencia de coleta."""
 
     ONCE = "once"  # Executa uma vez
@@ -35,16 +36,16 @@ class ScheduledTask:
     collector: BaseCollector
     frequency: FrequencyType
     next_run: datetime
-    last_run: Optional[datetime] = None
+    last_run: datetime | None = None
     enabled: bool = True
 
     # Parametros de frequencia
     interval_seconds: int = 3600  # Para HOURLY e INTERVAL
-    time_of_day: Optional[time] = None  # Para DAILY
+    time_of_day: time | None = None  # Para DAILY
     day_of_week: int = 0  # Para WEEKLY (0=Monday, 6=Sunday)
 
     # Callback opcional apos coleta
-    on_complete: Optional[Callable[[CollectionResult], None]] = None
+    on_complete: Callable[[CollectionResult], None] | None = None
 
     # Timeout para execucao (segundos, 0 = sem limite)
     timeout_seconds: int = 300  # 5 minutos padrao
@@ -93,7 +94,7 @@ class CollectionScheduler:
         """
         self.tasks: dict[str, ScheduledTask] = {}
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self.check_interval = check_interval
 
     def add_task(self, task: ScheduledTask) -> None:
@@ -110,7 +111,7 @@ class CollectionScheduler:
         task_id: str,
         collector: BaseCollector,
         delay_seconds: int = 0,
-        on_complete: Optional[Callable[[CollectionResult], None]] = None,
+        on_complete: Callable[[CollectionResult], None] | None = None,
     ) -> ScheduledTask:
         """
         Agenda coleta unica.
@@ -139,7 +140,7 @@ class CollectionScheduler:
         task_id: str,
         collector: BaseCollector,
         hours: int = 1,
-        on_complete: Optional[Callable[[CollectionResult], None]] = None,
+        on_complete: Callable[[CollectionResult], None] | None = None,
     ) -> ScheduledTask:
         """
         Agenda coleta a cada N horas.
@@ -169,7 +170,7 @@ class CollectionScheduler:
         task_id: str,
         collector: BaseCollector,
         time_of_day: time,
-        on_complete: Optional[Callable[[CollectionResult], None]] = None,
+        on_complete: Callable[[CollectionResult], None] | None = None,
     ) -> ScheduledTask:
         """
         Agenda coleta diaria em horario especifico.
@@ -206,7 +207,7 @@ class CollectionScheduler:
         task_id: str,
         collector: BaseCollector,
         seconds: int,
-        on_complete: Optional[Callable[[CollectionResult], None]] = None,
+        on_complete: Callable[[CollectionResult], None] | None = None,
     ) -> ScheduledTask:
         """
         Agenda coleta a cada N segundos.
@@ -336,7 +337,7 @@ class CollectionScheduler:
 
             return updated_task
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             new_errors = task.errors.copy()
             new_errors.append(f"{now}: Timeout apos {task.timeout_seconds}s")
             new_errors = new_errors[-10:]
@@ -417,7 +418,7 @@ class CollectionScheduler:
 
         return now + timedelta(hours=1)
 
-    async def run(self, max_iterations: Optional[int] = None) -> None:
+    async def run(self, max_iterations: int | None = None) -> None:
         """
         Executa o scheduler em loop infinito.
 
@@ -484,10 +485,8 @@ class CollectionScheduler:
         self._running = False
         if self._task and not self._task.done():
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
 
     def get_status(self) -> dict:
         """

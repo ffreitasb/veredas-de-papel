@@ -8,14 +8,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from veredas.storage.models import (
-    Anomalia,
     Base,
     Indexador,
     InstituicaoFinanceira,
     Segmento,
-    Severidade,
     TaxaCDB,
-    TipoAnomalia,
 )
 
 

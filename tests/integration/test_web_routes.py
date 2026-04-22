@@ -13,6 +13,7 @@ def app(tmp_path_factory):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy.pool import StaticPool
+
     from veredas.storage.models import Base
 
     # StaticPool força todas as conexões a reutilizarem o mesmo banco in-memory

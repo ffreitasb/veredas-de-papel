@@ -5,8 +5,8 @@ Este modulo centraliza dependencias comuns como sessao de banco de dados,
 evitando duplicacao de codigo entre rotas.
 """
 
+from collections.abc import Generator
 from functools import lru_cache
-from typing import Generator
 
 from sqlalchemy.orm import Session
 

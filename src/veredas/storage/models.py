@@ -125,14 +125,14 @@ class InstituicaoFinanceira(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     cnpj: Mapped[str] = mapped_column(String(18), unique=True, nullable=False, index=True)
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
-    nome_reduzido: Mapped[Optional[str]] = mapped_column(String(100))
+    nome_reduzido: Mapped[str | None] = mapped_column(String(100))
     segmento: Mapped[Segmento] = mapped_column(Enum(Segmento), default=Segmento.OUTRO)
 
     # Indicadores de saúde (IFData)
-    indice_basileia: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
-    indice_liquidez: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
-    ativo_total: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
-    patrimonio_liquido: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    indice_basileia: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
+    indice_liquidez: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
+    ativo_total: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+    patrimonio_liquido: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
 
     # Metadados
     ativa: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -169,22 +169,22 @@ class TaxaCDB(Base):
     percentual: Mapped[Decimal] = mapped_column(
         Numeric(10, 4), nullable=False
     )  # Ex: 120.0 para 120% CDI
-    taxa_adicional: Mapped[Optional[Decimal]] = mapped_column(
+    taxa_adicional: Mapped[Decimal | None] = mapped_column(
         Numeric(10, 4)
     )  # Para IPCA+X%, guarda o X
 
     # Características do produto
     prazo_dias: Mapped[int] = mapped_column(Integer, nullable=False)
-    valor_minimo: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 2))
+    valor_minimo: Mapped[Decimal | None] = mapped_column(Numeric(15, 2))
     liquidez_diaria: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Score de risco calculado pelo pipeline de detecção (0.0 = normal, 1.0 = máximo risco)
-    risk_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 4))
+    risk_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
 
     # Metadados da coleta
     fonte: Mapped[str] = mapped_column(String(50), nullable=False)  # xp, btg, rico, etc
-    url_fonte: Mapped[Optional[str]] = mapped_column(Text)
-    raw_data: Mapped[Optional[dict]] = mapped_column(JSON)  # Dados brutos da coleta
+    url_fonte: Mapped[str | None] = mapped_column(Text)
+    raw_data: Mapped[dict | None] = mapped_column(JSON)  # Dados brutos da coleta
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -196,7 +196,7 @@ class TaxaCDB(Base):
         return f"<TaxaCDB {self.percentual}% {self.indexador.value} - {self.prazo_dias}d>"
 
     @property
-    def spread_cdi(self) -> Optional[Decimal]:
+    def spread_cdi(self) -> Decimal | None:
         """Retorna o spread em relação ao CDI, se aplicável."""
         if self.indexador == Indexador.CDI:
             return self.percentual - Decimal("100")
@@ -215,7 +215,7 @@ class Anomalia(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     if_id: Mapped[int] = mapped_column(ForeignKey("instituicoes_financeiras.id"), index=True)
-    taxa_id: Mapped[Optional[int]] = mapped_column(ForeignKey("taxas_cdb.id"))
+    taxa_id: Mapped[int | None] = mapped_column(ForeignKey("taxas_cdb.id"))
 
     # Classificação
     tipo: Mapped[TipoAnomalia] = mapped_column(Enum(TipoAnomalia), nullable=False)
@@ -223,18 +223,18 @@ class Anomalia(Base):
 
     # Valores
     valor_detectado: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
-    valor_esperado: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
-    desvio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))  # Número de desvios padrão
+    valor_esperado: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
+    desvio: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))  # Número de desvios padrão
 
     # Descrição
     descricao: Mapped[str] = mapped_column(Text, nullable=False)
-    detalhes: Mapped[Optional[dict]] = mapped_column(JSON)  # Dados adicionais
+    detalhes: Mapped[dict | None] = mapped_column(JSON)  # Dados adicionais
 
     # Status
     detectado_em: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     resolvido: Mapped[bool] = mapped_column(Boolean, default=False)
-    resolvido_em: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    notas_resolucao: Mapped[Optional[str]] = mapped_column(Text)
+    resolvido_em: Mapped[datetime | None] = mapped_column(DateTime)
+    notas_resolucao: Mapped[str | None] = mapped_column(Text)
 
     # Relacionamentos
     instituicao: Mapped["InstituicaoFinanceira"] = relationship(back_populates="anomalias")
@@ -255,7 +255,7 @@ class EventoRegulatorio(Base):
     __tablename__ = "eventos_regulatorios"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    if_id: Mapped[Optional[int]] = mapped_column(ForeignKey("instituicoes_financeiras.id"))
+    if_id: Mapped[int | None] = mapped_column(ForeignKey("instituicoes_financeiras.id"))
     if_nome: Mapped[str] = mapped_column(
         String(255), nullable=False
     )  # Nome para IFs que não existem mais
@@ -267,11 +267,11 @@ class EventoRegulatorio(Base):
 
     # Fontes e evidências
     fonte: Mapped[str] = mapped_column(Text, nullable=False)  # URL da fonte oficial
-    fontes_adicionais: Mapped[Optional[list]] = mapped_column(JSON)
+    fontes_adicionais: Mapped[list | None] = mapped_column(JSON)
 
     # Análise retrospectiva
-    taxas_pre_evento: Mapped[Optional[dict]] = mapped_column(JSON)  # Snapshot das taxas antes
-    sinais_detectados: Mapped[Optional[list]] = mapped_column(JSON)  # Anomalias que precederam
+    taxas_pre_evento: Mapped[dict | None] = mapped_column(JSON)  # Snapshot das taxas antes
+    sinais_detectados: Mapped[list | None] = mapped_column(JSON)  # Anomalias que precederam
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -302,23 +302,23 @@ class HealthDataIF(Base):
     data_base: Mapped[date] = mapped_column(Date, nullable=False, index=True)
 
     # Indicadores de capital
-    indice_basileia: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
-    patrimonio_liquido: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    indice_basileia: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
+    patrimonio_liquido: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
 
     # Indicadores de liquidez
-    indice_liquidez: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
-    ativos_liquidos: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    indice_liquidez: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
+    ativos_liquidos: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
 
     # Tamanho
-    ativo_total: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
-    depositos_totais: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    ativo_total: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+    depositos_totais: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
 
     # Qualidade da carteira
-    inadimplencia: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    inadimplencia: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
 
     # Rentabilidade
-    roa: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
-    roe: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    roa: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
+    roe: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
 
     # Fonte
     fonte: Mapped[str] = mapped_column(String(50), default="ifdata")
@@ -345,7 +345,7 @@ class TaxaReferencia(Base):
     tipo: Mapped[str] = mapped_column(String(20), nullable=False)  # selic, cdi, ipca
 
     valor: Mapped[Decimal] = mapped_column(Numeric(10, 6), nullable=False)  # Taxa anual
-    valor_diario: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 10))  # Taxa diária
+    valor_diario: Mapped[Decimal | None] = mapped_column(Numeric(15, 10))  # Taxa diária
 
     fonte: Mapped[str] = mapped_column(String(50), default="bcb")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -378,7 +378,7 @@ class PrecoSecundarioDB(Base):
     __tablename__ = "precos_secundarios"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    if_id: Mapped[Optional[int]] = mapped_column(ForeignKey("instituicoes_financeiras.id"), index=True)
+    if_id: Mapped[int | None] = mapped_column(ForeignKey("instituicoes_financeiras.id"), index=True)
 
     # Identificação do título
     codigo_titulo: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
@@ -402,12 +402,12 @@ class PrecoSecundarioDB(Base):
     valor_financeiro: Mapped[Decimal] = mapped_column(Numeric(20, 2), default=Decimal("0"))
 
     # Taxas
-    taxa_minima: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
-    taxa_maxima: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
-    taxa_media: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    taxa_minima: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
+    taxa_maxima: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
+    taxa_media: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
 
     # Variação
-    variacao_dia: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    variacao_dia: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -449,11 +449,11 @@ class ProcessoRegulatorio(Base):
     __tablename__ = "processos_regulatorios"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    if_id: Mapped[Optional[int]] = mapped_column(ForeignKey("instituicoes_financeiras.id"), index=True)
+    if_id: Mapped[int | None] = mapped_column(ForeignKey("instituicoes_financeiras.id"), index=True)
 
     # Identificação
     numero_processo: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
-    cnpj_envolvido: Mapped[Optional[str]] = mapped_column(String(18), index=True)
+    cnpj_envolvido: Mapped[str | None] = mapped_column(String(18), index=True)
     nome_envolvido: Mapped[str] = mapped_column(String(255))
 
     # Classificação
@@ -463,20 +463,20 @@ class ProcessoRegulatorio(Base):
     status: Mapped[StatusProcesso] = mapped_column(
         Enum(StatusProcesso), default=StatusProcesso.ATIVO
     )
-    assunto: Mapped[Optional[str]] = mapped_column(Text)
+    assunto: Mapped[str | None] = mapped_column(Text)
 
     # Datas
     data_abertura: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    data_atualizacao: Mapped[Optional[date]] = mapped_column(Date)
-    data_conclusao: Mapped[Optional[date]] = mapped_column(Date)
+    data_atualizacao: Mapped[date | None] = mapped_column(Date)
+    data_conclusao: Mapped[date | None] = mapped_column(Date)
 
     # Sanções
-    valor_multa: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
-    outras_penalidades: Mapped[Optional[str]] = mapped_column(Text)
+    valor_multa: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+    outras_penalidades: Mapped[str | None] = mapped_column(Text)
 
     # Fontes
-    url_fonte: Mapped[Optional[str]] = mapped_column(Text)
-    raw_data: Mapped[Optional[dict]] = mapped_column(JSON)
+    url_fonte: Mapped[str | None] = mapped_column(Text)
+    raw_data: Mapped[dict | None] = mapped_column(JSON)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -501,18 +501,18 @@ class ReclamacaoHistorico(Base):
     __tablename__ = "reclamacoes_historico"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    if_id: Mapped[Optional[int]] = mapped_column(ForeignKey("instituicoes_financeiras.id"), index=True)
+    if_id: Mapped[int | None] = mapped_column(ForeignKey("instituicoes_financeiras.id"), index=True)
 
     # Identificação
-    empresa_id: Mapped[Optional[str]] = mapped_column(String(100))  # ID no Reclame Aqui
+    empresa_id: Mapped[str | None] = mapped_column(String(100))  # ID no Reclame Aqui
     empresa_nome: Mapped[str] = mapped_column(String(255), nullable=False)
-    cnpj: Mapped[Optional[str]] = mapped_column(String(18), index=True)
+    cnpj: Mapped[str | None] = mapped_column(String(18), index=True)
 
     # Métricas
     data_coleta: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     nota_geral: Mapped[Decimal] = mapped_column(Numeric(4, 2), nullable=False)  # 0-10
     indice_solucao: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)  # 0-100%
-    indice_resposta: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))  # 0-100%
+    indice_resposta: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))  # 0-100%
 
     # Contagens
     total_reclamacoes: Mapped[int] = mapped_column(Integer, default=0)
@@ -522,14 +522,14 @@ class ReclamacaoHistorico(Base):
 
     # Período recente (30 dias)
     reclamacoes_30d: Mapped[int] = mapped_column(Integer, default=0)
-    nota_30d: Mapped[Optional[Decimal]] = mapped_column(Numeric(4, 2))
+    nota_30d: Mapped[Decimal | None] = mapped_column(Numeric(4, 2))
 
     # Variações
-    variacao_nota: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2))  # vs período anterior
-    variacao_reclamacoes: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 2))  # %
+    variacao_nota: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))  # vs período anterior
+    variacao_reclamacoes: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))  # %
 
     # Raw
-    raw_data: Mapped[Optional[dict]] = mapped_column(JSON)
+    raw_data: Mapped[dict | None] = mapped_column(JSON)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -563,10 +563,10 @@ class SinalRiscoAgregado(Base):
     if_id: Mapped[int] = mapped_column(ForeignKey("instituicoes_financeiras.id"), index=True)
 
     # Scores individuais (0-100, maior = mais risco)
-    score_reclame_aqui: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2))
-    score_processos_bc: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2))
-    score_mercado_secundario: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2))
-    score_sentimento: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2))
+    score_reclame_aqui: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
+    score_processos_bc: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
+    score_mercado_secundario: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
+    score_sentimento: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
 
     # Score consolidado
     score_consolidado: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
@@ -579,8 +579,8 @@ class SinalRiscoAgregado(Base):
     sinais_disponiveis: Mapped[int] = mapped_column(Integer, default=0)
 
     # Detalhes
-    fatores_risco: Mapped[Optional[list]] = mapped_column(JSON)
-    recomendacoes: Mapped[Optional[list]] = mapped_column(JSON)
+    fatores_risco: Mapped[list | None] = mapped_column(JSON)
+    recomendacoes: Mapped[list | None] = mapped_column(JSON)
 
     # Timestamps
     calculado_em: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
@@ -604,7 +604,7 @@ class TaxaColetadaPlataforma(Base):
     __tablename__ = "taxas_coletadas_plataformas"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    if_id: Mapped[Optional[int]] = mapped_column(ForeignKey("instituicoes_financeiras.id"), index=True)
+    if_id: Mapped[int | None] = mapped_column(ForeignKey("instituicoes_financeiras.id"), index=True)
 
     # Plataforma
     plataforma: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # xp, btg, rico, etc
@@ -617,15 +617,15 @@ class TaxaColetadaPlataforma(Base):
     # Taxa
     indexador: Mapped[Indexador] = mapped_column(Enum(Indexador), nullable=False)
     percentual: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
-    taxa_adicional: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    taxa_adicional: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
 
     # Características
     prazo_dias: Mapped[int] = mapped_column(Integer, nullable=False)
-    valor_minimo: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 2))
+    valor_minimo: Mapped[Decimal | None] = mapped_column(Numeric(15, 2))
     liquidez_diaria: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Raw
-    raw_data: Mapped[Optional[dict]] = mapped_column(JSON)
+    raw_data: Mapped[dict | None] = mapped_column(JSON)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 

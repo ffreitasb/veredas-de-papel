@@ -14,7 +14,7 @@ import asyncio
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from bcb import sgs
@@ -29,16 +29,16 @@ class TaxaReferenciaBCB:
     tipo: str  # selic, cdi, ipca
     data: date
     valor: Decimal
-    valor_diario: Optional[Decimal] = None
+    valor_diario: Decimal | None = None
 
 
 @dataclass
 class DadosBCB:
     """Conjunto de dados coletados do BCB."""
 
-    selic: Optional[TaxaReferenciaBCB] = None
-    cdi: Optional[TaxaReferenciaBCB] = None
-    ipca: Optional[TaxaReferenciaBCB] = None
+    selic: TaxaReferenciaBCB | None = None
+    cdi: TaxaReferenciaBCB | None = None
+    ipca: TaxaReferenciaBCB | None = None
 
 
 # Códigos das séries no SGS do BCB
@@ -125,7 +125,7 @@ class BCBCollector(BaseCollector):
         tipo: str,
         data_inicio: date,
         data_fim: date,
-    ) -> Optional[TaxaReferenciaBCB]:
+    ) -> TaxaReferenciaBCB | None:
         """
         Coleta uma série específica do SGS.
 
@@ -277,7 +277,7 @@ class BCBCollector(BaseCollector):
 
 # Funções de conveniência para uso síncrono
 
-def get_selic_atual() -> Optional[Decimal]:
+def get_selic_atual() -> Decimal | None:
     """
     Retorna a taxa Selic atual (síncrono).
 
@@ -293,7 +293,7 @@ def get_selic_atual() -> Optional[Decimal]:
         return None
 
 
-def get_cdi_atual() -> Optional[Decimal]:
+def get_cdi_atual() -> Decimal | None:
     """
     Retorna a taxa CDI atual (síncrono).
 
@@ -309,7 +309,7 @@ def get_cdi_atual() -> Optional[Decimal]:
         return None
 
 
-def get_ipca_atual() -> Optional[Decimal]:
+def get_ipca_atual() -> Decimal | None:
     """
     Retorna o IPCA atual (variação mensal, síncrono).
 

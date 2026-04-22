@@ -4,10 +4,10 @@ FastAPI application factory.
 Cria e configura a aplicacao web do veredas de papel.
 """
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
@@ -117,7 +117,7 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     # Register routes
-    from veredas.web.routes import home, taxas, anomalias, instituicoes, timeline
+    from veredas.web.routes import anomalias, home, instituicoes, taxas, timeline
 
     app.include_router(home.router)
     app.include_router(taxas.router, prefix="/taxas", tags=["taxas"])
