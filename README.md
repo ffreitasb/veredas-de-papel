@@ -1,7 +1,24 @@
+<div align="center">
+  <img src="assets/hero.png" alt="Mandacaru de papel com taxas de CDB no sertão — veredas de papel" width="720">
+  <br><br>
+  <i>"O real não está no início nem no fim, ele se mostra pra gente é no meio da travessia."</i>
+  <br>
+  <sub>ROSA, João Guimarães. <i>Grande sertão: veredas</i>. 19. ed. Rio de Janeiro: Nova Fronteira, 1986.</sub>
+</div>
+
+<br>
+
 # veredas de papel
 
-> *"O real não está no início nem no fim, ele se mostra pra gente é no meio da travessia."*
-   > ROSA, João Guimarães. Grande sertão: veredas. 19. ed. Rio de Janeiro: Nova Fronteira, 1986.
+<div align="center">
+
+[![Python](https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white)](https://python.org)
+[![Licença: GPL v3](https://img.shields.io/badge/licen%C3%A7a-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Versão](https://img.shields.io/badge/vers%C3%A3o-0.1.0--alpha-orange)](https://github.com/ffreitasb/veredas-de-papel/releases)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Feito no Brasil](https://img.shields.io/badge/feito%20no-Brasil%20%F0%9F%87%A7%F0%9F%87%B7-009c3b)](https://github.com/ffreitasb/veredas-de-papel)
+
+</div>
 
 Monitor de taxas de CDB e detecção de anomalias no mercado de renda fixa brasileiro.
 
