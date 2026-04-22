@@ -14,6 +14,7 @@
 
 <div align="center">
 
+[![CI](https://github.com/ffreitasb/veredas-de-papel/actions/workflows/ci.yml/badge.svg)](https://github.com/ffreitasb/veredas-de-papel/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white)](https://python.org)
 [![Licença: GPL v3](https://img.shields.io/badge/licen%C3%A7a-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Versão](https://img.shields.io/badge/vers%C3%A3o-0.1.0--alpha-orange)](https://github.com/ffreitasb/veredas-de-papel/releases)
