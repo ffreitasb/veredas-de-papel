@@ -20,6 +20,12 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Feito no Brasil](https://img.shields.io/badge/feito%20no-Brasil%20%F0%9F%87%A7%F0%9F%87%B7-009c3b)](https://github.com/ffreitasb/veredas-de-papel)
 
+[![BCB Open Data](https://img.shields.io/badge/dados-BCB%20Open%20Data-009c3b)](https://dadosabertos.bcb.gov.br)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![HTMX](https://img.shields.io/badge/HTMX-1.9-3366cc)](https://htmx.org)
+[![pandas](https://img.shields.io/badge/pandas-2.2%2B-150458?logo=pandas&logoColor=white)](https://pandas.pydata.org)
+[![Não é recomendação de investimento](https://img.shields.io/badge/aviso-n%C3%A3o%20%C3%A9%20recomenda%C3%A7%C3%A3o%20de%20investimento-red)](https://github.com/ffreitasb/veredas-de-papel#%EF%B8%8F-disclaimer)
+
 </div>
 
 Monitor de taxas de CDB e detecção de anomalias no mercado de renda fixa brasileiro.
