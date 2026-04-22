@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}veredas de papel{% endblock %}</title>
     <link rel="icon" type="image/png" href="/static/images/veredas_icon.png">
+    <link rel="apple-touch-icon" href="/static/images/veredas_icon.png">
+    <meta name="theme-color" content="#2d6a3f">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{% block og_title %}veredas de papel{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Monitor de taxas de CDB e detecção de anomalias no mercado de renda fixa brasileiro.{% endblock %}">
+    <meta property="og:image" content="https://raw.githubusercontent.com/ffreitasb/veredas-de-papel/master/assets/veredas_icon.png">
 
     <!-- Pico CSS (minimal) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
