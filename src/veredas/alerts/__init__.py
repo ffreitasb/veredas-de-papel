@@ -15,9 +15,9 @@ from veredas.alerts.base import (
     AlertSender,
     ConsoleSender,
 )
+from veredas.alerts.email import EmailAlertSender
 from veredas.alerts.manager import AlertManager
 from veredas.alerts.telegram import TelegramAlertSender
-from veredas.alerts.email import EmailAlertSender
 
 __all__ = [
     # Base

@@ -10,15 +10,14 @@ emissores de crédito em dificuldade.
 
 from datetime import timedelta, timezone
 
+from veredas.storage import DatabaseManager
+
 __version__ = "0.1.0"
 __author__ = "ffreitasb"
 __license__ = "MIT"
 
 # Fuso horário de Brasília (UTC-3)
-# Usado em todo o projeto para consistência com horários do mercado brasileiro
 TZ_BRASIL = timezone(timedelta(hours=-3))
-
-from veredas.storage import DatabaseManager
 
 __all__ = [
     "__version__",

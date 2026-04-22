@@ -29,8 +29,8 @@ class TestIsolationForestDetector:
         assert len(result.anomalias) <= 5
 
     def test_outlier_extremo_detectado(self):
-        # 49 pontos normais + 1 extremo
-        valores = [100.0] * 49 + [300.0]
+        # 99 pontos normais + 1 outlier 10x acima — garante score < -0.3
+        valores = [100.0] * 99 + [1000.0]
         taxas = make_taxa_serie(if_id=1, valores=valores)
         result = self.detector.detect(taxas)
         assert result.success

@@ -12,11 +12,14 @@ def app(tmp_path_factory):
     """Cria app FastAPI com banco em memória para testes."""
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
     from veredas.storage.models import Base
 
+    # StaticPool força todas as conexões a reutilizarem o mesmo banco in-memory
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
     Base.metadata.create_all(engine)
     SessionLocal = sessionmaker(bind=engine, autoflush=True)
