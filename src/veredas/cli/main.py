@@ -12,6 +12,8 @@ Comandos principais:
 """
 
 import asyncio
+import csv
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -436,17 +438,21 @@ def alerts_test(
 
 @app.command()
 def export(
+    tipo: str = typer.Argument(
+        "anomalias",
+        help="O que exportar: anomalias, taxas, all",
+    ),
     format: str = typer.Option(
         "csv",
         "--format",
         "-f",
-        help="Formato de exportação (csv, json)",
+        help="Formato de exportação: csv, json",
     ),
     output: Path | None = typer.Option(
         None,
         "--output",
         "-o",
-        help="Arquivo de saída",
+        help="Arquivo de saída (padrão: veredas_<tipo>_<timestamp>.<format>)",
     ),
     db_path: Path | None = typer.Option(
         None,
@@ -454,24 +460,177 @@ def export(
         "-d",
         help="Caminho para o banco de dados",
     ),
+    todas: bool = typer.Option(
+        False,
+        "--todas",
+        help="Incluir anomalias já resolvidas (padrão: apenas ativas)",
+    ),
 ):
     """
-    Exporta dados coletados.
+    Exporta dados coletados para CSV ou JSON.
 
-    Formatos suportados: CSV, JSON
+    Exemplos:
+
+        veredas export anomalias
+
+        veredas export taxas --format json
+
+        veredas export all --output backup.csv --todas
     """
-    if output is None:
-        output = Path(f"veredas_export_{datetime.now():%Y%m%d_%H%M%S}.{format}")
+    if tipo not in ("anomalias", "taxas", "all"):
+        rprint(f"[red]✗[/] Tipo inválido: '{tipo}'. Use: anomalias, taxas, all")
+        raise typer.Exit(1) from None
 
-    rprint(f"[bold]Exportando dados para:[/] {output}")
+    if format not in ("csv", "json"):
+        rprint(f"[red]✗[/] Formato inválido: '{format}'. Use: csv, json")
+        raise typer.Exit(1) from None
 
-    # TODO: Implementar exportação
-    rprint(
-        Panel(
-            "[yellow]⚠ Funcionalidade em desenvolvimento[/]",
-            title="Exportação",
-        )
-    )
+    from veredas.storage import AnomaliaRepository, TaxaCDBRepository
+
+    try:
+        db = DatabaseManager(db_path)
+        with db.session_scope() as session:
+            if tipo in ("anomalias", "all"):
+                filters = {} if todas else {"resolvido": False}
+                anomalias = AnomaliaRepository(session).list_with_filters(
+                    filters=filters, limit=50_000, eager_load=True
+                )
+                dest = output or Path(f"veredas_anomalias_{datetime.now():%Y%m%d_%H%M%S}.{format}")
+                _exportar_anomalias(list(anomalias), format, dest)
+                rprint(f"[green]✓[/] {len(anomalias)} anomalias → [bold]{dest}[/]")
+
+            if tipo in ("taxas", "all"):
+                taxas, _ = TaxaCDBRepository(session).list_paginated(page=1, per_page=50_000)
+                if tipo == "all":
+                    stem = (
+                        dest.stem.replace("anomalias", "taxas")
+                        if output
+                        else f"veredas_taxas_{datetime.now():%Y%m%d_%H%M%S}"
+                    )
+                    dest_taxas = Path(f"{stem}.{format}")
+                else:
+                    dest_taxas = output or Path(
+                        f"veredas_taxas_{datetime.now():%Y%m%d_%H%M%S}.{format}"
+                    )
+                _exportar_taxas(list(taxas), format, dest_taxas)
+                rprint(f"[green]✓[/] {len(taxas)} taxas → [bold]{dest_taxas}[/]")
+
+    except Exception as e:
+        rprint(f"[red]✗[/] Erro na exportação: {e}")
+        raise typer.Exit(1) from e
+
+
+def _exportar_anomalias(anomalias: list, format: str, dest: Path) -> None:
+    if format == "csv":
+        with dest.open("w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f, delimiter=";")
+            writer.writerow(
+                [
+                    "ID",
+                    "Tipo",
+                    "Severidade",
+                    "Instituição",
+                    "CNPJ",
+                    "Valor Detectado",
+                    "Valor Esperado",
+                    "Desvio",
+                    "Descrição",
+                    "Detectado Em",
+                    "Resolvido",
+                    "Resolvido Em",
+                ]
+            )
+            for a in anomalias:
+                writer.writerow(
+                    [
+                        a.id,
+                        a.tipo.value,
+                        a.severidade.value,
+                        a.instituicao.nome if a.instituicao else "",
+                        a.instituicao.cnpj if a.instituicao else "",
+                        str(a.valor_detectado).replace(".", ","),
+                        str(a.valor_esperado).replace(".", ",") if a.valor_esperado else "",
+                        str(a.desvio).replace(".", ",") if a.desvio else "",
+                        a.descricao,
+                        a.detectado_em.strftime("%d/%m/%Y %H:%M") if a.detectado_em else "",
+                        "Sim" if a.resolvido else "Não",
+                        a.resolvido_em.strftime("%d/%m/%Y %H:%M") if a.resolvido_em else "",
+                    ]
+                )
+    else:
+        rows = [
+            {
+                "id": a.id,
+                "tipo": a.tipo.value,
+                "severidade": a.severidade.value,
+                "instituicao": a.instituicao.nome if a.instituicao else None,
+                "cnpj": a.instituicao.cnpj if a.instituicao else None,
+                "valor_detectado": float(a.valor_detectado)
+                if a.valor_detectado is not None
+                else None,
+                "valor_esperado": float(a.valor_esperado) if a.valor_esperado is not None else None,
+                "desvio": float(a.desvio) if a.desvio is not None else None,
+                "descricao": a.descricao,
+                "detectado_em": a.detectado_em.isoformat() if a.detectado_em else None,
+                "resolvido": a.resolvido,
+                "resolvido_em": a.resolvido_em.isoformat() if a.resolvido_em else None,
+            }
+            for a in anomalias
+        ]
+        dest.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _exportar_taxas(taxas: list, format: str, dest: Path) -> None:
+    if format == "csv":
+        with dest.open("w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f, delimiter=";")
+            writer.writerow(
+                [
+                    "Data Coleta",
+                    "Instituição",
+                    "CNPJ",
+                    "Indexador",
+                    "Percentual (%)",
+                    "Taxa Adicional (%)",
+                    "Prazo (dias)",
+                    "Liquidez Diária",
+                    "Fonte",
+                    "Risk Score",
+                ]
+            )
+            for t in taxas:
+                writer.writerow(
+                    [
+                        t.data_coleta.strftime("%d/%m/%Y"),
+                        t.instituicao.nome if t.instituicao else "",
+                        t.instituicao.cnpj if t.instituicao else "",
+                        t.indexador.value,
+                        str(t.percentual).replace(".", ","),
+                        str(t.taxa_adicional).replace(".", ",") if t.taxa_adicional else "",
+                        t.prazo_dias,
+                        "Sim" if t.liquidez_diaria else "Não",
+                        t.fonte,
+                        str(t.risk_score).replace(".", ",") if t.risk_score else "",
+                    ]
+                )
+    else:
+        rows = [
+            {
+                "id": t.id,
+                "data_coleta": t.data_coleta.isoformat(),
+                "instituicao": t.instituicao.nome if t.instituicao else None,
+                "cnpj": t.instituicao.cnpj if t.instituicao else None,
+                "indexador": t.indexador.value,
+                "percentual": float(t.percentual),
+                "taxa_adicional": float(t.taxa_adicional) if t.taxa_adicional else None,
+                "prazo_dias": t.prazo_dias,
+                "liquidez_diaria": t.liquidez_diaria,
+                "fonte": t.fonte,
+                "risk_score": float(t.risk_score) if t.risk_score else None,
+            }
+            for t in taxas
+        ]
+        dest.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 @app.command()
