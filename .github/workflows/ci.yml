@@ -27,7 +27,10 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -e ".[dev,web,ml,alerts]"
+        run: pip install -e ".[dev,web,ml,alerts,scrapers]"
+
+      - name: Install Playwright browsers
+        run: playwright install --with-deps chromium
 
       - name: Run tests
         run: pytest --cov=src/veredas --cov-report=term-missing
@@ -67,7 +70,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -e ".[dev,web,ml,alerts]"
+        run: pip install -e ".[dev,web,ml,alerts,scrapers]"
 
       - name: Run mypy
         run: mypy src/

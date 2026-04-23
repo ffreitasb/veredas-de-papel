@@ -55,6 +55,7 @@ dev = [
     "ruff>=0.3.0",
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",
+    "respx>=0.21.0",               # Mock de httpx para testes de scrapers
 ]
 web = [
     "fastapi>=0.109.0",            # Web framework
@@ -72,6 +73,9 @@ dashboard = [
 ]
 alerts = [
     "python-telegram-bot>=21.0",
+]
+scrapers = [
+    "playwright>=1.44.0",          # Browser headless para páginas JS-rendered
 ]
 
 [project.scripts]

@@ -5,6 +5,7 @@ Exporta coletores para diferentes fontes de dados.
 """
 
 from veredas.collectors.base import BaseCollector, CollectionResult
+from veredas.collectors.scraper_base import WebCollectorBase
 from veredas.collectors.bcb import (
     BCBCollector,
     DadosBCB,
@@ -18,6 +19,7 @@ __all__ = [
     # Base
     "BaseCollector",
     "CollectionResult",
+    "WebCollectorBase",
     # BCB
     "BCBCollector",
     "DadosBCB",
