@@ -305,6 +305,10 @@ python -m alembic revision --autogenerate -m "descricao"
 python -m alembic history
 ```
 
+## 📖 Documentação
+
+Para um guia completo voltado a usuários não-técnicos — desde a instalação passo a passo até o uso de cada comando, configuração de alertas, FAQ e solução de problemas — consulte o **[Guia do Usuário](USER_GUIDE.md)**.
+
 ## 🤝 Contribuindo
 
 Sinta-se à vontade para abrir *Issues* relatando bugs ou sugerindo features. Se quiser colocar a mão na massa, faça um Fork do projeto, crie uma branch e envie seu *Pull Request*.
