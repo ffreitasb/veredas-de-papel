@@ -19,6 +19,7 @@
 [![Licença: GPL v3](https://img.shields.io/badge/licen%C3%A7a-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Versão](https://img.shields.io/badge/vers%C3%A3o-0.1.0--alpha-orange)](https://github.com/ffreitasb/veredas-de-papel/releases)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Feito no Brasil](https://img.shields.io/badge/feito%20no-Brasil%20%F0%9F%87%A7%F0%9F%87%B7-009c3b)](https://github.com/ffreitasb/veredas-de-papel)
 
 [![BCB Open Data](https://img.shields.io/badge/dados-BCB%20Open%20Data-009c3b)](https://dadosabertos.bcb.gov.br)
@@ -40,7 +41,7 @@ Inspirado na obra-prima de Guimarães Rosa, *Grande Sertão: Veredas*, o nome re
 
 ## O Problema
 
-O caso do Banco Master/Will Bank (2025) demonstrou que taxas extremamente atrativas (ex: 120-185% CDI, IPCA+30%) muitas vezes funcionam como sinais claros de risco que acabam sendo ignorados por investidores seduzidos pela alta rentabilidade. O banco oferecia retornos fora da curva porque estava desesperado por liquidez — um padrão histórico que se repetiu em casos clássicos como BVA (2014) e Cruzeiro do Sul (2012).
+O caso do Banco Master/Will Bank (2025) demonstrou que taxas extremamente atrativas (ex: 120–185% CDI, IPCA+30%) muitas vezes funcionam como sinais claros de risco ignorados por investidores seduzidos pela alta rentabilidade. O banco oferecia retornos fora da curva porque estava desesperado por liquidez — um padrão histórico que se repetiu em casos clássicos como BVA (2014) e Cruzeiro do Sul (2012).
 
 ## A Solução
 
@@ -53,49 +54,73 @@ O caso do Banco Master/Will Bank (2025) demonstrou que taxas extremamente atrati
 
 ---
 
-## 🚀 Instalação e Configuração
+## 🚀 Instalação
 
 ### Pré-requisitos
+
 - **Python 3.11 ou superior**
 - Git
 
-### 1. Clonando o Repositório
+### Com uv (recomendado)
+
+[uv](https://docs.astral.sh/uv/) gerencia Python, venv e dependências em um único comando, sem etapas manuais.
+
+```bash
+# Instalar uv (se ainda não tiver)
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Clonar e configurar
+git clone https://github.com/ffreitasb/veredas-de-papel.git
+cd veredas-de-papel
+
+# Criar venv e instalar todas as dependências em um passo
+uv sync --extra dev --extra web --extra ml --extra alerts
+```
+
+### Com pip e venv (alternativa clássica)
 
 ```bash
 git clone https://github.com/ffreitasb/veredas-de-papel.git
 cd veredas-de-papel
-```
 
-### 2. Ambiente Virtual
-
-```bash
-# Linux/macOS
-python -m venv .venv
-source .venv/bin/activate
+# Linux / macOS
+python -m venv .venv && source .venv/bin/activate
 
 # Windows
-python -m venv .venv
-.venv\Scripts\activate
-```
+python -m venv .venv && .venv\Scripts\activate
 
-### 3. Instalando as Dependências
-
-```bash
-# Instalação completa (recomendada)
 pip install -e ".[dev,web,ml,alerts]"
 ```
 
-### 4. Configuração de Variáveis de Ambiente
+### Dependências opcionais
 
-Copie o arquivo de exemplo e edite conforme necessário:
+| Grupo | Conteúdo |
+|-------|----------|
+| `dev` | pytest, ruff, mypy |
+| `web` | FastAPI, Jinja2, uvicorn |
+| `ml` | scikit-learn (Isolation Forest, DBSCAN) |
+| `alerts` | Telegram Bot, Email SMTP |
+
+Instale apenas o que precisar:
+```bash
+# uv
+uv sync --extra web --extra ml
+
+# pip
+pip install -e ".[web,ml]"
+```
+
+### Configuração
 
 ```bash
 cp .env.example .env
 ```
 
-Para uso local básico (SQLite), as configurações padrão já são suficientes.
-
-Para habilitar alertas, adicione ao `.env`:
+Para uso local (SQLite), as configurações padrão são suficientes. Para alertas, adicione ao `.env`:
 
 ```env
 # Telegram
@@ -110,12 +135,13 @@ VEREDAS_SMTP_PASSWORD=sua_senha_app
 VEREDAS_ALERT_EMAIL_TO=destinatario@email.com
 ```
 
-### 5. Inicializando o Banco de Dados
+### Inicializar o banco de dados
 
 ```bash
-# Cria o esquema via Alembic (migrações versionadas)
 veredas init
 ```
+
+Cria o esquema SQLite via Alembic (migrações versionadas) em `data/veredas.db`.
 
 ---
 
@@ -123,27 +149,29 @@ veredas init
 
 ### Fluxo Básico de Operação
 
-**1. Colete os Dados Macroeconômicos:**
+**1. Coletar dados macroeconômicos:**
 ```bash
 veredas collect bcb
 ```
 Sincroniza Selic, CDI e IPCA da API pública do Banco Central.
 
-**2. Colete Dados de Saúde das IFs:**
+**2. Coletar indicadores de saúde das IFs:**
 ```bash
 veredas collect ifdata
 ```
-Importa indicadores prudenciais (Índice de Basileia, Liquidez, ROA/ROE) do portal IFData do Banco Central. Permite cruzar taxas altas com fragilidade financeira real.
+Importa Índice de Basileia, Liquidez e ROA/ROE do portal IFData do Banco Central.
 
-**3. Execute o Motor de Análise:**
+**3. Executar o motor de análise:**
 ```bash
 veredas analyze
 ```
-Avalia os dados em busca de anomalias usando regras determinísticas, Z-Score, STL, Isolation Forest e detectores de saúde financeira.
+Avalia os dados com regras determinísticas, Z-Score, STL, Isolation Forest e detectores de saúde financeira.
 
-**4. Inicie o Dashboard Web:**
+**4. Iniciar o dashboard web:**
 ```bash
-uvicorn veredas.web.app:app --reload
+veredas web
+# ou com hot-reload para desenvolvimento
+veredas web --reload
 ```
 Acesse: [http://localhost:8000](http://localhost:8000)
 
@@ -151,22 +179,22 @@ Acesse: [http://localhost:8000](http://localhost:8000)
 
 | Comando | Descrição |
 |---------|-----------|
-| `veredas init` | Cria/atualiza o esquema do banco de dados via Alembic. |
-| `veredas collect bcb` | Sincroniza dados históricos com o Banco Central. |
-| `veredas collect ifdata` | Importa indicadores prudenciais das IFs do portal IFData. |
-| `veredas analyze` | Executa o pipeline completo de detecção de anomalias. |
-| `veredas detectors` | Lista todos os algoritmos de detecção registrados. |
-| `veredas status` | Exibe integridade do banco e quantidade de registros. |
-| `veredas alerts status` | Mostra os canais de alerta configurados (Telegram, Email). |
-| `veredas alerts test` | Envia mensagem de teste pelos canais configurados. |
+| `veredas init` | Cria/atualiza o esquema do banco via Alembic |
+| `veredas collect bcb` | Sincroniza dados históricos com o Banco Central |
+| `veredas collect ifdata` | Importa indicadores prudenciais das IFs do IFData |
+| `veredas analyze` | Executa o pipeline completo de detecção de anomalias |
+| `veredas analyze --ml` | Inclui detectores de Machine Learning na análise |
+| `veredas web` | Inicia o dashboard web (padrão: `localhost:8000`) |
+| `veredas detectors` | Lista todos os algoritmos de detecção registrados |
+| `veredas status` | Exibe integridade do banco e taxas atuais |
+| `veredas alerts status` | Mostra os canais de alerta configurados |
+| `veredas alerts test` | Envia mensagem de teste pelos canais configurados |
 
 ---
 
 ## 🌐 Dashboard Web
 
-O dashboard oferece visualização interativa de todas as informações coletadas, com atualizações parciais via HTMX (sem recarregar a página inteira).
-
-### Telas disponíveis
+O dashboard oferece visualização interativa com atualizações parciais via HTMX (sem recarregar a página inteira).
 
 | Rota | Conteúdo |
 |------|----------|
@@ -187,9 +215,8 @@ Todas as listagens possuem botão **↓ CSV** que gera arquivos compatíveis com
 
 ## 🧠 Motor de Detecção
 
-O motor combina três verticais de análise:
-
 ### Regras Determinísticas
+
 | Tipo | Condição | Severidade |
 |------|----------|------------|
 | `SPREAD_ALTO` | CDB > 130% CDI | HIGH |
@@ -198,6 +225,7 @@ O motor combina três verticais de análise:
 | `SALTO_EXTREMO` | Variação > 20pp em 7 dias | HIGH |
 
 ### Estatística Avançada
+
 | Tipo | Método |
 |------|--------|
 | `DIVERGENCIA` / `DIVERGENCIA_EXTREMA` | Z-Score (2σ / 3σ acima da média) |
@@ -205,12 +233,14 @@ O motor combina três verticais de análise:
 | `CHANGEPOINT` | Detecção de quebra estrutural na curva de juros da IF |
 
 ### Machine Learning
+
 | Tipo | Método |
 |------|--------|
 | `ISOLATION_FOREST` | Detecção de outliers multivariável (Taxa, Prazo, Risco) |
 | `DBSCAN_OUTLIER` | Agrupamento de densidade — IFs "isoladas" dos clusters do mercado |
 
 ### Saúde Financeira (IFData)
+
 | Tipo | Condição | Severidade |
 |------|----------|------------|
 | `BASILEIA_BAIXO` | Basileia < 11% **e** taxa CDI > 120% | HIGH |
@@ -225,30 +255,54 @@ O motor combina três verticais de análise:
 - [x] **Fase 1 (MVP)**: Estrutura base, CLI, integração BCB, núcleo de detecção (Regras, Estatística, ML).
 - [x] **Fase 2**: Dashboard web (FastAPI + Jinja2 + HTMX) para análise visual.
 - [x] **Fase 3**: Coletor IFData — cruzamento de taxas altas com saúde financeira oficial (Basileia, Liquidez, ROA/ROE).
-- [x] **Fase B (atual)**: Suite de testes, migrações Alembic, sistema de alertas (Telegram/Email), detectores de saúde, CSV export, filtros e ordenação no dashboard.
+- [x] **Fase B**: Suite de testes, migrações Alembic, sistema de alertas (Telegram/Email), detectores de saúde, CSV export, filtros e ordenação no dashboard.
+- [x] **Fase C**: GitHub Actions CI (tests × Python 3.11/3.12, lint, types).
 - [ ] **Fase 4 (Scrapers)**: Integração de prateleiras de corretoras (XP, BTG, Inter) e Mercado Secundário B3.
 - [ ] **Fase 5 (Dados Alternativos)**: Reclame Aqui, Processos Sancionadores Bacen.
-- [ ] **Fase C**: GitHub Actions CI/CD, empacotamento PyInstaller, deploy demo.
+- [ ] **Fase D**: Empacotamento PyInstaller, release PyPI, deploy demo.
 
 ---
 
 ## 🛠️ Desenvolvimento
 
+### Com uv
+
 ```bash
-# Testes (pytest)
+# Instalar dependências de dev
+uv sync --extra dev --extra web --extra ml --extra alerts
+
+# Testes
+uv run pytest
+
+# Lint e formatação
+uv run ruff check src/
+uv run ruff format src/
+
+# Checagem de tipagem
+uv run mypy src/
+
+# Migrações de banco (Alembic)
+uv run python -m alembic upgrade head
+uv run python -m alembic revision --autogenerate -m "descricao"
+```
+
+### Com pip/venv
+
+```bash
+# Testes
 pytest
 
-# Linting e Formatação (ruff)
+# Lint e formatação
 ruff check src/
 ruff format src/
 
-# Checagem de Tipagem (mypy)
+# Checagem de tipagem
 mypy src/
 
-# Migrações de banco de dados (Alembic)
-python -m alembic upgrade head          # Aplicar migrações
-python -m alembic revision --autogenerate -m "descricao"  # Nova migração
-python -m alembic history               # Histórico de versões
+# Migrações de banco (Alembic)
+python -m alembic upgrade head
+python -m alembic revision --autogenerate -m "descricao"
+python -m alembic history
 ```
 
 ## 🤝 Contribuindo

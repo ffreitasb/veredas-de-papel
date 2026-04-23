@@ -3,10 +3,67 @@
 ## Requisitos
 
 - Python 3.11 ou superior
-- pip ou uv (gerenciador de pacotes)
 - Git
 
-## Instalação
+---
+
+## Instalação com uv (recomendado)
+
+[uv](https://docs.astral.sh/uv/) é um gerenciador de pacotes Python ultrarrápido (escrito em Rust) que cuida de Python, venv e dependências em um único fluxo — sem etapas manuais de ativação de ambiente.
+
+### 1. Instalar o uv
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Alternativa via pip ou brew
+pip install uv
+brew install uv
+```
+
+### 2. Clonar o repositório
+
+```bash
+git clone https://github.com/ffreitasb/veredas-de-papel.git
+cd veredas-de-papel
+```
+
+### 3. Criar venv e instalar dependências
+
+```bash
+# Instalação completa (recomendada)
+uv sync --extra dev --extra web --extra ml --extra alerts
+
+# Apenas funcionalidades básicas
+uv sync
+
+# Por grupo de funcionalidade
+uv sync --extra web        # dashboard web
+uv sync --extra ml         # detectores de Machine Learning
+uv sync --extra alerts     # alertas Telegram e Email
+uv sync --extra dev        # ferramentas de desenvolvimento
+```
+
+O uv cria automaticamente o `.venv` na raiz do projeto. Para rodar comandos:
+
+```bash
+# Prefixar com uv run (sem precisar ativar o venv)
+uv run veredas --version
+uv run pytest
+
+# Ou ativar o venv manualmente
+source .venv/bin/activate      # Linux/macOS
+.venv\Scripts\activate         # Windows
+veredas --version
+```
+
+---
+
+## Instalação com pip e venv (alternativa clássica)
 
 ### 1. Clonar o repositório
 
@@ -15,12 +72,12 @@ git clone https://github.com/ffreitasb/veredas-de-papel.git
 cd veredas-de-papel
 ```
 
-### 2. Criar ambiente virtual
+### 2. Criar e ativar ambiente virtual
 
 ```bash
 python -m venv .venv
 
-# Linux/macOS
+# Linux / macOS
 source .venv/bin/activate
 
 # Windows
@@ -37,20 +94,13 @@ pip install -e ".[dev,web,ml,alerts]"
 pip install -e .
 
 # Por grupo de funcionalidade
-pip install -e ".[dev]"      # ferramentas de desenvolvimento
-pip install -e ".[ml]"       # detectores de Machine Learning
-pip install -e ".[alerts]"   # alertas Telegram e Email
+pip install -e ".[dev]"       # ferramentas de desenvolvimento
+pip install -e ".[web]"       # dashboard web
+pip install -e ".[ml]"        # detectores de Machine Learning
+pip install -e ".[alerts]"    # alertas Telegram e Email
 ```
 
-### Instalação via uv (mais rápido)
-
-```bash
-pip install uv
-git clone https://github.com/ffreitasb/veredas-de-papel.git
-cd veredas-de-papel
-uv venv && source .venv/bin/activate  # ou .venv\Scripts\activate no Windows
-uv pip install -e ".[dev,web,ml,alerts]"
-```
+---
 
 ## Verificar instalação
 
@@ -58,6 +108,19 @@ uv pip install -e ".[dev,web,ml,alerts]"
 veredas --version
 veredas --help
 ```
+
+---
+
+## Dependências opcionais
+
+| Grupo | Descrição |
+|-------|-----------|
+| `dev` | pytest, ruff, mypy, pre-commit |
+| `web` | FastAPI, Jinja2, uvicorn, plotly |
+| `ml` | scikit-learn (Isolation Forest, DBSCAN), ruptures (PELT) |
+| `alerts` | Telegram Bot API, aiosmtplib (Email SMTP) |
+
+---
 
 ## Configuração
 
@@ -96,30 +159,27 @@ VEREDAS_ALERT_EMAIL_TO=
 
 Para uso local básico as variáveis de alerta podem permanecer vazias — os canais são simplesmente ignorados quando não configurados.
 
+---
+
 ## Inicializar o banco de dados
 
-O banco de dados é gerenciado via **Alembic** (migrações versionadas). O comando `init` aplica automaticamente todas as migrações pendentes:
+O banco de dados é gerenciado via **Alembic** (migrações versionadas):
 
 ```bash
 veredas init
 ```
 
-O banco SQLite é criado em `data/veredas.db` (ou no caminho definido por `VEREDAS_DB_PATH`).
+Cria o banco SQLite em `data/veredas.db` (ou no caminho definido por `VEREDAS_DB_PATH`).
 
 Para aplicar migrações manualmente (usuários avançados):
 
 ```bash
 python -m alembic upgrade head
+# ou
+uv run python -m alembic upgrade head
 ```
 
-## Dependências opcionais
-
-| Grupo | Descrição | Comando |
-|-------|-----------|---------|
-| `dev` | pytest, ruff, mypy | `pip install -e ".[dev]"` |
-| `ml` | scikit-learn (Isolation Forest, DBSCAN) | `pip install -e ".[ml]"` |
-| `web` | FastAPI, Jinja2, uvicorn | `pip install -e ".[web]"` |
-| `alerts` | httpx (Telegram), aiosmtplib (Email) | `pip install -e ".[alerts]"` |
+---
 
 ## Problemas comuns
 
@@ -150,6 +210,8 @@ Verifique se os tokens/credenciais estão corretamente definidos no `.env` e tes
 veredas alerts status   # mostra canais configurados
 veredas alerts test     # envia mensagem de teste
 ```
+
+---
 
 ## Próximos passos
 
