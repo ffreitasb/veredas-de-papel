@@ -252,14 +252,20 @@ Todas as listagens possuem botão **↓ CSV** que gera arquivos compatíveis com
 
 ## 🗺️ Roadmap
 
+Versão atual: **[v0.1.0-alpha](https://github.com/ffreitasb/veredas-de-papel/releases/tag/v0.1.0-alpha)** — veja o [ROADMAP.md](ROADMAP.md) para o detalhamento completo de cada fase.
+
 - [x] **Fase 1 (MVP)**: Estrutura base, CLI, integração BCB, núcleo de detecção (Regras, Estatística, ML).
 - [x] **Fase 2**: Dashboard web (FastAPI + Jinja2 + HTMX) para análise visual.
 - [x] **Fase 3**: Coletor IFData — cruzamento de taxas altas com saúde financeira oficial (Basileia, Liquidez, ROA/ROE).
 - [x] **Fase B**: Suite de testes, migrações Alembic, sistema de alertas (Telegram/Email), detectores de saúde, CSV export, filtros e ordenação no dashboard.
 - [x] **Fase C**: GitHub Actions CI (tests × Python 3.11/3.12, lint, types).
-- [ ] **Fase 4 (Scrapers)**: Integração de prateleiras de corretoras (XP, BTG, Inter) e Mercado Secundário B3.
-- [ ] **Fase 5 (Dados Alternativos)**: Reclame Aqui, Processos Sancionadores Bacen.
-- [ ] **Fase D**: Empacotamento PyInstaller, release PyPI, deploy demo.
+- [ ] **Fase 4 — Fontes de Mercado** *(próxima)*
+  - [ ] 4.1 — Fundação de scrapers (BaseCollector web, Playwright, normalização)
+  - [ ] 4.2 — Corretoras: prateleiras públicas (XP, BTG, Inter, Rico)
+  - [ ] 4.3 — B3: mercado secundário (preços negociados e yield implícito)
+  - [ ] 4.4 — Inteligência cruzada (detecção entre fontes, dashboard multi-origem)
+- [ ] **Fase 5 — Dados Alternativos**: Reclame Aqui, Processos Sancionadores Bacen.
+- [ ] **Fase D — Distribuição**: empacotamento PyInstaller, release PyPI, demo público.
 
 ---
 

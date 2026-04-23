@@ -1,289 +1,232 @@
 # ROADMAP — veredas de papel
 
-> Ordem de execução: Quick Wins → High Impact → Polishing.
-> Cada item tem esforço estimado e critério de conclusão claro.
+> Documento vivo. Atualizado a cada fase concluída ou replaneada.
+> Para o histórico de mudanças, veja o [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
-## Fase A — Quick Wins
-> Desbloqueiam o que está quebrado e removem peso morto. Esforço baixo, retorno imediato.
+## Status atual — v0.1.0-alpha
 
-### A1 — Corrigir bugs críticos do dashboard (Fase 2)
-**Esforço:** 1–2 dias  
-**Bloqueia:** qualquer teste manual da interface
+[**Release v0.1.0-alpha**](https://github.com/ffreitasb/veredas-de-papel/releases/tag/v0.1.0-alpha) publicada em abril/2026.
 
-| # | Arquivo | Problema | Correção |
-|---|---------|----------|----------|
-| 1 | `web/routes/home.py:51–53` | Taxa consultada como `"SELIC"` mas salva como `"selic"` | Padronizar para minúsculo |
-| 2 | `web/routes/instituicoes.py:143` | Campo `taxa.taxa_percentual` não existe (é `percentual`) | Renomear referência |
-| 3 | Templates anomalias | Campo `anomalia.resolvida` (não existe; é `resolvido`) | Corrigir em 2 templates |
-| 4 | Templates taxas/instituicoes | `risk_score` referenciado mas ausente no modelo ORM | Remover ou adicionar campo |
-| 5 | `web/routes/taxas.py` | HTMX aponta para `/taxas/partials/table` (rota inexistente) | Corrigir para `/taxas/` |
-| 6 | Templates instituicao | `instituicao.tipo_instituicao` → usar `instituicao.segmento.value` | Corrigir referência |
+### Concluído
 
-**Critério de conclusão:** `uvicorn` sobe sem erro, todas as 5 rotas retornam HTTP 200, dashboard navegável do início ao fim.
+| Fase | Conteúdo | Release |
+|------|----------|---------|
+| **Fase 1 — MVP** | CLI, integração BCB (Selic/CDI/IPCA), modelo de dados, detecção por regras | — |
+| **Fase 2 — Dashboard** | FastAPI + Jinja2 + HTMX, 5 rotas, partials, gráficos Plotly | — |
+| **Fase 3 — IFData** | Coletor IFData/BCB, HealthDataIF, detectores de Basileia e Liquidez | — |
+| **Fase B — Infraestrutura** | 60+ testes, Alembic, alertas Telegram/Email, CSV export, filtros HTMX | — |
+| **Fase C — CI** | GitHub Actions (pytest 3.11/3.12, ruff, mypy) | v0.1.0-alpha |
 
 ---
 
-### A2 — Criar templates ausentes
-**Esforço:** meio dia  
-**Bloqueia:** rotas que já existem mas lançam `TemplateNotFound`
+## Em desenvolvimento — Fase 4: Fontes de Mercado
 
-- `web/templates/evento.html` — página de detalhe de evento regulatório
-- `web/templates/taxa_detail.html` — detalhe de uma taxa CDB específica
-- `web/templates/partials/instituicao_chart.html` — gráfico HTMX de evolução de taxas por IF
+**Objetivo:** ampliar a base de dados do sistema com taxas reais de prateleiras de corretoras e do mercado secundário B3, aumentando a capacidade de detecção cruzada entre fontes.
 
-**Critério de conclusão:** nenhuma rota lança `TemplateNotFound`; páginas renderizam com dados reais.
+**Estratégia de scraping:** HTML direto (Approach A) por ser mais rápido de implementar. Cada coletor terá um `# TODO: migrar para API não-oficial (Approach B)` quando a instabilidade do HTML se mostrar recorrente — endpoints JSON dos apps mobile das corretoras são mais estáveis que o HTML do site.
 
 ---
 
-### A3 — Remover código morto (simplificação)
-**Esforço:** 2–3 horas  
-**Impacto:** ~45% de redução de LOC, elimina falsa sensação de "feature pronta"
+### 4.1 — Fundação de Scrapers
 
-Remover integralmente de `future_work/src/veredas/`:
+**Objetivo:** infraestrutura reutilizável que todos os coletores da Fase 4 vão herdar. Sem isso, cada corretora vira código duplicado.
 
-- `collectors/b3/` — stub com dados mock
-- `scrapers/` — XP, BTG, Rico, Nubank, Inter (dados mock, nunca funcionaram)
-- `collectors/alternative/` — ReclameAqui, BACEN processos (stubs)
-- `analysis/sentiment/` — aggregator e analyzer, nunca integrados
-- `api/` — duplicata da camada `web/`, routes redundantes
+**Esforço estimado:** 3–4 dias
 
-**Não remover:** `future_work/src/veredas/alerts/` — email e Telegram têm código real, entram na Fase B.
+#### Entregas
 
-**Critério de conclusão:** `git diff --stat` mostra remoção líquida de ≥ 5.000 linhas; nenhum import quebrado em `src/veredas/`.
+- `collectors/base.py` estendido com `WebCollectorBase`:
+  - Rate limiting configurável por domínio
+  - Retry exponencial com jitter (3 tentativas, backoff 2×)
+  - Rotação de User-Agent a partir de lista curada
+  - Headers realistas (Accept, Accept-Language, Referer)
+  - Timeout por etapa (connect, read, total)
+- Setup **Playwright** (headless Chromium) para páginas JS-rendered:
+  - `collectors/scraper_client.py` com contexto de browser gerenciado
+  - Suporte a wait_for_selector antes de extrair dados
+- Camada de normalização: qualquer fonte externa entra como `TaxaCDB` com campo `fonte` preenchido (`"xp"`, `"btg"`, `"inter"`, `"b3"`)
+- CI: GitHub Actions atualizado para instalar `playwright install --with-deps chromium`
+- Testes com respostas HTTP mockadas via `pytest-httpx` ou `respx`
 
----
-
-### A4 — Corrigir bugs de performance e correção na Fase 3
-**Esforço:** 1 dia  
-**Impacto:** pipeline de detecção ≥ 2× mais rápido, sem crashes silenciosos
-
-| # | Arquivo | Problema | Correção |
-|---|---------|----------|----------|
-| 1 | `detectors/ml.py` | Features extraídas duas vezes (IsolationForest + DBSCAN) | Extrair uma vez, reutilizar |
-| 2 | `detectors/features.py:296` | Função definida dentro de loop (recriada N vezes) | Mover para escopo do módulo |
-| 3 | `detectors/features.py` | Cálculo de percentil O(N²) com loop manual | Substituir por `pandas.rolling.rank` |
-| 4 | `detectors/engine.py` | `variacao_detector` e `divergencia_detector` ausentes do `mapa` | Registrar no dicionário |
-| 5 | `detectors/statistical.py` | `lista.sort()` muta entrada (efeito colateral) | Usar `sorted()` |
-| 6 | `detectors/ml.py` | Type hints com string entre aspas para sklearn (quebra mypy) | Usar `TYPE_CHECKING` guard |
-
-**Critério de conclusão:** `veredas analyze` roda sem warning, `mypy src/` sem erros de tipo nos módulos detectors.
+**Critério de conclusão:** `WebCollectorBase` instanciável; teste unitário com mock HTTP passa; `playwright chromium` disponível no CI.
 
 ---
 
-### A5 — Extrair `get_db()` duplicado e padronizar paginação
-**Esforço:** 2 horas  
-**Impacto:** elimina código duplicado em 5 arquivos de rotas
+### 4.2 — Corretoras: Prateleiras Públicas
 
-- Centralizar `get_db()` em `web/dependencies.py` (já existe, só não é usado)
-- Padronizar parâmetro de paginação: `page` em todos os endpoints (hoje mistura `page` e `pagina`)
+**Objetivo:** coletar taxas de CDB disponíveis para compra nas principais corretoras, sem autenticação — apenas páginas públicas de produtos.
 
-**Critério de conclusão:** grep por `def get_db` retorna apenas 1 resultado; grep por `pagina=` retorna 0 nos arquivos de rota.
+**Esforço estimado:** 1–2 semanas (4 coletores × 2–3 dias cada)
 
----
+#### Coletores
 
-## Fase B — High Impact
-> Novas capacidades que entregam valor real ao usuário final. Esforço médio a alto.
+| Corretora | Arquivo | Notas |
+|-----------|---------|-------|
+| XP Investimentos | `collectors/scrapers/xp.py` | Renderização JS; prioridade 1 |
+| BTG Pactual Digital | `collectors/scrapers/btg.py` | Renderização JS; prioridade 2 |
+| Banco Inter | `collectors/scrapers/inter.py` | App-first; prioridade 3 |
+| Rico | `collectors/scrapers/rico.py` | Infraestrutura XP, endpoint diferente |
 
-### B1 — Escrever testes automatizados
-**Esforço:** 3–5 dias  
-**Prioridade:** mais alta da fase B — sem testes, qualquer refactor é andar no escuro
+#### Padrão de implementação
 
-Cobertura mínima por módulo:
+```python
+class XPCollector(WebCollectorBase):
+    SOURCE = "xp"
+    BASE_URL = "https://www.xpi.com.br/investimentos/renda-fixa/cdb/"
 
-```
-tests/
-├── unit/
-│   ├── detectors/     → regras determinísticas, z-score, STL, IsolationForest
-│   ├── collectors/    → mock da API BCB, parsing de resposta, erros de rede
-│   └── storage/       → CRUD de modelos, queries do repository
-├── integration/
-│   ├── test_pipeline.py   → collect → analyze → anomalias persistidas
-│   └── test_web_routes.py → httpx TestClient em todas as 5 rotas
-└── conftest.py            → banco SQLite in-memory, fixtures reutilizáveis
+    # TODO: migrar para API não-oficial (Approach B)
+    # O app XP expõe endpoint JSON em /api/products/fixed-income
+    # mais estável que o HTML do site — migrar quando HTML quebrar 2x.
+
+    async def _parse(self, page) -> list[TaxaCDB]:
+        ...
 ```
 
-**Meta:** cobertura ≥ 70% em `detectors/` e `storage/`; CI verde.
+#### Entrega
 
-**Critério de conclusão:** `pytest --cov=src/veredas` reporta ≥ 70% de cobertura; nenhum teste marcado como `xfail` desnecessariamente.
+- `veredas collect scrapers` — coleta todas as corretoras configuradas
+- `veredas collect scrapers --fonte xp` — coleta fonte específica
+- Tolerância a falha parcial: se BTG retorna erro, XP continua
+- Log claro de sucesso/falha por fonte
 
----
-
-### B2 — Migrations Alembic
-**Esforço:** meio dia  
-**Bloqueia:** qualquer deploy em produção ou atualização segura de schema
-
-- Gerar migration inicial a partir dos models ORM existentes
-- Adicionar campo `risk_score` em `TaxaCDB` (referenciado no dashboard, ausente no modelo)
-- Documentar: `alembic upgrade head` no fluxo de instalação
-
-**Critério de conclusão:** `alembic upgrade head` em banco vazio cria schema completo; `alembic downgrade -1` reverte sem erro.
+**Critério de conclusão:** `veredas collect scrapers` roda sem erro por 7 dias consecutivos; falha de uma corretora não interrompe as demais; dados aparecem no dashboard com o filtro de fonte.
 
 ---
 
-### B3 — Sistema de alertas completo
-**Esforço:** 3–4 dias  
-**Valor:** notificação proativa é o diferencial para o investidor pessoa física
+### 4.3 — B3: Mercado Secundário
 
-Etapas:
+**Objetivo:** capturar preços de CDBs negociados no mercado secundário — diferente da prateleira de captação primária das corretoras.
 
-1. **AlertManager** em `alerts/manager.py` — despacha para canais configurados com cooldown por instituição
-2. **Integração com DetectionEngine** — ao persistir `Anomalia` de severidade ALTA ou CRÍTICA, dispara alerta
-3. **Telegram** (`alerts/telegram.py`) — já existe em `future_work/`, integrar e testar
-4. **Email SMTP** (`alerts/email.py`) — já existe em `future_work/`, integrar e testar
-5. **CLI**: `veredas alerts test` — envia mensagem de teste para canal configurado
+**Esforço estimado:** 1 semana (dependente de acesso)
 
-**Critério de conclusão:** com `.env` configurado, `veredas analyze` gera anomalia CRÍTICA e mensagem chega no Telegram/email em < 30s.
+#### Avaliação de acesso (pré-requisito)
 
----
+- [ ] **B3 Market Data API** — verificar se endpoint público existe ou exige contrato
+- [ ] **ANBIMA** — dados de debentures e CDBs via `anbima-api` (open, bem documentada)
+- [ ] **CETIP/B3 feed** — feed de fechamento disponível via FTP público
 
-### B4 — Coletor IFData (saúde financeira das IFs)
-**Esforço:** 4–5 dias  
-**Valor:** cruzar taxa alta com Índice de Basileia baixo é o sinal mais poderoso do sistema
+Fallback se B3 exigir contrato: **ANBIMA** cobre CDBs negociados e tem API gratuita com registro.
 
-- Expandir `collectors/ifdata.py` para coletar: Índice de Basileia, Índice de Liquidez, Ativo Total, Patrimônio Líquido
-- Adicionar modelo ORM `HealthDataIF` em `storage/models.py`
-- Novo detector: `BASILEIA_BAIXO` — IF com taxa > referência e Basileia < threshold (ex: 11%)
-- Novo detector: `LIQUIDEZ_CRITICA` — Liquidez abaixo do mínimo regulatório enquanto taxa sobe
-- Dashboard: painel de saúde financeira por IF na página `instituicao.html`
+#### Modelo de dados
 
-**Critério de conclusão:** `veredas collect ifdata` popula `HealthDataIF`; `veredas analyze` detecta e persiste anomalias dos 2 novos tipos.
+Campo `mercado` em `TaxaCDB`:
+- `"primario"` — prateleira de captação (corretora/emissor)
+- `"secundario"` — preço negociado no mercado secundário
 
----
+#### Entrega
 
-### B5 — Filtros HTMX e exportação no dashboard
-**Esforço:** 2–3 dias  
-**Valor:** usabilidade — sem filtros o dashboard é uma lista ilegível
+- `collectors/b3/secondary.py` (ou `collectors/anbima.py` conforme avaliação)
+- `veredas collect b3` disponível no CLI
+- Dashboard: coluna "Mercado" visível na tabela de taxas
 
-- Filtros sem reload de página em `/taxas/`: indexador (CDI, IPCA, Prefixado), prazo, instituição
-- Filtro de severidade em `/anomalias/`
-- Botão **Exportar CSV** em `/taxas/` e `/anomalias/` (stream direto pelo FastAPI)
-- Ordenação clicável nas tabelas (por taxa, por data, por risco)
-
-**Critério de conclusão:** filtros funcionam com JS desabilitado (degradação graciosa via query string); export gera CSV válido com encoding UTF-8-BOM (compatível com Excel brasileiro).
+**Critério de conclusão:** dados de mercado secundário populados; distinção primário/secundário visível no dashboard.
 
 ---
 
-### B6 — Configurar CI com GitHub Actions
-**Esforço:** meio dia  
-**Bloqueia:** qualquer contribuição externa com confiança
+### 4.4 — Inteligência Cruzada
 
-```yaml
-# .github/workflows/ci.yml
-on: [push, pull_request]
-jobs:
-  test:    # pytest + cobertura
-  lint:    # ruff check + ruff format --check
-  types:   # mypy src/
-```
+**Objetivo:** usar as múltiplas fontes para detectar padrões que nenhuma fonte isolada revelaria.
 
-**Critério de conclusão:** badge CI verde no README; PR sem testes passando é bloqueado pelo status check.
+**Esforço estimado:** 1 semana
 
----
+#### Novos tipos de anomalia
 
-## Fase C — Polishing
-> Refinamento, distribuição e sustentabilidade do projeto a longo prazo.
+| Tipo | Lógica | Severidade |
+|------|--------|------------|
+| `SPREAD_CORRETORA` | Taxa na prateleira da corretora ≥ X% acima do benchmark de mercado primário (BCB) | HIGH |
+| `DIVERGENCIA_FONTES` | Mesma IF ofertando taxas com diferença ≥ Y pp entre duas corretoras | MEDIUM |
+| `PRIMARIO_VS_SECUNDARIO` | Taxa de emissão nova muito abaixo do preço implícito no secundário (sinal de deságio) | HIGH |
 
-### C1 — Headers de segurança faltantes
-**Esforço:** 2 horas  
-**Impacto:** fechar últimos LOW do SECURITY_REPORT
+#### Integração
 
-- Adicionar `Content-Security-Policy` no middleware FastAPI
-- `X-Frame-Options: DENY`
-- `X-Content-Type-Options: nosniff`
-- `Referrer-Policy: strict-origin-when-cross-origin`
+- Novas fontes entram no ciclo do `scheduler.py` (coleta automática junto com BCB/IFData)
+- `veredas collect all` inclui scrapers e B3
+- Dashboard: filtro de fonte (`bcb`, `xp`, `btg`, `inter`, `b3`) em `/taxas/`
+- Página de detalhe da IF exibe comparativo de taxas por fonte
 
-**Critério de conclusão:** `curl -I http://localhost:8000` mostra todos os 4 headers.
+**Critério de conclusão:** `veredas analyze` detecta `SPREAD_CORRETORA` e `DIVERGENCIA_FONTES`; anomalias aparecem no dashboard com atribuição de fonte.
 
 ---
 
-### C2 — Logging estruturado
-**Esforço:** 1 dia  
-**Impacto:** debugar problemas em produção sem `print()` espalhados
+## Fase 5 — Dados Alternativos
 
-- Substituir todos os `print()` por `logging.getLogger(__name__)`
-- Configurar formato JSON para produção, formato legível para desenvolvimento
-- Nível configurável via `.env` (`LOG_LEVEL=INFO`)
-- Log de auditoria para detecções (`INFO`) e erros de coleta (`WARNING`)
+**Objetivo:** complementar os dados financeiros com sinais de comportamento e reputação das IFs.
 
-**Critério de conclusão:** grep por `print(` em `src/veredas/` retorna 0 resultados (exceto `cli/main.py` onde Rich é usado intencionalmente).
+**Esforço estimado:** 2–3 semanas | **Dependência:** Fase 4 concluída
 
----
+### 5.1 — Reclame Aqui
 
-### C3 — Dark mode e UX final
-**Esforço:** 1 dia  
-**Impacto:** qualidade visual para uso prolongado e screenshots de divulgação
+- Coletor de reclamações por IF (volume, índice de resolução, nota)
+- Modelo `ReclamacaoIF` com série temporal
+- Detector `REPUTACAO_QUEDA`: aumento súbito de reclamações correlacionado com taxa alta
+- Dashboard: indicador de reputação na página de detalhe da IF
 
-- Toggle dark/light mode com preferência salva em `localStorage`
-- Notificações toast (HTMX `hx-swap="outerHTML"`) para ações confirmadas
-- Favicon e `<meta>` Open Graph para compartilhamento
-- Página 500 customizada (hoje só existe 404)
+### 5.2 — Processos Sancionadores Bacen
 
-**Critério de conclusão:** Lighthouse score ≥ 90 em Performance e Accessibility na home.
+- Scraper do portal de sanções do Banco Central (`www.bcb.gov.br/estabilidadefinanceira/processos`)
+- Modelo `ProcessoSancionador` com data, tipo e IF envolvida
+- Integração com timeline de eventos regulatórios
 
----
+### 5.3 — Correlação entre fontes alternativas
 
-### C4 — Empacotamento e distribuição
-**Esforço:** 2–3 dias  
-**Valor:** usuário instala com um comando, sem precisar de Python
-
-- `veredas.spec` para PyInstaller — bundle único incluindo templates e static
-- GitHub Actions release: `.exe` (Windows), binário Linux (Ubuntu)
-- Tag de release com `CHANGELOG.md` atualizado automaticamente via `git cliff`
-- `brew tap` (opcional, v2.0)
-
-**Critério de conclusão:** `./veredas-de-papel.exe init && ./veredas-de-papel.exe collect bcb` funciona em Windows limpo sem Python instalado.
+- Detector `CONVERGENCIA_SINAIS`: taxa alta + reputação caindo + processo aberto = CRITICAL automático
+- Timeline unificada: taxa, anomalia, reclamação e processo no mesmo eixo temporal
 
 ---
 
-### C5 — Demo público
-**Esforço:** 1 dia  
-**Valor:** vitrine do projeto para novos colaboradores e investidores curiosos
+## Fase D — Distribuição
+
+**Objetivo:** tornar o software instalável sem Python e disponível publicamente.
+
+**Dependência:** base funcional (Fases 1–4 concluídas)
+
+### D1 — Empacotamento PyInstaller
+
+- `veredas.spec` com bundle de templates, static e binários do Playwright
+- Binários: `.exe` Windows, binário Linux (Ubuntu 22.04)
+- GitHub Actions release job: build automático ao criar tag `v*`
+
+**Critério:** `./veredas init && ./veredas collect bcb` funciona em Windows sem Python.
+
+### D2 — Release no PyPI
+
+- `pip install veredas-de-papel` instala o CLI funcional
+- Extras: `pip install "veredas-de-papel[web,ml,alerts,scrapers]"`
+- Workflow de publicação automática via Trusted Publisher (PyPI OIDC)
+
+### D3 — Demo Público
 
 - Deploy no Koyeb free tier (ou Railway) com dados históricos pré-populados
-- Banco de dados somente-leitura no demo (sem `veredas init` exposto)
-- Link no README com badge "Live Demo"
-- Dados atualizados diariamente via cron job no próprio serviço
-
-**Critério de conclusão:** URL pública acessível, dados com no máximo 24h de defasagem.
+- Banco somente-leitura no ambiente demo
+- Atualização diária via cron job
+- Badge "Live Demo" no README
 
 ---
 
-### C6 — Scrapers de corretoras (Fase 4 do README)
-**Esforço:** 2–4 semanas (esforço alto, dependência externa)  
-**Colocado em polishing:** HTML de corretoras muda frequentemente — só faz sentido após base estável
+## Fora do escopo (por ora)
 
-- Coletor XP Investimentos (tabela de CDBs disponíveis)
-- Coletor BTG Pactual Digital
-- Coletor Inter
-- Infraestrutura anti-scraping: retry, backoff, rotação de User-Agent
-- Detector `PRATELEIRA_VS_MERCADO`: taxa na corretora diverge do mercado primário
-
-**Critério de conclusão:** `veredas collect corretoras` coleta sem erro por 7 dias consecutivos; tolerância a falha parcial (se BTG cai, XP continua).
+| Item | Motivo |
+|------|--------|
+| API REST pública documentada | Só após schema estabilizar na v1.0 |
+| App mobile | Fora do perfil FOSS/CLI do projeto |
+| Multi-usuário / autenticação | Escopo significativo; baixo retorno para o público-alvo atual |
+| Redis / cache externo | Otimização prematura — SQLite in-process é suficiente |
+| Dados B3 via contrato pago | Reavaliar se ANBIMA não cobrir o caso de uso na Fase 4.3 |
 
 ---
 
-## Visão Geral de Versões
+## Visão de versões
 
-| Versão | Conteúdo | Estimativa |
-|--------|----------|------------|
-| **v0.2.0** | Fases A completas — dashboard funcionando, código limpo | 1 semana |
-| **v0.3.0** | B1 + B2 + B6 — testes, migrations, CI verde | 1–2 semanas |
-| **v0.4.0** | B3 + B4 — alertas e IFData operacionais | 2 semanas |
-| **v0.5.0** | B5 — dashboard com filtros e export | 1 semana |
-| **v1.0.0** | Fase C completa — polishing, empacotamento, demo | 2–3 semanas |
-| **v1.1.0** | C6 — scrapers de corretoras | a definir |
-
----
-
-## Fora do Escopo (por ora)
-
-- **API REST pública** (Fase 6 do README) — só após v1.0 estabilizar o schema
-- **Dados B3 mercado secundário** — requer acesso pago ou parceria
-- **ReclameAqui / Processos BACEN** — dados alternativos de alto valor, mas coleta frágil; aguardar base estável
-- **App mobile** — fora do perfil FOSS/CLI deste projeto
+| Versão | Conteúdo esperado |
+|--------|------------------|
+| `v0.1.0-alpha` | Fases 1–3 + B + C — **publicada** |
+| `v0.2.0-alpha` | Fase 4.1 + 4.2 (fundação + primeiras corretoras) |
+| `v0.3.0-alpha` | Fase 4.3 + 4.4 (B3 + inteligência cruzada) |
+| `v0.4.0-alpha` | Fase 5 (dados alternativos) |
+| `v1.0.0` | Fase D completa (PyPI, binários, demo) |
 
 ---
 
-*Atualizado em: abril 2026*
+*Atualizado em: abril/2026*
