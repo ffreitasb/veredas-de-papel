@@ -275,10 +275,7 @@ def grafico_timeline_anomalias(
                         "size": 12,
                         "symbol": "circle",
                     },
-                    hovertemplate=(
-                        "%{x|%d/%m/%Y %H:%M}<br>"
-                        "Tipo: %{customdata}<extra></extra>"
-                    ),
+                    hovertemplate=("%{x|%d/%m/%Y %H:%M}<br>Tipo: %{customdata}<extra></extra>"),
                     customdata=[a.tipo for a in anomalias_sev],
                 )
             )

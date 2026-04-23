@@ -100,9 +100,7 @@ class EngineResult:
     def high_count(self) -> int:
         """Conta anomalias HIGH ou CRITICAL."""
         return sum(
-            1
-            for a in self.anomalias
-            if a.severidade in (Severidade.HIGH, Severidade.CRITICAL)
+            1 for a in self.anomalias if a.severidade in (Severidade.HIGH, Severidade.CRITICAL)
         )
 
     @property
@@ -111,8 +109,7 @@ class EngineResult:
         return sum(
             1
             for a in self.anomalias
-            if a.severidade
-            in (Severidade.MEDIUM, Severidade.HIGH, Severidade.CRITICAL)
+            if a.severidade in (Severidade.MEDIUM, Severidade.HIGH, Severidade.CRITICAL)
         )
 
     def by_severity(self, severity: Severidade) -> list[AnomaliaDetectada]:
@@ -244,7 +241,10 @@ class DetectionEngine:
                 detectors_used.append("divergencia_detector")
 
         # ================== DETECTORES ESTATÍSTICOS ==================
-        if self.config.enable_statistical and len(all_taxas) >= self.config.min_observations_statistical:
+        if (
+            self.config.enable_statistical
+            and len(all_taxas) >= self.config.min_observations_statistical
+        ):
             # STL
             if self._should_run("statistical", "stl_decomposition_detector"):
                 result = self.stl_detector.detect(all_taxas)
@@ -354,9 +354,7 @@ class DetectionEngine:
             return True  # Se não especificado, executa todos
         return detector_name in self.config.detectors[cat_key]
 
-    def _consolidate_anomalias(
-        self, results: list[DetectionResult]
-    ) -> list[AnomaliaDetectada]:
+    def _consolidate_anomalias(self, results: list[DetectionResult]) -> list[AnomaliaDetectada]:
         """Consolida anomalias de múltiplos detectores."""
         all_anomalias: list[AnomaliaDetectada] = []
 
@@ -366,9 +364,7 @@ class DetectionEngine:
 
         # Filtrar por severidade mínima (PERF-007: usa constante de módulo)
         min_idx = SEVERITY_ORDER.index(self.config.min_severity)
-        all_anomalias = [
-            a for a in all_anomalias if SEVERITY_ORDER.index(a.severidade) >= min_idx
-        ]
+        all_anomalias = [a for a in all_anomalias if SEVERITY_ORDER.index(a.severidade) >= min_idx]
 
         # Deduplicar se configurado
         if self.config.deduplicate:
@@ -385,16 +381,16 @@ class DetectionEngine:
 
         return all_anomalias
 
-    def _deduplicate(
-        self, anomalias: list[AnomaliaDetectada]
-    ) -> list[AnomaliaDetectada]:
+    def _deduplicate(self, anomalias: list[AnomaliaDetectada]) -> list[AnomaliaDetectada]:
         """Remove anomalias duplicadas, mantendo a mais severa."""
         # Agrupa por (if_id, taxa_id, data aproximada)
         groups: dict[tuple, list[AnomaliaDetectada]] = {}
 
         for anomalia in anomalias:
             # Criar chave de agrupamento
-            date_key = anomalia.detectado_em.strftime("%Y-%m-%d") if anomalia.detectado_em else "unknown"
+            date_key = (
+                anomalia.detectado_em.strftime("%Y-%m-%d") if anomalia.detectado_em else "unknown"
+            )
             key = (anomalia.if_id, anomalia.taxa_id, date_key)
 
             if key not in groups:
@@ -406,9 +402,7 @@ class DetectionEngine:
 
         for group_anomalias in groups.values():
             # Ordenar por severidade (maior primeiro)
-            group_anomalias.sort(
-                key=lambda a: SEVERITY_ORDER.index(a.severidade), reverse=True
-            )
+            group_anomalias.sort(key=lambda a: SEVERITY_ORDER.index(a.severidade), reverse=True)
             deduplicated.append(group_anomalias[0])
 
         return deduplicated

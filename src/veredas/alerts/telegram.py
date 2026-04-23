@@ -92,7 +92,26 @@ class TelegramAlertSender(AlertSender):
     @staticmethod
     def _escape_markdown(text: str) -> str:
         """Escapa caracteres especiais do Markdown."""
-        chars = ["_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"]
+        chars = [
+            "_",
+            "*",
+            "[",
+            "]",
+            "(",
+            ")",
+            "~",
+            "`",
+            ">",
+            "#",
+            "+",
+            "-",
+            "=",
+            "|",
+            "{",
+            "}",
+            ".",
+            "!",
+        ]
         for char in chars:
             text = text.replace(char, f"\\{char}")
         return text

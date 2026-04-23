@@ -68,7 +68,6 @@ async def list_taxas(
     indexadores = [e.value for e in Indexador]
 
     context = {
-        "request": request,
         "taxas": taxas,
         "total": total,
         "pagina": pagina,
@@ -85,9 +84,9 @@ async def list_taxas(
 
     # Se for request HTMX, retornar apenas a tabela
     if request.headers.get("HX-Request"):
-        return templates.TemplateResponse("partials/taxas_table.html", context)
+        return templates.TemplateResponse(request, "partials/taxas_table.html", context)
 
-    return templates.TemplateResponse("taxas.html", context)
+    return templates.TemplateResponse(request, "taxas.html", context)
 
 
 @router.get("/export.csv")
@@ -119,28 +118,39 @@ async def export_taxas_csv(
         buf = io.StringIO()
         buf.write("\ufeff")  # UTF-8 BOM para Excel brasileiro
         writer = csv.writer(buf, delimiter=";")
-        writer.writerow([
-            "Data Coleta", "Instituição", "CNPJ", "Indexador",
-            "Percentual (%)", "Taxa Adicional (%)", "Prazo (dias)",
-            "Liquidez Diária", "Fonte", "Risk Score",
-        ])
+        writer.writerow(
+            [
+                "Data Coleta",
+                "Instituição",
+                "CNPJ",
+                "Indexador",
+                "Percentual (%)",
+                "Taxa Adicional (%)",
+                "Prazo (dias)",
+                "Liquidez Diária",
+                "Fonte",
+                "Risk Score",
+            ]
+        )
         yield buf.getvalue()
 
         for taxa in taxas:
             buf = io.StringIO()
             writer = csv.writer(buf, delimiter=";")
-            writer.writerow([
-                taxa.data_coleta.strftime("%d/%m/%Y"),
-                taxa.instituicao.nome if taxa.instituicao else "",
-                taxa.instituicao.cnpj if taxa.instituicao else "",
-                taxa.indexador.value,
-                str(taxa.percentual).replace(".", ","),
-                str(taxa.taxa_adicional).replace(".", ",") if taxa.taxa_adicional else "",
-                taxa.prazo_dias,
-                "Sim" if taxa.liquidez_diaria else "Não",
-                taxa.fonte,
-                str(taxa.risk_score).replace(".", ",") if taxa.risk_score else "",
-            ])
+            writer.writerow(
+                [
+                    taxa.data_coleta.strftime("%d/%m/%Y"),
+                    taxa.instituicao.nome if taxa.instituicao else "",
+                    taxa.instituicao.cnpj if taxa.instituicao else "",
+                    taxa.indexador.value,
+                    str(taxa.percentual).replace(".", ","),
+                    str(taxa.taxa_adicional).replace(".", ",") if taxa.taxa_adicional else "",
+                    taxa.prazo_dias,
+                    "Sim" if taxa.liquidez_diaria else "Não",
+                    taxa.fonte,
+                    str(taxa.risk_score).replace(".", ",") if taxa.risk_score else "",
+                ]
+            )
             yield buf.getvalue()
 
     return StreamingResponse(
@@ -164,15 +174,16 @@ async def get_taxa(
 
     if not taxa:
         return templates.TemplateResponse(
+            request,
             "errors/404.html",
-            {"request": request, "message": "Taxa nao encontrada"},
+            {"message": "Taxa nao encontrada"},
             status_code=404,
         )
 
     return templates.TemplateResponse(
+        request,
         "taxa_detail.html",
         {
-            "request": request,
             "taxa": taxa,
         },
     )

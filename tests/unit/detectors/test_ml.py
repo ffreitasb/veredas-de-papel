@@ -42,6 +42,7 @@ class TestIsolationForestDetector:
 
     def test_detect_with_features_compartilhada(self):
         from veredas.detectors.features import FeatureExtractor, calculate_market_stats
+
         taxas = make_taxa_serie(if_id=1, valores=[100.0 + i * 0.2 for i in range(50)])
         mean, std = calculate_market_stats(taxas)
         extractor = FeatureExtractor()

@@ -47,18 +47,15 @@ class TestDetectionEnginePipeline:
 
     def test_variacao_detectada_com_historico(self):
         anteriores = make_taxa_serie(if_id=1, valores=[100.0])
-        atuais = make_taxa_serie(
-            if_id=1, valores=[125.0],
-            data_inicio=datetime(2024, 1, 2)
-        )
+        atuais = make_taxa_serie(if_id=1, valores=[125.0], data_inicio=datetime(2024, 1, 2))
         result = self.engine.analyze(atuais, taxas_anteriores=anteriores)
         # Salto de 25% em relação ao anterior deve ser SALTO_EXTREMO
         assert result.has_anomalias
 
     def test_by_severity_filtra_corretamente(self):
         taxas = [
-            make_taxa(if_id=1, percentual=140.0),   # HIGH
-            make_taxa(if_id=2, percentual=160.0),   # CRITICAL
+            make_taxa(if_id=1, percentual=140.0),  # HIGH
+            make_taxa(if_id=2, percentual=160.0),  # CRITICAL
         ]
         result = self.engine.analyze(taxas)
         criticas = result.by_severity(Severidade.CRITICAL)
@@ -68,8 +65,8 @@ class TestDetectionEnginePipeline:
 
     def test_by_if_filtra_por_instituicao(self):
         taxas = [
-            make_taxa(if_id=1, percentual=110.0),   # normal
-            make_taxa(if_id=2, percentual=160.0),   # critical
+            make_taxa(if_id=1, percentual=110.0),  # normal
+            make_taxa(if_id=2, percentual=160.0),  # critical
         ]
         result = self.engine.analyze(taxas)
         anomalias_if2 = result.by_if(2)
@@ -138,5 +135,9 @@ class TestDetectionEngineComEstatistico:
         taxas = make_taxa_serie(if_id=1, valores=[100.0] * 5)
         result = engine.analyze(taxas)
         # Nenhum detector estatístico deve ter sido executado
-        stat_detectors = {"stl_decomposition_detector", "change_point_detector", "rolling_zscore_detector"}
+        stat_detectors = {
+            "stl_decomposition_detector",
+            "change_point_detector",
+            "rolling_zscore_detector",
+        }
         assert not stat_detectors.intersection(result.detectors_used)

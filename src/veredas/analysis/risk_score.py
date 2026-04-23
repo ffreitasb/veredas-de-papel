@@ -37,10 +37,7 @@ class ScoreBreakdown:
     def total(self) -> float:
         """Score total."""
         return (
-            self.spread_score
-            + self.basileia_score
-            + self.volatilidade_score
-            + self.tendencia_score
+            self.spread_score + self.basileia_score + self.volatilidade_score + self.tendencia_score
         )
 
 

@@ -72,29 +72,31 @@ class TaxaFeatures:
 
     def to_array(self) -> np.ndarray:
         """Converte features para array numpy para ML."""
-        return np.array([
-            self.percentual,
-            self.dia_semana,
-            self.dia_mes,
-            self.semana_ano,
-            self.mes,
-            float(self.fim_de_mes),
-            self.rolling_mean_7d or 0,
-            self.rolling_std_7d or 0,
-            self.rolling_mean_14d or 0,
-            self.rolling_std_14d or 0,
-            self.rolling_mean_30d or 0,
-            self.rolling_std_30d or 0,
-            self.diff_1d or 0,
-            self.diff_7d or 0,
-            self.diff_30d or 0,
-            self.pct_change_7d or 0,
-            self.z_score_7d or 0,
-            self.z_score_30d or 0,
-            self.percentile_30d or 50,
-            self.diff_from_market_mean or 0,
-            self.market_z_score or 0,
-        ])
+        return np.array(
+            [
+                self.percentual,
+                self.dia_semana,
+                self.dia_mes,
+                self.semana_ano,
+                self.mes,
+                float(self.fim_de_mes),
+                self.rolling_mean_7d or 0,
+                self.rolling_std_7d or 0,
+                self.rolling_mean_14d or 0,
+                self.rolling_std_14d or 0,
+                self.rolling_mean_30d or 0,
+                self.rolling_std_30d or 0,
+                self.diff_1d or 0,
+                self.diff_7d or 0,
+                self.diff_30d or 0,
+                self.pct_change_7d or 0,
+                self.z_score_7d or 0,
+                self.z_score_30d or 0,
+                self.percentile_30d or 50,
+                self.diff_from_market_mean or 0,
+                self.market_z_score or 0,
+            ]
+        )
 
     @staticmethod
     def feature_names() -> list[str]:
@@ -172,9 +174,7 @@ class FeatureExtractor:
         all_features: list[TaxaFeatures] = []
 
         for if_id, if_taxas in grouped.items():
-            if_features = self._extract_if_features(
-                if_id, if_taxas, market_mean, market_std
-            )
+            if_features = self._extract_if_features(if_id, if_taxas, market_mean, market_std)
             all_features.extend(if_features)
 
         return all_features

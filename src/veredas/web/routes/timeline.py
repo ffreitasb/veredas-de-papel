@@ -71,9 +71,9 @@ async def timeline_view(
     tipos = evento_repo.get_distinct_types()
 
     return templates.TemplateResponse(
+        request,
         "timeline.html",
         {
-            "request": request,
             "timeline_items": timeline_items,
             "total": total,
             "pagina": pagina,
@@ -103,27 +103,31 @@ def _build_timeline(eventos: list, anomalias: list) -> list[dict]:
 
     # Adicionar eventos
     for evento in eventos:
-        items.append({
-            "type": "evento",
-            "date": evento.data_evento,
-            "title": f"{evento.tipo.value} - {evento.if_nome}",
-            "description": evento.descricao,
-            "severity": evento.tipo.value,
-            "source": evento.fonte,
-            "instituicao": evento.instituicao.nome if evento.instituicao else evento.if_nome,
-        })
+        items.append(
+            {
+                "type": "evento",
+                "date": evento.data_evento,
+                "title": f"{evento.tipo.value} - {evento.if_nome}",
+                "description": evento.descricao,
+                "severity": evento.tipo.value,
+                "source": evento.fonte,
+                "instituicao": evento.instituicao.nome if evento.instituicao else evento.if_nome,
+            }
+        )
 
     # Adicionar anomalias
     for anomalia in anomalias:
-        items.append({
-            "type": "anomalia",
-            "date": anomalia.detectado_em.date() if anomalia.detectado_em else None,
-            "title": f"Anomalia: {anomalia.tipo.value}",
-            "description": anomalia.descricao,
-            "severity": anomalia.severidade.value,
-            "source": "veredas",
-            "instituicao": anomalia.instituicao.nome if anomalia.instituicao else None,
-        })
+        items.append(
+            {
+                "type": "anomalia",
+                "date": anomalia.detectado_em.date() if anomalia.detectado_em else None,
+                "title": f"Anomalia: {anomalia.tipo.value}",
+                "description": anomalia.descricao,
+                "severity": anomalia.severidade.value,
+                "source": "veredas",
+                "instituicao": anomalia.instituicao.nome if anomalia.instituicao else None,
+            }
+        )
 
     # Ordenar por data (mais recente primeiro)
     items.sort(key=lambda x: x["date"] if x["date"] else date.min, reverse=True)
@@ -145,15 +149,16 @@ async def evento_detail(
     evento = evento_repo.get_by_id(evento_id)
     if not evento:
         return templates.TemplateResponse(
+            request,
             "errors/404.html",
-            {"request": request, "message": "Evento nao encontrado"},
+            {"message": "Evento nao encontrado"},
             status_code=404,
         )
 
     return templates.TemplateResponse(
+        request,
         "evento.html",
         {
-            "request": request,
             "evento": evento,
         },
     )

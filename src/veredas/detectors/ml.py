@@ -219,9 +219,7 @@ class IsolationForestDetector(BaseDetector):
             execution_time_ms=elapsed,
         )
 
-    def _create_anomalia(
-        self, features: TaxaFeatures, score: float
-    ) -> AnomaliaDetectada | None:
+    def _create_anomalia(self, features: TaxaFeatures, score: float) -> AnomaliaDetectada | None:
         """Cria anomalia baseada no score de isolamento."""
         # Determinar severidade baseado no score
         if score < self.thresholds.if_score_threshold_high:
@@ -384,9 +382,7 @@ class DBSCANOutlierDetector(BaseDetector):
             for i, (label, features) in enumerate(zip(labels, features_list, strict=False)):
                 if label == -1:  # Outlier
                     # Calcular distância ao cluster mais próximo
-                    distance = self._calculate_min_cluster_distance(
-                        X_scaled[i], X_scaled, labels
-                    )
+                    distance = self._calculate_min_cluster_distance(X_scaled[i], X_scaled, labels)
 
                     anomalia = self._create_anomalia(features, distance)
                     if anomalia:
@@ -431,9 +427,7 @@ class DBSCANOutlierDetector(BaseDetector):
 
         return float(min_distance) if min_distance != float("inf") else 1.0
 
-    def _create_anomalia(
-        self, features: TaxaFeatures, distance: float
-    ) -> AnomaliaDetectada:
+    def _create_anomalia(self, features: TaxaFeatures, distance: float) -> AnomaliaDetectada:
         """Cria anomalia baseada na distância do cluster."""
         # Determinar severidade baseado na distância
         # Distância > 2.0 após normalização indica outlier mais extremo

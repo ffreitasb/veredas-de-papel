@@ -196,13 +196,13 @@ class ConsoleSender(AlertSender):
     async def send(self, message: AlertMessage) -> AlertResult:
         """Imprime alerta no console via logging."""
         log_message = (
-            f"\n{'='*50}\n"
+            f"\n{'=' * 50}\n"
             f"ALERTA [{message.prioridade.value.upper()}]\n"
-            f"{'='*50}\n"
+            f"{'=' * 50}\n"
             f"Titulo: {message.titulo}\n"
             f"Corpo:\n{message.corpo}\n"
             f"Timestamp: {message.timestamp}\n"
-            f"{'='*50}\n"
+            f"{'=' * 50}\n"
         )
         logger.info(log_message)
 

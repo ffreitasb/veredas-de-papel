@@ -20,6 +20,7 @@ from veredas.storage.repository import (
 # InstituicaoRepository
 # ---------------------------------------------------------------------------
 
+
 class TestInstituicaoRepository:
     def setup_method(self):
         pass
@@ -106,6 +107,7 @@ class TestInstituicaoRepository:
 # TaxaCDBRepository
 # ---------------------------------------------------------------------------
 
+
 class TestTaxaCDBRepository:
     def _seed_if(self, session) -> InstituicaoFinanceira:
         repo = InstituicaoRepository(session)
@@ -171,12 +173,30 @@ class TestTaxaCDBRepository:
         db_session.commit()
 
         repo = TaxaCDBRepository(db_session)
-        repo.create(if_id=if1.id, data_coleta=datetime.now(), indexador=Indexador.CDI,
-                    percentual=Decimal("100.0"), prazo_dias=365, fonte="test")
-        repo.create(if_id=if1.id, data_coleta=datetime.now(), indexador=Indexador.CDI,
-                    percentual=Decimal("101.0"), prazo_dias=365, fonte="test")
-        repo.create(if_id=if2.id, data_coleta=datetime.now(), indexador=Indexador.CDI,
-                    percentual=Decimal("102.0"), prazo_dias=365, fonte="test")
+        repo.create(
+            if_id=if1.id,
+            data_coleta=datetime.now(),
+            indexador=Indexador.CDI,
+            percentual=Decimal("100.0"),
+            prazo_dias=365,
+            fonte="test",
+        )
+        repo.create(
+            if_id=if1.id,
+            data_coleta=datetime.now(),
+            indexador=Indexador.CDI,
+            percentual=Decimal("101.0"),
+            prazo_dias=365,
+            fonte="test",
+        )
+        repo.create(
+            if_id=if2.id,
+            data_coleta=datetime.now(),
+            indexador=Indexador.CDI,
+            percentual=Decimal("102.0"),
+            prazo_dias=365,
+            fonte="test",
+        )
         db_session.commit()
 
         assert repo.count_distinct_ifs() == 2
@@ -185,9 +205,14 @@ class TestTaxaCDBRepository:
         if_ = self._seed_if(db_session)
         repo = TaxaCDBRepository(db_session)
         taxas_data = [
-            {"if_id": if_.id, "data_coleta": datetime.now() - timedelta(days=i),
-                 "indexador": Indexador.CDI, "percentual": Decimal(f"{100 + i}.0"),
-                 "prazo_dias": 365, "fonte": "test"}
+            {
+                "if_id": if_.id,
+                "data_coleta": datetime.now() - timedelta(days=i),
+                "indexador": Indexador.CDI,
+                "percentual": Decimal(f"{100 + i}.0"),
+                "prazo_dias": 365,
+                "fonte": "test",
+            }
             for i in range(10)
         ]
         criadas = repo.bulk_create(taxas_data)
@@ -199,10 +224,23 @@ class TestTaxaCDBRepository:
     def test_list_paginated_com_filtro_indexador(self, db_session):
         if_ = self._seed_if(db_session)
         repo = TaxaCDBRepository(db_session)
-        repo.create(if_id=if_.id, data_coleta=datetime.now(), indexador=Indexador.CDI,
-                    percentual=Decimal("110.0"), prazo_dias=365, fonte="test")
-        repo.create(if_id=if_.id, data_coleta=datetime.now(), indexador=Indexador.IPCA,
-                    percentual=Decimal("108.0"), prazo_dias=365, taxa_adicional=Decimal("8.0"), fonte="test")
+        repo.create(
+            if_id=if_.id,
+            data_coleta=datetime.now(),
+            indexador=Indexador.CDI,
+            percentual=Decimal("110.0"),
+            prazo_dias=365,
+            fonte="test",
+        )
+        repo.create(
+            if_id=if_.id,
+            data_coleta=datetime.now(),
+            indexador=Indexador.IPCA,
+            percentual=Decimal("108.0"),
+            prazo_dias=365,
+            taxa_adicional=Decimal("8.0"),
+            fonte="test",
+        )
         db_session.commit()
 
         taxas, total = repo.list_paginated(filters={"indexador": Indexador.CDI})
@@ -213,6 +251,7 @@ class TestTaxaCDBRepository:
 # ---------------------------------------------------------------------------
 # AnomaliaRepository
 # ---------------------------------------------------------------------------
+
 
 class TestAnomaliaRepository:
     def _seed_if(self, session) -> InstituicaoFinanceira:
@@ -295,10 +334,20 @@ class TestAnomaliaRepository:
         db_session.commit()
 
         repo = AnomaliaRepository(db_session)
-        repo.create(if_id=if1.id, tipo=TipoAnomalia.SPREAD_ALTO, severidade=Severidade.HIGH,
-                    valor_detectado=Decimal("140.0"), descricao="IF A anomalia")
-        repo.create(if_id=if2.id, tipo=TipoAnomalia.SPREAD_ALTO, severidade=Severidade.HIGH,
-                    valor_detectado=Decimal("145.0"), descricao="IF B anomalia")
+        repo.create(
+            if_id=if1.id,
+            tipo=TipoAnomalia.SPREAD_ALTO,
+            severidade=Severidade.HIGH,
+            valor_detectado=Decimal("140.0"),
+            descricao="IF A anomalia",
+        )
+        repo.create(
+            if_id=if2.id,
+            tipo=TipoAnomalia.SPREAD_ALTO,
+            severidade=Severidade.HIGH,
+            valor_detectado=Decimal("145.0"),
+            descricao="IF B anomalia",
+        )
         db_session.commit()
 
         anomalias_if1 = repo.list_by_if(if1.id)
@@ -330,6 +379,7 @@ class TestAnomaliaRepository:
 # ---------------------------------------------------------------------------
 # TaxaReferenciaRepository
 # ---------------------------------------------------------------------------
+
 
 class TestTaxaReferenciaRepository:
     def test_create_e_get_ultima(self, db_session):

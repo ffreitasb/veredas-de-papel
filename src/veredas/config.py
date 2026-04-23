@@ -80,18 +80,12 @@ class StatisticalThresholdsConfig(BaseSettings):
     changepoint_penalty: float = Field(
         default=10.0, description="Penalidade PELT (maior = menos sensivel)"
     )
-    changepoint_min_size: int = Field(
-        default=5, description="Tamanho minimo do segmento"
-    )
+    changepoint_min_size: int = Field(default=5, description="Tamanho minimo do segmento")
 
     # Rolling Z-Score
     rolling_window: int = Field(default=14, description="Janela em dias")
-    rolling_z_medium: Decimal = Field(
-        default=Decimal("2.5"), description="Z-score > X = MEDIUM"
-    )
-    rolling_z_high: Decimal = Field(
-        default=Decimal("3.5"), description="Z-score > X = HIGH"
-    )
+    rolling_z_medium: Decimal = Field(default=Decimal("2.5"), description="Z-score > X = MEDIUM")
+    rolling_z_high: Decimal = Field(default=Decimal("3.5"), description="Z-score > X = HIGH")
 
 
 class MLThresholdsConfig(BaseSettings):
@@ -100,29 +94,17 @@ class MLThresholdsConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="VEREDAS_ML_")
 
     # Isolation Forest
-    if_contamination: float = Field(
-        default=0.05, description="Percentual esperado de anomalias"
-    )
+    if_contamination: float = Field(default=0.05, description="Percentual esperado de anomalias")
     if_n_estimators: int = Field(default=100, description="Numero de arvores")
     if_random_state: int = Field(default=42, description="Seed para reproducibilidade")
-    if_score_threshold_medium: float = Field(
-        default=-0.3, description="Score < X = MEDIUM"
-    )
-    if_score_threshold_high: float = Field(
-        default=-0.5, description="Score < X = HIGH"
-    )
+    if_score_threshold_medium: float = Field(default=-0.3, description="Score < X = MEDIUM")
+    if_score_threshold_high: float = Field(default=-0.5, description="Score < X = HIGH")
 
     # DBSCAN
     dbscan_eps: float = Field(default=0.5, description="Raio do cluster")
-    dbscan_min_samples: int = Field(
-        default=3, description="Minimo de amostras por cluster"
-    )
-    dbscan_score_threshold_medium: float = Field(
-        default=2.0, description="Distancia > X = MEDIUM"
-    )
-    dbscan_score_threshold_high: float = Field(
-        default=3.0, description="Distancia > X = HIGH"
-    )
+    dbscan_min_samples: int = Field(default=3, description="Minimo de amostras por cluster")
+    dbscan_score_threshold_medium: float = Field(default=2.0, description="Distancia > X = MEDIUM")
+    dbscan_score_threshold_high: float = Field(default=3.0, description="Distancia > X = HIGH")
 
 
 class DatabaseSettings(BaseSettings):
@@ -283,9 +265,7 @@ class Settings(BaseSettings):
 
     # Sub-configuracoes
     detection: DetectionThresholds = Field(default_factory=DetectionThresholds)
-    statistical: StatisticalThresholdsConfig = Field(
-        default_factory=StatisticalThresholdsConfig
-    )
+    statistical: StatisticalThresholdsConfig = Field(default_factory=StatisticalThresholdsConfig)
     ml: MLThresholdsConfig = Field(default_factory=MLThresholdsConfig)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     collector: CollectorSettings = Field(default_factory=CollectorSettings)

@@ -607,7 +607,9 @@ class TaxaColetadaPlataforma(Base):
     if_id: Mapped[int | None] = mapped_column(ForeignKey("instituicoes_financeiras.id"), index=True)
 
     # Plataforma
-    plataforma: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # xp, btg, rico, etc
+    plataforma: Mapped[str] = mapped_column(
+        String(50), nullable=False, index=True
+    )  # xp, btg, rico, etc
 
     # Dados da taxa
     data_coleta: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)

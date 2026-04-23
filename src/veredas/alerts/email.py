@@ -63,13 +63,15 @@ class EmailAlertSender(AlertSender):
     @property
     def is_configured(self) -> bool:
         """Verifica se todas as configs necessarias estao presentes."""
-        return all([
-            self.smtp_host,
-            self.smtp_port,
-            self.smtp_user,
-            self.smtp_password,
-            self.email_to,
-        ])
+        return all(
+            [
+                self.smtp_host,
+                self.smtp_port,
+                self.smtp_user,
+                self.smtp_password,
+                self.email_to,
+            ]
+        )
 
     def _criar_mensagem(self, alert: AlertMessage) -> MIMEMultipart:
         """Cria mensagem MIME para envio."""

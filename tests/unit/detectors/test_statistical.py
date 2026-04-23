@@ -9,6 +9,7 @@ from veredas.detectors.statistical import RollingZScoreDetector, StatisticalThre
 # RollingZScoreDetector  (mais rápido e sem dependência de ruptures/sklearn)
 # ---------------------------------------------------------------------------
 
+
 class TestRollingZScoreDetector:
     def setup_method(self):
         self.detector = RollingZScoreDetector(min_observations=7)
@@ -54,6 +55,7 @@ class TestRollingZScoreDetector:
 
     def test_thresholds_customizados_mais_sensiveis(self):
         from decimal import Decimal
+
         thresholds = StatisticalThresholds(rolling_window=7, rolling_z_medium=Decimal("1.5"))
         detector = RollingZScoreDetector(thresholds=thresholds, min_observations=7)
         # Outlier moderado que passaria com threshold padrão mas não com 1.5σ
@@ -67,9 +69,11 @@ class TestRollingZScoreDetector:
 # STLDecompositionDetector
 # ---------------------------------------------------------------------------
 
+
 class TestSTLDecompositionDetector:
     def test_sem_dados_suficientes_retorna_vazio(self):
         from veredas.detectors.statistical import STLDecompositionDetector
+
         detector = STLDecompositionDetector(min_observations=14)
         taxas = make_taxa_serie(if_id=1, valores=[100.0] * 5)
         result = detector.detect(taxas)
@@ -78,6 +82,7 @@ class TestSTLDecompositionDetector:
 
     def test_serie_suficiente_executa_sem_erro(self):
         from veredas.detectors.statistical import STLDecompositionDetector
+
         detector = STLDecompositionDetector(min_observations=14)
         # 30 pontos com padrão sazonal leve
         valores = [100.0 + (i % 5) * 2 for i in range(30)]
@@ -91,9 +96,11 @@ class TestSTLDecompositionDetector:
 # ChangePointDetector
 # ---------------------------------------------------------------------------
 
+
 class TestChangePointDetector:
     def test_sem_ruptures_retorna_erro_descritivo(self):
         from veredas.detectors.statistical import HAS_RUPTURES, ChangePointDetector
+
         if HAS_RUPTURES:
             pytest.skip("ruptures instalado — teste de fallback não se aplica")
         detector = ChangePointDetector(min_observations=20)
@@ -104,6 +111,7 @@ class TestChangePointDetector:
 
     def test_com_ruptures_detecta_mudanca_estrutural(self):
         from veredas.detectors.statistical import HAS_RUPTURES, ChangePointDetector
+
         if not HAS_RUPTURES:
             pytest.skip("ruptures não instalado")
         detector = ChangePointDetector(min_observations=20)

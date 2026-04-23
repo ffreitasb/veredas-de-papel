@@ -15,6 +15,7 @@ from veredas.storage.models import Indexador, Severidade, TipoAnomalia
 # SpreadDetector — CDI
 # ---------------------------------------------------------------------------
 
+
 class TestSpreadDetectorCDI:
     def setup_method(self):
         self.detector = SpreadDetector()
@@ -80,6 +81,7 @@ class TestSpreadDetectorCDI:
 # SpreadDetector — IPCA+
 # ---------------------------------------------------------------------------
 
+
 class TestSpreadDetectorIPCA:
     def setup_method(self):
         self.detector = SpreadDetector()
@@ -90,13 +92,17 @@ class TestSpreadDetectorIPCA:
         assert len(result.anomalias) == 0
 
     def test_ipca_spread_alto_gera_high(self):
-        taxas = [make_taxa(if_id=1, percentual=112.0, indexador=Indexador.IPCA, taxa_adicional=12.0)]
+        taxas = [
+            make_taxa(if_id=1, percentual=112.0, indexador=Indexador.IPCA, taxa_adicional=12.0)
+        ]
         result = self.detector.detect(taxas)
         assert len(result.anomalias) == 1
         assert result.anomalias[0].severidade == Severidade.HIGH
 
     def test_ipca_spread_critico_gera_critical(self):
-        taxas = [make_taxa(if_id=1, percentual=120.0, indexador=Indexador.IPCA, taxa_adicional=20.0)]
+        taxas = [
+            make_taxa(if_id=1, percentual=120.0, indexador=Indexador.IPCA, taxa_adicional=20.0)
+        ]
         result = self.detector.detect(taxas)
         assert len(result.anomalias) == 1
         assert result.anomalias[0].severidade == Severidade.CRITICAL
@@ -110,6 +116,7 @@ class TestSpreadDetectorIPCA:
 # ---------------------------------------------------------------------------
 # VariacaoDetector
 # ---------------------------------------------------------------------------
+
 
 class TestVariacaoDetector:
     def setup_method(self):
@@ -160,6 +167,7 @@ class TestVariacaoDetector:
 # ---------------------------------------------------------------------------
 # DivergenciaDetector
 # ---------------------------------------------------------------------------
+
 
 class TestDivergenciaDetector:
     def setup_method(self):

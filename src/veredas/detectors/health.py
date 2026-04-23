@@ -70,7 +70,10 @@ class BasileiaBaixoDetector:
         # Agrupar taxa mais alta por IF
         taxa_max_by_if: dict[int, TaxaCDB] = {}
         for taxa in taxas:
-            if taxa.if_id not in taxa_max_by_if or taxa.percentual > taxa_max_by_if[taxa.if_id].percentual:
+            if (
+                taxa.if_id not in taxa_max_by_if
+                or taxa.percentual > taxa_max_by_if[taxa.if_id].percentual
+            ):
                 taxa_max_by_if[taxa.if_id] = taxa
 
         for if_id, taxa in taxa_max_by_if.items():
@@ -159,7 +162,10 @@ class LiquidezCriticaDetector:
 
         taxa_max_by_if: dict[int, TaxaCDB] = {}
         for taxa in taxas:
-            if taxa.if_id not in taxa_max_by_if or taxa.percentual > taxa_max_by_if[taxa.if_id].percentual:
+            if (
+                taxa.if_id not in taxa_max_by_if
+                or taxa.percentual > taxa_max_by_if[taxa.if_id].percentual
+            ):
                 taxa_max_by_if[taxa.if_id] = taxa
 
         for if_id, taxa in taxa_max_by_if.items():

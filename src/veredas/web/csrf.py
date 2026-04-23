@@ -87,7 +87,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         if not submitted_token:
             # Try to get from form data
             content_type = request.headers.get("content-type", "")
-            if "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type:
+            if (
+                "application/x-www-form-urlencoded" in content_type
+                or "multipart/form-data" in content_type
+            ):
                 try:
                     form = await request.form()
                     submitted_token = form.get(CSRF_FORM_FIELD)

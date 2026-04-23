@@ -99,7 +99,10 @@ class AlertManager:
             anomalia_idx = severity_order.index(anomalia.severidade.upper())
 
             if anomalia_idx < min_idx:
-                return False, f"Severidade {anomalia.severidade} abaixo do minimo ({self.min_severity})"
+                return (
+                    False,
+                    f"Severidade {anomalia.severidade} abaixo do minimo ({self.min_severity})",
+                )
         except ValueError:
             pass  # Severidade invalida, permite
 
@@ -227,7 +230,7 @@ class AlertManager:
         test_message = AlertMessage(
             titulo="[TESTE] Alerta do veredas de papel",
             corpo="Este e um alerta de teste do sistema de monitoramento.\n"
-                  "Se voce recebeu esta mensagem, o canal esta funcionando!",
+            "Se voce recebeu esta mensagem, o canal esta funcionando!",
             prioridade=AlertPriority.LOW,
         )
 
@@ -250,7 +253,8 @@ class AlertManager:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         return [
-            r if isinstance(r, AlertResult)
+            r
+            if isinstance(r, AlertResult)
             else AlertResult(success=False, channel=AlertChannel.CONSOLE, error=str(r))
             for r in results
         ]

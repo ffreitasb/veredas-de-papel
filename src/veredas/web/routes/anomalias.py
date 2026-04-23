@@ -93,9 +93,9 @@ async def anomalias_list(
     tipos = anomalia_repo.get_distinct_tipos()
 
     return templates.TemplateResponse(
+        request,
         "anomalias.html",
         {
-            "request": request,
             "anomalias": anomalias,
             "total": total,
             "pagina": pagina,
@@ -143,30 +143,43 @@ async def export_anomalias_csv(
         buf = io.StringIO()
         buf.write("\ufeff")  # UTF-8 BOM para Excel brasileiro
         writer = csv.writer(buf, delimiter=";")
-        writer.writerow([
-            "ID", "Tipo", "Severidade", "Instituição", "CNPJ",
-            "Valor Detectado", "Valor Esperado", "Desvio",
-            "Descrição", "Detectado Em", "Resolvido", "Resolvido Em",
-        ])
+        writer.writerow(
+            [
+                "ID",
+                "Tipo",
+                "Severidade",
+                "Instituição",
+                "CNPJ",
+                "Valor Detectado",
+                "Valor Esperado",
+                "Desvio",
+                "Descrição",
+                "Detectado Em",
+                "Resolvido",
+                "Resolvido Em",
+            ]
+        )
         yield buf.getvalue()
 
         for a in anomalias:
             buf = io.StringIO()
             writer = csv.writer(buf, delimiter=";")
-            writer.writerow([
-                a.id,
-                a.tipo.value,
-                a.severidade.value,
-                a.instituicao.nome if a.instituicao else "",
-                a.instituicao.cnpj if a.instituicao else "",
-                str(a.valor_detectado).replace(".", ","),
-                str(a.valor_esperado).replace(".", ",") if a.valor_esperado else "",
-                str(a.desvio).replace(".", ",") if a.desvio else "",
-                a.descricao,
-                a.detectado_em.strftime("%d/%m/%Y %H:%M") if a.detectado_em else "",
-                "Sim" if a.resolvido else "Não",
-                a.resolvido_em.strftime("%d/%m/%Y %H:%M") if a.resolvido_em else "",
-            ])
+            writer.writerow(
+                [
+                    a.id,
+                    a.tipo.value,
+                    a.severidade.value,
+                    a.instituicao.nome if a.instituicao else "",
+                    a.instituicao.cnpj if a.instituicao else "",
+                    str(a.valor_detectado).replace(".", ","),
+                    str(a.valor_esperado).replace(".", ",") if a.valor_esperado else "",
+                    str(a.desvio).replace(".", ",") if a.desvio else "",
+                    a.descricao,
+                    a.detectado_em.strftime("%d/%m/%Y %H:%M") if a.detectado_em else "",
+                    "Sim" if a.resolvido else "Não",
+                    a.resolvido_em.strftime("%d/%m/%Y %H:%M") if a.resolvido_em else "",
+                ]
+            )
             yield buf.getvalue()
 
     return StreamingResponse(
@@ -194,9 +207,9 @@ async def resolver_anomalia(
 
     # Retorna partial atualizado
     return templates.TemplateResponse(
+        request,
         "partials/anomalia_card.html",
         {
-            "request": request,
             "anomalia": anomalia,
             "resolved": True,
         },
@@ -241,9 +254,9 @@ async def anomalias_list_partial(
     total_paginas = (total + por_pagina - 1) // por_pagina
 
     return templates.TemplateResponse(
+        request,
         "partials/anomalias_list.html",
         {
-            "request": request,
             "anomalias": anomalias,
             "total": total,
             "pagina": pagina,

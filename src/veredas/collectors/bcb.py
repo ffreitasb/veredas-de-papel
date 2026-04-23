@@ -43,9 +43,9 @@ class DadosBCB:
 
 # Códigos das séries no SGS do BCB
 SERIES_CODES = {
-    "selic": 11,      # Taxa de juros - Selic acumulada no mês
-    "cdi": 12,        # Taxa de juros - CDI
-    "ipca": 433,      # IPCA - Variação mensal
+    "selic": 11,  # Taxa de juros - Selic acumulada no mês
+    "cdi": 12,  # Taxa de juros - CDI
+    "ipca": 433,  # IPCA - Variação mensal
     "selic_meta": 432,  # Taxa Selic - Meta definida pelo Copom
 }
 
@@ -276,6 +276,7 @@ class BCBCollector(BaseCollector):
 
 
 # Funções de conveniência para uso síncrono
+
 
 def get_selic_atual() -> Decimal | None:
     """

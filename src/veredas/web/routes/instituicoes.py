@@ -7,7 +7,6 @@ Exibe lista de IFs monitoradas:
 - Historico de taxas
 """
 
-
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 
@@ -47,9 +46,9 @@ async def instituicoes_list(
     total_paginas = (total + por_pagina - 1) // por_pagina
 
     return templates.TemplateResponse(
+        request,
         "instituicoes.html",
         {
-            "request": request,
             "instituicoes": instituicoes,
             "total": total,
             "pagina": pagina,
@@ -86,8 +85,9 @@ async def instituicao_detail(
     instituicao = if_repo.get_by_cnpj(cnpj_normalizado)
     if not instituicao:
         return templates.TemplateResponse(
+            request,
             "errors/404.html",
-            {"request": request, "message": "Instituicao nao encontrada"},
+            {"message": "Instituicao nao encontrada"},
             status_code=404,
         )
 
@@ -107,9 +107,9 @@ async def instituicao_detail(
     chart_data = _prepare_chart_data(taxas)
 
     return templates.TemplateResponse(
+        request,
         "instituicao.html",
         {
-            "request": request,
             "instituicao": instituicao,
             "taxas": taxas,
             "anomalias": anomalias,
@@ -171,9 +171,9 @@ async def instituicao_chart_partial(
     chart_data = _prepare_chart_data(taxas)
 
     return templates.TemplateResponse(
+        request,
         "partials/instituicao_chart.html",
         {
-            "request": request,
             "instituicao": instituicao,
             "chart_data": chart_data,
         },

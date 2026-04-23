@@ -237,7 +237,9 @@ def _collect_ifdata(db_path: Path | None):
                 roe=dados_if.roe,
             )
 
-            ativo_mi = f"{float(dados_if.ativo_total) / 1_000_000:.1f}" if dados_if.ativo_total else "-"
+            ativo_mi = (
+                f"{float(dados_if.ativo_total) / 1_000_000:.1f}" if dados_if.ativo_total else "-"
+            )
             basileia = f"{dados_if.indice_basileia:.1f}%" if dados_if.indice_basileia else "-"
             liquidez = f"{dados_if.indice_liquidez:.1f}%" if dados_if.indice_liquidez else "-"
             table.add_row(dados_if.nome[:40], basileia, liquidez, ativo_mi)
@@ -327,23 +329,27 @@ def analyze(
     # Verificar se há dados no banco
     db = DatabaseManager(db_path)
     if not db.db_path.exists():
-        rprint(Panel(
-            "[yellow]⚠ Banco de dados não encontrado[/]\n\n"
-            "Execute [bold]veredas init[/] para criar o banco.\n"
-            "Use [bold]veredas collect[/] para coletar taxas.",
-            title="Dados Necessários",
-        ))
+        rprint(
+            Panel(
+                "[yellow]⚠ Banco de dados não encontrado[/]\n\n"
+                "Execute [bold]veredas init[/] para criar o banco.\n"
+                "Use [bold]veredas collect[/] para coletar taxas.",
+                title="Dados Necessários",
+            )
+        )
         raise typer.Exit(1)
 
     # Por enquanto, mostra exemplo (banco pode não ter taxas CDB)
-    rprint(Panel(
-        "[cyan]ℹ[/] Para análise completa, é necessário ter taxas de CDB no banco.\n\n"
-        "Use a [bold]API REST[/] para analisar dados:\n"
-        "  [dim]POST /api/v1/detection/analyze[/]\n\n"
-        "Ou inicie o servidor web:\n"
-        "  [bold]veredas web[/]",
-        title="Análise de Anomalias",
-    ))
+    rprint(
+        Panel(
+            "[cyan]ℹ[/] Para análise completa, é necessário ter taxas de CDB no banco.\n\n"
+            "Use a [bold]API REST[/] para analisar dados:\n"
+            "  [dim]POST /api/v1/detection/analyze[/]\n\n"
+            "Ou inicie o servidor web:\n"
+            "  [bold]veredas web[/]",
+            title="Análise de Anomalias",
+        )
+    )
 
     # Mostrar detectores disponíveis
     detectors = engine.available_detectors()
@@ -405,7 +411,9 @@ def alerts_test(
     manager = AlertManager()
 
     if not manager.senders:
-        rprint("[red]✗[/] Nenhum canal configurado. Use [bold]veredas alerts status[/] para detalhes.")
+        rprint(
+            "[red]✗[/] Nenhum canal configurado. Use [bold]veredas alerts status[/] para detalhes."
+        )
         raise typer.Exit(1)
 
     target: AlertChannel | None = None
@@ -458,10 +466,12 @@ def export(
     rprint(f"[bold]Exportando dados para:[/] {output}")
 
     # TODO: Implementar exportação
-    rprint(Panel(
-        "[yellow]⚠ Funcionalidade em desenvolvimento[/]",
-        title="Exportação",
-    ))
+    rprint(
+        Panel(
+            "[yellow]⚠ Funcionalidade em desenvolvimento[/]",
+            title="Exportação",
+        )
+    )
 
 
 @app.command()
@@ -483,12 +493,14 @@ def detectors():
 
     try:
         import sklearn  # noqa: F401
+
         ml_available = True
     except ImportError:
         pass
 
     try:
         import ruptures  # noqa: F401
+
         ruptures_available = True
     except ImportError:
         pass
@@ -550,6 +562,7 @@ def web(
 
     try:
         from veredas.web.app import run_server
+
         run_server(host=host, port=port, reload=reload)
     except ImportError as e:
         rprint(f"[red]✗[/] Dependencias web nao instaladas: {e}")
@@ -574,11 +587,13 @@ def status(
 
     Exibe informações sobre dados coletados, última atualização, etc.
     """
-    rprint(Panel.fit(
-        f"[bold green]veredas de papel[/] v{__version__}\n"
-        "[dim]Monitor de taxas de CDB e detecção de anomalias[/]",
-        border_style="green",
-    ))
+    rprint(
+        Panel.fit(
+            f"[bold green]veredas de papel[/] v{__version__}\n"
+            "[dim]Monitor de taxas de CDB e detecção de anomalias[/]",
+            border_style="green",
+        )
+    )
 
     rprint("\n[bold]Status das Fontes:[/]")
 

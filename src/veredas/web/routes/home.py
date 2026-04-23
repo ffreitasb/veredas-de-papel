@@ -61,9 +61,9 @@ async def home(request: Request, session=Depends(get_db)):
     total_ifs = taxa_cdb_repo.count_distinct_ifs()
 
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
-            "request": request,
             "taxas_referencia": taxas_referencia,
             "anomalias_count": anomalias_count,
             "ultimas_anomalias": ultimas_anomalias,
@@ -89,9 +89,9 @@ async def stats_partial(request: Request, session=Depends(get_db)):
     }
 
     return templates.TemplateResponse(
+        request,
         "partials/stats_cards.html",
         {
-            "request": request,
             "anomalias_count": anomalias_count,
         },
     )

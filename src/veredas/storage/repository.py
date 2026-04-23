@@ -41,9 +41,7 @@ class InstituicaoRepository:
 
     def get_by_nome(self, nome: str) -> InstituicaoFinanceira | None:
         """Busca IF por nome (case-insensitive, parcial)."""
-        stmt = select(InstituicaoFinanceira).where(
-            InstituicaoFinanceira.nome.ilike(f"%{nome}%")
-        )
+        stmt = select(InstituicaoFinanceira).where(InstituicaoFinanceira.nome.ilike(f"%{nome}%"))
         return self.session.execute(stmt).scalar_one_or_none()
 
     def list_all(self, ativas_only: bool = True) -> Sequence[InstituicaoFinanceira]:
@@ -150,9 +148,7 @@ class TaxaCDBRepository:
         """Lista taxas recentes."""
         desde = datetime.now(TZ_BRASIL) - timedelta(days=dias)
         stmt = (
-            select(TaxaCDB)
-            .where(TaxaCDB.data_coleta >= desde)
-            .order_by(desc(TaxaCDB.data_coleta))
+            select(TaxaCDB).where(TaxaCDB.data_coleta >= desde).order_by(desc(TaxaCDB.data_coleta))
         )
         if indexador:
             stmt = stmt.where(TaxaCDB.indexador == indexador)
@@ -218,7 +214,7 @@ class TaxaCDBRepository:
         variancia = soma_quadrados / n
 
         # Desvio padrão = raiz quadrada da variância
-        desvio = variancia ** 0.5
+        desvio = variancia**0.5
 
         return Decimal(str(round(desvio, 6)))
 
@@ -350,11 +346,7 @@ class AnomaliaRepository:
         incluir_resolvidas: bool = False,
     ) -> Sequence[Anomalia]:
         """Lista anomalias de uma IF."""
-        stmt = (
-            select(Anomalia)
-            .where(Anomalia.if_id == if_id)
-            .order_by(desc(Anomalia.detectado_em))
-        )
+        stmt = select(Anomalia).where(Anomalia.if_id == if_id).order_by(desc(Anomalia.detectado_em))
         if not incluir_resolvidas:
             stmt = stmt.where(Anomalia.resolvido == False)  # noqa: E712
         return self.session.execute(stmt).scalars().all()
@@ -596,11 +588,7 @@ class EventoRepository:
 
     def list_all(self, limit: int = 100) -> Sequence[EventoRegulatorio]:
         """Lista todos os eventos."""
-        stmt = (
-            select(EventoRegulatorio)
-            .order_by(desc(EventoRegulatorio.data_evento))
-            .limit(limit)
-        )
+        stmt = select(EventoRegulatorio).order_by(desc(EventoRegulatorio.data_evento)).limit(limit)
         return self.session.execute(stmt).scalars().all()
 
     def list_by_if(self, if_id: int) -> Sequence[EventoRegulatorio]:
@@ -714,9 +702,7 @@ class HealthDataRepository:
         self.session.flush()
         return health
 
-    def list_all_low_basileia(
-        self, threshold: Decimal = Decimal("11")
-    ) -> Sequence[HealthDataIF]:
+    def list_all_low_basileia(self, threshold: Decimal = Decimal("11")) -> Sequence[HealthDataIF]:
         """Lista IFs com Basileia abaixo do threshold no snapshot mais recente."""
         subq = (
             select(HealthDataIF.if_id, func.max(HealthDataIF.data_base).label("max_date"))

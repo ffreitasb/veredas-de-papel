@@ -178,9 +178,7 @@ class IFDataCollector(BaseCollector):
                 data = response.json()
                 if isinstance(data, list):
                     cnpjs = [
-                        if_data.get("cnpj")
-                        for if_data in data[:limite]
-                        if if_data.get("cnpj")
+                        if_data.get("cnpj") for if_data in data[:limite] if if_data.get("cnpj")
                     ]
                     if cnpjs:
                         return cnpjs
