@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from veredas import TZ_BRASIL
 from veredas.storage.models import Anomalia
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ class AlertMessage:
 
     def __post_init__(self):
         if self.timestamp is None:
-            self.timestamp = datetime.now()
+            self.timestamp = datetime.now(TZ_BRASIL)
 
     @classmethod
     def from_anomalia(cls, anomalia: Anomalia) -> "AlertMessage":
@@ -117,7 +118,7 @@ class AlertResult:
 
     def __post_init__(self):
         if self.timestamp is None:
-            self.timestamp = datetime.now()
+            self.timestamp = datetime.now(TZ_BRASIL)
 
 
 class AlertSender(ABC):

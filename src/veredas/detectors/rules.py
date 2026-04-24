@@ -7,9 +7,9 @@ Implementa regras simples e interpretáveis para detecção de anomalias:
 - Divergência: Taxa muito acima da média do mercado
 """
 
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
 from decimal import Decimal
 
 from veredas.detectors.base import AnomaliaDetectada, BaseDetector, DetectionResult
@@ -82,7 +82,7 @@ class SpreadDetector(BaseDetector):
         Returns:
             DetectionResult com anomalias encontradas.
         """
-        start_time = datetime.now()
+        start_time = time.perf_counter()
         anomalias: list[AnomaliaDetectada] = []
 
         for taxa in taxas:
@@ -91,7 +91,7 @@ class SpreadDetector(BaseDetector):
             if anomalia:
                 anomalias.append(anomalia)
 
-        elapsed = (datetime.now() - start_time).total_seconds() * 1000
+        elapsed = (time.perf_counter() - start_time) * 1000
 
         return DetectionResult(
             detector_name=self.name,
@@ -158,7 +158,9 @@ class SpreadDetector(BaseDetector):
 
         return None
 
-    def _check_ipca(self, taxa: TaxaCDB, thresholds: "RuleThresholds | None" = None) -> AnomaliaDetectada | None:
+    def _check_ipca(
+        self, taxa: TaxaCDB, thresholds: "RuleThresholds | None" = None
+    ) -> AnomaliaDetectada | None:
         """Verifica taxas IPCA+."""
         if taxa.indexador != Indexador.IPCA or taxa.taxa_adicional is None:
             return None
@@ -195,8 +197,7 @@ class SpreadDetector(BaseDetector):
                 valor_detectado=spread,
                 threshold=t.ipca_spread_alto,
                 descricao=(
-                    f"CDB oferecendo IPCA + {spread}% - "
-                    f"spread alto (>IPCA+{t.ipca_spread_alto}%)"
+                    f"CDB oferecendo IPCA + {spread}% - spread alto (>IPCA+{t.ipca_spread_alto}%)"
                 ),
                 if_id=taxa.if_id,
                 taxa_id=taxa.id,
@@ -251,7 +252,7 @@ class VariacaoDetector(BaseDetector):
         Returns:
             DetectionResult com anomalias encontradas.
         """
-        start_time = datetime.now()
+        start_time = time.perf_counter()
         anomalias: list[AnomaliaDetectada] = []
 
         # Indexar taxas anteriores por IF e indexador
@@ -272,7 +273,7 @@ class VariacaoDetector(BaseDetector):
                 if anomalia:
                     anomalias.append(anomalia)
 
-        elapsed = (datetime.now() - start_time).total_seconds() * 1000
+        elapsed = (time.perf_counter() - start_time) * 1000
 
         return DetectionResult(
             detector_name=self.name,
@@ -378,7 +379,7 @@ class DivergenciaDetector(BaseDetector):
         Returns:
             DetectionResult com anomalias encontradas.
         """
-        start_time = datetime.now()
+        start_time = time.perf_counter()
         anomalias: list[AnomaliaDetectada] = []
 
         if desvio_padrao == 0:
@@ -394,7 +395,7 @@ class DivergenciaDetector(BaseDetector):
             if anomalia:
                 anomalias.append(anomalia)
 
-        elapsed = (datetime.now() - start_time).total_seconds() * 1000
+        elapsed = (time.perf_counter() - start_time) * 1000
 
         return DetectionResult(
             detector_name=self.name,

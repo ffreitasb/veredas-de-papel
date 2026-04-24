@@ -7,6 +7,7 @@ Implementa algoritmos de ML para detecção de anomalias:
 """
 
 import logging
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -109,7 +110,7 @@ class IsolationForestDetector(BaseDetector):
         Returns:
             DetectionResult com anomalias encontradas.
         """
-        start_time = datetime.now()
+        start_time = time.perf_counter()
 
         if not HAS_SKLEARN:
             return DetectionResult(
@@ -120,7 +121,7 @@ class IsolationForestDetector(BaseDetector):
             )
 
         if len(taxas) < self.min_samples:
-            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            elapsed = (time.perf_counter() - start_time) * 1000
             return DetectionResult(
                 detector_name=self.name,
                 anomalias=[],
@@ -152,7 +153,7 @@ class IsolationForestDetector(BaseDetector):
             DetectionResult com anomalias encontradas.
         """
         if start_time is None:
-            start_time = datetime.now()
+            start_time = time.perf_counter()
 
         if not HAS_SKLEARN:
             return DetectionResult(
@@ -163,7 +164,7 @@ class IsolationForestDetector(BaseDetector):
             )
 
         if len(features_list) < self.min_samples:
-            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            elapsed = (time.perf_counter() - start_time) * 1000
             return DetectionResult(
                 detector_name=self.name,
                 anomalias=[],
@@ -202,7 +203,7 @@ class IsolationForestDetector(BaseDetector):
                         anomalias.append(anomalia)
 
         except Exception:
-            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            elapsed = (time.perf_counter() - start_time) * 1000
             # SEC-001: Usar exception() para log seguro (não expõe em mensagem)
             logger.exception("Erro no Isolation Forest")
             return DetectionResult(
@@ -212,7 +213,7 @@ class IsolationForestDetector(BaseDetector):
                 error="Erro interno no Isolation Forest",
             )
 
-        elapsed = (datetime.now() - start_time).total_seconds() * 1000
+        elapsed = (time.perf_counter() - start_time) * 1000
         return DetectionResult(
             detector_name=self.name,
             anomalias=anomalias,
@@ -299,7 +300,7 @@ class DBSCANOutlierDetector(BaseDetector):
         Returns:
             DetectionResult com anomalias encontradas.
         """
-        start_time = datetime.now()
+        start_time = time.perf_counter()
 
         if not HAS_SKLEARN or not HAS_DBSCAN:
             return DetectionResult(
@@ -310,7 +311,7 @@ class DBSCANOutlierDetector(BaseDetector):
             )
 
         if len(taxas) < self.min_samples:
-            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            elapsed = (time.perf_counter() - start_time) * 1000
             return DetectionResult(
                 detector_name=self.name,
                 anomalias=[],
@@ -342,7 +343,7 @@ class DBSCANOutlierDetector(BaseDetector):
             DetectionResult com anomalias encontradas.
         """
         if start_time is None:
-            start_time = datetime.now()
+            start_time = time.perf_counter()
 
         if not HAS_SKLEARN:
             return DetectionResult(
@@ -353,7 +354,7 @@ class DBSCANOutlierDetector(BaseDetector):
             )
 
         if len(features_list) < self.min_samples:
-            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            elapsed = (time.perf_counter() - start_time) * 1000
             return DetectionResult(
                 detector_name=self.name,
                 anomalias=[],
@@ -389,7 +390,7 @@ class DBSCANOutlierDetector(BaseDetector):
                         anomalias.append(anomalia)
 
         except Exception:
-            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            elapsed = (time.perf_counter() - start_time) * 1000
             # SEC-001: Usar exception() para log seguro
             logger.exception("Erro no DBSCAN")
             return DetectionResult(
@@ -399,7 +400,7 @@ class DBSCANOutlierDetector(BaseDetector):
                 error="Erro interno no DBSCAN",
             )
 
-        elapsed = (datetime.now() - start_time).total_seconds() * 1000
+        elapsed = (time.perf_counter() - start_time) * 1000
         return DetectionResult(
             detector_name=self.name,
             anomalias=anomalias,
