@@ -6,6 +6,7 @@ em uma interface única e consistente.
 """
 
 import logging
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -204,7 +205,7 @@ class DetectionEngine:
         Returns:
             EngineResult com todas as anomalias encontradas.
         """
-        start_time = datetime.now()
+        start_time = time.perf_counter()
 
         if media_mercado is None or desvio_padrao_mercado is None:
             market_mean, market_std = calculate_market_stats(taxas_atuais)
@@ -241,7 +242,7 @@ class DetectionEngine:
             detectors_used.extend(d)
 
         anomalias = self._consolidate_anomalias(results)
-        elapsed = (datetime.now() - start_time).total_seconds() * 1000
+        elapsed = (time.perf_counter() - start_time) * 1000
 
         return EngineResult(
             results=results,

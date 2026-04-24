@@ -22,7 +22,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from veredas import __version__
+from veredas import TZ_BRASIL, __version__
 from veredas.cli._collect import collect_b3, collect_bcb, collect_ifdata, collect_scrapers
 from veredas.cli._export import exportar_anomalias, exportar_taxas
 from veredas.cli.alerts import alerts_app
@@ -334,7 +334,9 @@ def export(
                 anomalias = AnomaliaRepository(session).list_with_filters(
                     filters=filters, limit=50_000, eager_load=True
                 )
-                dest = output or Path(f"veredas_anomalias_{datetime.now():%Y%m%d_%H%M%S}.{format}")
+                dest = output or Path(
+                    f"veredas_anomalias_{datetime.now(TZ_BRASIL):%Y%m%d_%H%M%S}.{format}"
+                )
                 exportar_anomalias(list(anomalias), format, dest)
                 rprint(f"[green]✓[/] {len(anomalias)} anomalias → [bold]{dest}[/]")
 
@@ -344,12 +346,12 @@ def export(
                     stem = (
                         dest.stem.replace("anomalias", "taxas")
                         if output
-                        else f"veredas_taxas_{datetime.now():%Y%m%d_%H%M%S}"
+                        else f"veredas_taxas_{datetime.now(TZ_BRASIL):%Y%m%d_%H%M%S}"
                     )
                     dest_taxas = Path(f"{stem}.{format}")
                 else:
                     dest_taxas = output or Path(
-                        f"veredas_taxas_{datetime.now():%Y%m%d_%H%M%S}.{format}"
+                        f"veredas_taxas_{datetime.now(TZ_BRASIL):%Y%m%d_%H%M%S}.{format}"
                     )
                 exportar_taxas(list(taxas), format, dest_taxas)
                 rprint(f"[green]✓[/] {len(taxas)} taxas → [bold]{dest_taxas}[/]")

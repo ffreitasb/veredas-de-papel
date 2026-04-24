@@ -8,6 +8,7 @@ Implementa algoritmos estatísticos para detecção de anomalias:
 """
 
 import logging
+import time
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -143,7 +144,7 @@ class STLDecompositionDetector(BaseDetector):
         Returns:
             DetectionResult com anomalias encontradas.
         """
-        start_time = datetime.now()
+        start_time = time.perf_counter()
         anomalias: list[AnomaliaDetectada] = []
 
         try:
@@ -165,7 +166,7 @@ class STLDecompositionDetector(BaseDetector):
                 anomalias.extend(if_anomalias)
 
         except Exception as e:
-            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            elapsed = (time.perf_counter() - start_time) * 1000
             return DetectionResult(
                 detector_name=self.name,
                 anomalias=[],
@@ -173,7 +174,7 @@ class STLDecompositionDetector(BaseDetector):
                 error=str(e),
             )
 
-        elapsed = (datetime.now() - start_time).total_seconds() * 1000
+        elapsed = (time.perf_counter() - start_time) * 1000
         return DetectionResult(
             detector_name=self.name,
             anomalias=anomalias,
@@ -335,7 +336,7 @@ class ChangePointDetector(BaseDetector):
         Returns:
             DetectionResult com anomalias encontradas.
         """
-        start_time = datetime.now()
+        start_time = time.perf_counter()
 
         if not HAS_RUPTURES:
             return DetectionResult(
@@ -366,7 +367,7 @@ class ChangePointDetector(BaseDetector):
                 anomalias.extend(if_anomalias)
 
         except Exception as e:
-            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            elapsed = (time.perf_counter() - start_time) * 1000
             return DetectionResult(
                 detector_name=self.name,
                 anomalias=[],
@@ -374,7 +375,7 @@ class ChangePointDetector(BaseDetector):
                 error=str(e),
             )
 
-        elapsed = (datetime.now() - start_time).total_seconds() * 1000
+        elapsed = (time.perf_counter() - start_time) * 1000
         return DetectionResult(
             detector_name=self.name,
             anomalias=anomalias,
@@ -494,7 +495,7 @@ class RollingZScoreDetector(BaseDetector):
         Returns:
             DetectionResult com anomalias encontradas.
         """
-        start_time = datetime.now()
+        start_time = time.perf_counter()
         anomalias: list[AnomaliaDetectada] = []
 
         try:
@@ -516,7 +517,7 @@ class RollingZScoreDetector(BaseDetector):
                 anomalias.extend(if_anomalias)
 
         except Exception as e:
-            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            elapsed = (time.perf_counter() - start_time) * 1000
             return DetectionResult(
                 detector_name=self.name,
                 anomalias=[],
@@ -524,7 +525,7 @@ class RollingZScoreDetector(BaseDetector):
                 error=str(e),
             )
 
-        elapsed = (datetime.now() - start_time).total_seconds() * 1000
+        elapsed = (time.perf_counter() - start_time) * 1000
         return DetectionResult(
             detector_name=self.name,
             anomalias=anomalias,

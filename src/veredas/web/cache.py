@@ -9,6 +9,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from veredas import TZ_BRASIL
 from veredas.storage.repository import TaxaReferenciaRepository
 
 
@@ -25,7 +26,7 @@ class TTLCache:
         if key not in self._cache:
             return None
 
-        if datetime.now() - self._timestamps[key] > self._default_ttl:
+        if datetime.now(TZ_BRASIL) - self._timestamps[key] > self._default_ttl:
             # Expirado
             del self._cache[key]
             del self._timestamps[key]
@@ -36,7 +37,7 @@ class TTLCache:
     def set(self, key: str, value: Any) -> None:
         """Armazena valor no cache."""
         self._cache[key] = value
-        self._timestamps[key] = datetime.now()
+        self._timestamps[key] = datetime.now(TZ_BRASIL)
 
     def invalidate(self, key: str) -> None:
         """Remove entrada do cache."""
