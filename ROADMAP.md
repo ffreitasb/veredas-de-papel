@@ -36,81 +36,94 @@
 
 **Esforço estimado:** 1,5 semanas
 
-#### Por que não há fonte melhor — resumo da validação (23/04/2026)
+#### Por que não há fonte melhor — validação completa (23/04/2026)
 
-| Fonte | Veredicto |
-|-------|-----------|
-| B3 API (`developers.b3.com.br`) — API "CDB" existe | B2B fechado, contrato pago obrigatório |
-| ANBIMA API (`api.anbima.com.br`) | Não tem CDB — só debentures, CRI, CRA |
-| CETIP FTP público | Não existe — B3 absorveu CETIP em 2017 |
-| **B3 Boletim Diário "Renda Fixa Privada"** | **✓ Fonte escolhida — público, sem login** |
+| Fonte | CDB secundário? | Veredicto |
+|-------|----------------|-----------|
+| B3 API (`developers.b3.com.br`) | Sim (API "CDB" existe) | B2B fechado, contrato pago |
+| ANBIMA API | Não — só debentures/CRI/CRA | OAuth2; sem CDB |
+| CETIP FTP público | — | Não existe (B3 absorveu em 2017) |
+| Yubb, Status Invest, Mais Retorno | Mercado primário apenas | Anti-bot ou sem CDB |
+| **B3 Boletim Diário RF Privada** | **Debêntures (não CDB puro)** | **✓ Fonte escolhida** |
+
+> **Nota:** CDB secundário real fica no sistema B3/CETIP com acesso restrito a participantes qualificados. É uma lacuna estrutural do mercado — não um problema de descoberta de endpoint. A alternativa pública mais próxima são as **debêntures** de IFs no mesmo arquivo, que funcionam como proxy de stress de crédito: se os spreads das debêntures do Banco X sobem, os CDBs do mesmo emissor estão sob risco similar.
+
+---
+
+#### URL e formato — confirmados sem JS
+
+```
+GET https://www.b3.com.br/pesquisapregao/download?filelist=RF{DDMMYY}.ex_,
+```
+- `DDMMYY` = dia+mês+ano com 2 dígitos cada (ex.: 23/04/2026 → `230426`)
+- Retorna ZIP aninhado: ZIP externo → executável SFX Windows → `RF{DDMMYY}.txt`
+- Arquivo TXT: primeira linha = data do pregão (`YYYYMMDD`); linhas seguintes = CSV com `;`
+- Campos: `TICKER;VENCIMENTO;DIAS_CORRIDOS;DIAS_UTEIS;PU_MERCADO;PU_PAR;TAXA_MERCADO;FATOR_ACUMULADO`
+- Janela: ~2 pregões disponíveis simultaneamente — coleta deve ser **diária**
 
 ---
 
 #### Plano de implementação
 
-##### Etapa A — Reverse-engineering do download (2–3 dias)
+##### ~~Etapa A — Reverse-engineering do download~~ ✓ concluído
 
-O boletim usa JavaScript dinâmico para construir a URL de download. A estratégia:
+URL confirmada e formato documentado (ver acima).
 
-1. Usar Playwright para navegar até a página do boletim e interceptar requisições de rede (`page.on("request")`) enquanto o JS monta o link de download do arquivo "Renda Fixa Privada"
-2. Identificar o padrão de URL (provável: `https://www.b3.com.br/pesquisapregao/download?filetype=zip&date=DDMMYYYY&code=...`)
-3. Verificar se o `contentId` é constante por tipo de arquivo ou varia por pregão
-4. Documentar o padrão em `collectors/b3/README_URL_PATTERN.md` para manutenção futura
+##### Etapa B — Parser do arquivo (2–3 dias)
 
-**Entregável:** função `_resolve_download_url(date: date) -> str` com URL direta, sem interação com JS para datas futuras.
-
-##### Etapa B — Parser do arquivo (3–4 dias)
-
-O arquivo "Renda Fixa Privada" segue layout posicional (padrão histórico B3). Será necessário:
-
-1. Baixar um arquivo de amostra e inspecionar o layout (campo por campo)
-2. Identificar o código de instrumento para CDB (provável: `"CDB"` ou `"DI"` no campo `TpInstrd`)
-3. Campos de interesse: CNPJ do emissor, taxa DI (%), IPCA+, data de vencimento, volume, data do pregão
-4. Implementar `B3BoletimParser` com mapeamento campo → `CDBOferta`
+Arquivo CSV semicolon, layout simples:
 
 ```python
 # collectors/b3/parser.py
 @dataclass
-class B3BoletimRecord:
+class B3RendaFixaRecord:
     data_pregao: date
-    cnpj_emissor: str
-    tipo_instrumento: str   # CDB, CRI, CRA, ...
-    taxa_indicativa: Decimal
-    indexador: str          # DI, IPCA, PRE
+    codigo: str          # ex: AGRU-DEB21
     vencimento: date
-    volume_financeiro: Decimal
+    dias_corridos: int
+    dias_uteis: int
+    pu_mercado: Decimal
+    pu_par: Decimal
+    taxa_mercado: Decimal   # % a.a.
+    fator_acumulado: Decimal
+    emissor_codigo: str     # prefixo do ticker (ex: AGRU, EGIE)
+    tipo: str               # "DEB", "ETF", ou "OUTRO"
 
-class B3BoletimParser:
-    def parse(self, filepath: Path) -> list[B3BoletimRecord]: ...
-    def to_cdb_oferta(self, record: B3BoletimRecord) -> CDBOferta | None: ...
+class B3RendaFixaParser:
+    def parse(self, conteudo: str, data_pregao: date) -> list[B3RendaFixaRecord]: ...
 ```
 
-##### Etapa C — Coletor (2 dias)
+Extração do ZIP aninhado (SFX dentro de ZIP):
 
-```
-collectors/
-  b3/
-    __init__.py
-    downloader.py   # Playwright + URL resolution
-    parser.py       # layout posicional → B3BoletimRecord → CDBOferta
-    collector.py    # B3BoletimCollector(WebCollectorBase)
+```python
+pk_pos = sfx_bytes.rfind(b'PK\x03\x04')
+with zipfile.ZipFile(io.BytesIO(sfx_bytes[pk_pos:])) as inner:
+    txt = inner.read(inner.namelist()[0]).decode("latin-1")
 ```
 
-- `B3BoletimCollector.collect(date=None)` — baixa e processa o boletim do dia (ou data específica)
+##### Etapa C — Coletor (1–2 dias)
+
+```
+collectors/b3/
+  __init__.py
+  downloader.py   # _build_url(date) + download + extração do ZIP aninhado
+  parser.py       # B3RendaFixaRecord + B3RendaFixaParser
+  collector.py    # B3BoletimCollector(WebCollectorBase)
+```
+
+- `B3BoletimCollector.collect(data: date | None = None)` — boletim do dia ou data específica
 - `veredas collect b3 [--data YYYY-MM-DD]` no CLI
-- Tolerância a pregão fechado (fins de semana, feriados) — retorna lista vazia sem erro
-- Campo `mercado="secundario"` em todos os registros gerados
+- Tolerância a pregão fechado (fin de semana, feriado) — retorna lista vazia sem erro
 
 ##### Etapa D — Modelo de dados e dashboard (1–2 dias)
 
-- Migration Alembic: adicionar coluna `mercado` (`"primario"` / `"secundario"`) em `TaxaCDB`
-- Dashboard `/taxas/`: novo filtro por mercado via HTMX
-- Página de detalhe da IF: seção "Mercado Secundário" com histórico de preços negociados
+- Migration Alembic: coluna `mercado` (`"primario"` / `"secundario"`) em `TaxaCDB`
+- Dashboard `/taxas/`: filtro por mercado via HTMX
+- Registros B3 persistidos apenas para emissores já cadastrados em `InstituicaoFinanceira` (matching por prefixo do ticker → CNPJ do catálogo)
 
 #### Critério de conclusão
 
-`veredas collect b3` baixa e persiste o boletim do dia sem erro; registros aparecem no dashboard com mercado="secundario"; a coluna `mercado` está presente no CSV exportado.
+`veredas collect b3` baixa o boletim do dia sem erro; debêntures de IFs financeiras aparecem no dashboard com `mercado="secundario"`; coluna `mercado` presente no CSV exportado.
 
 ---
 
