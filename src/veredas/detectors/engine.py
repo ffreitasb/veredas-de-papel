@@ -12,6 +12,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
+from veredas.catalog import TIER_SPREAD_THRESHOLDS, get_tier_emissor
 from veredas.detectors.base import AnomaliaDetectada, DetectionResult
 from veredas.detectors.features import FeatureExtractor, calculate_market_stats
 from veredas.detectors.ml import DBSCANOutlierDetector, IsolationForestDetector, MLThresholds
@@ -188,6 +189,7 @@ class DetectionEngine:
         taxas_anteriores: Sequence[TaxaCDB] | None = None,
         media_mercado: Decimal | None = None,
         desvio_padrao_mercado: Decimal | None = None,
+        if_cnpj_map: dict[int, str] | None = None,
     ) -> EngineResult:
         """
         Executa análise completa de detecção de anomalias.
@@ -218,11 +220,21 @@ class DetectionEngine:
         if taxas_anteriores:
             all_taxas = list(taxas_anteriores) + all_taxas
 
+        # Construir mapa de limiares por tier a partir do catálogo
+        tier_thresholds_map: dict[int, RuleThresholds] | None = None
+        if if_cnpj_map:
+            tier_thresholds_map = {}
+            for if_id, cnpj in if_cnpj_map.items():
+                tier = get_tier_emissor(cnpj)
+                tier_thresholds_map[if_id] = RuleThresholds(**TIER_SPREAD_THRESHOLDS[tier])
+
         # ================== DETECTORES DE REGRAS ==================
         if self.config.enable_rules:
             # Spread
             if self._should_run("rules", "spread_detector"):
-                result = self.rule_engine.analyze_spreads(taxas_atuais)
+                result = self.rule_engine.analyze_spreads(
+                    taxas_atuais, tier_thresholds=tier_thresholds_map
+                )
                 results.append(result)
                 detectors_used.append("spread_detector")
 

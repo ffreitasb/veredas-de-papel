@@ -46,8 +46,12 @@ class SpreadDetector(BaseDetector):
     Detecta spreads anormalmente altos em CDBs indexados ao CDI.
 
     Regras:
-    - SPREAD_ALTO: CDB > 130% CDI (severidade HIGH)
-    - SPREAD_CRITICO: CDB > 150% CDI (severidade CRITICAL)
+    - SPREAD_ALTO: CDB > threshold% CDI (severidade HIGH)
+    - SPREAD_CRITICO: CDB > threshold% CDI (severidade CRITICAL)
+
+    Os thresholds variam por tier do emissor: bancões disparam anomalia
+    com spreads menores do que pequenas financeiras, porque qualquer
+    desvio da normalidade de um bancão é mais suspeito.
     """
 
     def __init__(self, thresholds: RuleThresholds | None = None):
@@ -61,12 +65,19 @@ class SpreadDetector(BaseDetector):
     def description(self) -> str:
         return "Detecta CDBs com spread anormalmente alto em relação ao CDI"
 
-    def detect(self, taxas: Sequence[TaxaCDB]) -> DetectionResult:
+    def detect(
+        self,
+        taxas: Sequence[TaxaCDB],
+        tier_thresholds: "dict[int, RuleThresholds] | None" = None,
+    ) -> DetectionResult:
         """
         Analisa taxas de CDB e detecta spreads anormais.
 
         Args:
             taxas: Sequência de TaxaCDB a analisar.
+            tier_thresholds: Mapa opcional {if_id → RuleThresholds} com limiares
+                ajustados por tier de emissor. Quando ausente, usa os thresholds
+                padrão da instância para todas as IFs.
 
         Returns:
             DetectionResult com anomalias encontradas.
@@ -75,7 +86,8 @@ class SpreadDetector(BaseDetector):
         anomalias: list[AnomaliaDetectada] = []
 
         for taxa in taxas:
-            anomalia = self._check_taxa(taxa)
+            override = tier_thresholds.get(taxa.if_id) if tier_thresholds else None
+            anomalia = self._check_taxa(taxa, override)
             if anomalia:
                 anomalias.append(anomalia)
 
@@ -87,25 +99,30 @@ class SpreadDetector(BaseDetector):
             execution_time_ms=elapsed,
         )
 
-    def _check_taxa(self, taxa: TaxaCDB) -> AnomaliaDetectada | None:
-        """Verifica uma taxa individual."""
-        # Apenas CDI por enquanto
+    def _check_taxa(
+        self,
+        taxa: TaxaCDB,
+        thresholds_override: "RuleThresholds | None" = None,
+    ) -> AnomaliaDetectada | None:
+        """Verifica uma taxa individual, com thresholds opcionalmente sobrescritos."""
+        thresholds = thresholds_override or self.thresholds
+
         if taxa.indexador != Indexador.CDI:
-            return self._check_ipca(taxa) if taxa.indexador == Indexador.IPCA else None
+            return self._check_ipca(taxa, thresholds) if taxa.indexador == Indexador.IPCA else None
 
         percentual = taxa.percentual
 
-        # CRITICAL: > 150% CDI
-        if percentual > self.thresholds.spread_critico:
+        # CRITICAL
+        if percentual > thresholds.spread_critico:
             return AnomaliaDetectada(
                 tipo=TipoAnomalia.SPREAD_CRITICO,
                 severidade=Severidade.CRITICAL,
                 valor_detectado=percentual,
                 valor_esperado=Decimal("100"),
-                threshold=self.thresholds.spread_critico,
+                threshold=thresholds.spread_critico,
                 descricao=(
                     f"CDB oferecendo {percentual}% do CDI - "
-                    f"spread crítico (>{self.thresholds.spread_critico}%)"
+                    f"spread crítico (>{thresholds.spread_critico}%)"
                 ),
                 if_id=taxa.if_id,
                 taxa_id=taxa.id,
@@ -117,17 +134,17 @@ class SpreadDetector(BaseDetector):
                 },
             )
 
-        # HIGH: > 130% CDI
-        if percentual > self.thresholds.spread_alto:
+        # HIGH
+        if percentual > thresholds.spread_alto:
             return AnomaliaDetectada(
                 tipo=TipoAnomalia.SPREAD_ALTO,
                 severidade=Severidade.HIGH,
                 valor_detectado=percentual,
                 valor_esperado=Decimal("100"),
-                threshold=self.thresholds.spread_alto,
+                threshold=thresholds.spread_alto,
                 descricao=(
                     f"CDB oferecendo {percentual}% do CDI - "
-                    f"spread alto (>{self.thresholds.spread_alto}%)"
+                    f"spread alto (>{thresholds.spread_alto}%)"
                 ),
                 if_id=taxa.if_id,
                 taxa_id=taxa.id,
@@ -141,23 +158,24 @@ class SpreadDetector(BaseDetector):
 
         return None
 
-    def _check_ipca(self, taxa: TaxaCDB) -> AnomaliaDetectada | None:
+    def _check_ipca(self, taxa: TaxaCDB, thresholds: "RuleThresholds | None" = None) -> AnomaliaDetectada | None:
         """Verifica taxas IPCA+."""
         if taxa.indexador != Indexador.IPCA or taxa.taxa_adicional is None:
             return None
 
+        t = thresholds or self.thresholds
         spread = taxa.taxa_adicional
 
-        # CRITICAL: IPCA + 15%
-        if spread > self.thresholds.ipca_spread_critico:
+        # CRITICAL
+        if spread > t.ipca_spread_critico:
             return AnomaliaDetectada(
                 tipo=TipoAnomalia.SPREAD_CRITICO,
                 severidade=Severidade.CRITICAL,
                 valor_detectado=spread,
-                threshold=self.thresholds.ipca_spread_critico,
+                threshold=t.ipca_spread_critico,
                 descricao=(
                     f"CDB oferecendo IPCA + {spread}% - "
-                    f"spread crítico (>IPCA+{self.thresholds.ipca_spread_critico}%)"
+                    f"spread crítico (>IPCA+{t.ipca_spread_critico}%)"
                 ),
                 if_id=taxa.if_id,
                 taxa_id=taxa.id,
@@ -169,16 +187,16 @@ class SpreadDetector(BaseDetector):
                 },
             )
 
-        # HIGH: IPCA + 10%
-        if spread > self.thresholds.ipca_spread_alto:
+        # HIGH
+        if spread > t.ipca_spread_alto:
             return AnomaliaDetectada(
                 tipo=TipoAnomalia.SPREAD_ALTO,
                 severidade=Severidade.HIGH,
                 valor_detectado=spread,
-                threshold=self.thresholds.ipca_spread_alto,
+                threshold=t.ipca_spread_alto,
                 descricao=(
                     f"CDB oferecendo IPCA + {spread}% - "
-                    f"spread alto (>IPCA+{self.thresholds.ipca_spread_alto}%)"
+                    f"spread alto (>IPCA+{t.ipca_spread_alto}%)"
                 ),
                 if_id=taxa.if_id,
                 taxa_id=taxa.id,
@@ -459,9 +477,13 @@ class RuleBasedEngine:
         self.variacao_detector = VariacaoDetector(self.thresholds)
         self.divergencia_detector = DivergenciaDetector(self.thresholds)
 
-    def analyze_spreads(self, taxas: Sequence[TaxaCDB]) -> DetectionResult:
-        """Executa detecção de spreads."""
-        return self.spread_detector.detect(taxas)
+    def analyze_spreads(
+        self,
+        taxas: Sequence[TaxaCDB],
+        tier_thresholds: "dict[int, RuleThresholds] | None" = None,
+    ) -> DetectionResult:
+        """Executa detecção de spreads, com limiares opcionais por tier de emissor."""
+        return self.spread_detector.detect(taxas, tier_thresholds=tier_thresholds)
 
     def analyze_variacoes(
         self,
