@@ -315,6 +315,8 @@ python -m alembic history
 
 Para um guia completo voltado a usuários não-técnicos — desde a instalação passo a passo até o uso de cada comando, configuração de alertas, FAQ e solução de problemas — consulte o **[Guia do Usuário](USER_GUIDE.md)**.
 
+Para entender por que este projeto é inédito no ecossistema FOSS brasileiro — incluindo o mapeamento do que existe (e do que não existe) em bibliotecas Python, fontes de dados de CDB e comparação direta com o Yubb — veja **[DIFERENCIAIS.md](DIFERENCIAIS.md)**.
+
 ## 🤝 Contribuindo
 
 Sinta-se à vontade para abrir *Issues* relatando bugs ou sugerindo features. Se quiser colocar a mão na massa, faça um Fork do projeto, crie uma branch e envie seu *Pull Request*.
