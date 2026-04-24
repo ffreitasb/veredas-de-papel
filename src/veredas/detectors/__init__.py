@@ -29,34 +29,34 @@ from veredas.detectors.statistical import (
 )
 
 __all__ = [
+    "AnomaliaDetectada",
     # Base
     "BaseDetector",
-    "DetectionResult",
-    "AnomaliaDetectada",
+    "ChangePointDetector",
+    "DBSCANOutlierDetector",
     # Unified Engine
     "DetectionEngine",
+    "DetectionResult",
+    "DetectorCategory",
+    "DivergenciaDetector",
     "EngineConfig",
     "EngineResult",
-    "DetectorCategory",
     # Features
     "FeatureExtractor",
-    "TaxaFeatures",
-    "calculate_market_stats",
-    # Rules
-    "RuleThresholds",
-    "SpreadDetector",
-    "VariacaoDetector",
-    "DivergenciaDetector",
-    "RuleBasedEngine",
-    # Statistical
-    "StatisticalThresholds",
-    "STLDecompositionDetector",
-    "ChangePointDetector",
-    "RollingZScoreDetector",
-    "StatisticalEngine",
+    "IsolationForestDetector",
+    "MLEngine",
     # ML
     "MLThresholds",
-    "IsolationForestDetector",
-    "DBSCANOutlierDetector",
-    "MLEngine",
+    "RollingZScoreDetector",
+    "RuleBasedEngine",
+    # Rules
+    "RuleThresholds",
+    "STLDecompositionDetector",
+    "SpreadDetector",
+    "StatisticalEngine",
+    # Statistical
+    "StatisticalThresholds",
+    "TaxaFeatures",
+    "VariacaoDetector",
+    "calculate_market_stats",
 ]

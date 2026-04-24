@@ -61,7 +61,7 @@ class XPCollector(WebCollectorBase):
             async with PlaywrightClient() as browser:
                 html = await browser.fetch(self.BASE_URL, wait_for=_WAIT_FOR, timeout_ms=45_000)
         except Exception as exc:
-            logger.error("XP: falha ao carregar página — %s", exc)
+            logger.exception("XP: falha ao carregar página")
             return CollectionResult.error(str(exc), source=self.SOURCE)
 
         ofertas = self._parse(html)
@@ -72,7 +72,7 @@ class XPCollector(WebCollectorBase):
         try:
             from bs4 import BeautifulSoup
         except ImportError:
-            logger.error("beautifulsoup4 não instalado — execute: uv sync --extra scrapers")
+            logger.exception("beautifulsoup4 não instalado — execute: uv sync --extra scrapers")
             return []
 
         soup = BeautifulSoup(html, "html.parser")
