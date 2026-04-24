@@ -45,7 +45,7 @@ class MLThresholds:
     """Thresholds configuráveis para detectores ML."""
 
     # Isolation Forest
-    if_contamination: float = 0.05  # % esperado de anomalias (5%)
+    if_contamination: float | str = "auto"  # threshold automático via score médio
     if_n_estimators: int = 100  # Número de árvores
     if_random_state: int = 42  # Seed para reprodutibilidade
     if_score_threshold_medium: float = -0.3  # Score < -0.3 = MEDIUM

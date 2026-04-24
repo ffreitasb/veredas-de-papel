@@ -4,7 +4,7 @@ Módulo de persistência do veredas de papel.
 Exporta modelos, repositórios e gerenciador de banco de dados.
 """
 
-from veredas.storage.database import DatabaseManager, get_session, init_db
+from veredas.storage.database import DatabaseManager, init_db
 from veredas.storage.models import (
     Anomalia,
     Base,
@@ -29,7 +29,6 @@ from veredas.storage.repository import (
 __all__ = [
     # Database
     "DatabaseManager",
-    "get_session",
     "init_db",
     "Base",
     # Models

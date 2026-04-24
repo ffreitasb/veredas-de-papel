@@ -133,18 +133,28 @@ def collect_scrapers(db_path: Path | None, fonte: str = "all") -> None:
         rprint(f"[dim]Disponíveis: {', '.join(SCRAPERS.keys())}[/]")
         return
 
-    async def _run(col):
+    async def _run(fonte_nome: str):
+        col = get_collector(fonte_nome)
         async with col:
-            return await col.collect()
+            return fonte_nome, await col.collect()
+
+    async def _collect_all_parallel():
+        tasks = [_run(f) for f in fontes_alvo]
+        return await asyncio.gather(*tasks, return_exceptions=True)
 
     db = DatabaseManager(db_path)
     db.init_db()
 
-    for f in fontes_alvo:
-        col = get_collector(f)
-        with console.status(f"[bold blue]Coletando {f.upper()}..."):
-            result = asyncio.run(_run(col))
+    with console.status("[bold blue]Coletando corretoras em paralelo..."):
+        raw_results = asyncio.run(_collect_all_parallel())
 
+    now = datetime.now(TZ_BRASIL)
+    for item in raw_results:
+        if isinstance(item, Exception):
+            rprint(f"  [red]✗[/] Erro inesperado: {item}")
+            continue
+
+        f, result = item
         if not result.success:
             rprint(f"  [red]✗[/] {f.upper()}: {result.error}")
             continue
@@ -154,7 +164,6 @@ def collect_scrapers(db_path: Path | None, fonte: str = "all") -> None:
             rprint(f"  [yellow]⚠[/] {f.upper()}: nenhuma oferta encontrada")
             continue
 
-        now = datetime.now(TZ_BRASIL)
         taxas_criadas = 0
         sem_cnpj = 0
 
