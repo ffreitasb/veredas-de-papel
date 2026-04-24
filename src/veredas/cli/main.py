@@ -103,7 +103,7 @@ def init(
 def collect(
     source: str = typer.Argument(
         "bcb",
-        help="Fonte de dados (bcb, ifdata, all)",
+        help="Fonte de dados (bcb, ifdata, scrapers, all)",
     ),
     db_path: Path | None = typer.Option(
         None,
@@ -111,14 +111,29 @@ def collect(
         "-d",
         help="Caminho para o banco de dados",
     ),
+    fonte: str = typer.Option(
+        "all",
+        "--fonte",
+        "-f",
+        help="Corretora específica para scrapers: xp, btg, inter, rico (padrão: all)",
+    ),
 ):
     """
     Coleta dados de fontes externas.
 
     Fontes disponíveis:
-    - bcb: Taxa Selic, CDI, IPCA do Banco Central
-    - ifdata: Dados de saúde das instituições financeiras
-    - all: Todas as fontes
+    - bcb:      Taxa Selic, CDI, IPCA do Banco Central
+    - ifdata:   Dados de saúde das instituições financeiras
+    - scrapers: Prateleiras de CDB das corretoras (XP, BTG, Inter, Rico)
+    - all:      Todas as fontes
+
+    Exemplos:
+
+        veredas collect scrapers --fonte xp
+
+        veredas collect scrapers
+
+        veredas collect all
     """
     rprint(f"[bold]Coletando dados de:[/] {source}")
 
@@ -129,8 +144,17 @@ def collect(
         if source in ("ifdata", "all"):
             _collect_ifdata(db_path)
 
+        if source in ("scrapers", "all"):
+            _collect_scrapers(db_path, fonte)
+
+        if source not in ("bcb", "ifdata", "scrapers", "all"):
+            rprint(f"[red]✗[/] Fonte desconhecida: '{source}'. Use: bcb, ifdata, scrapers, all")
+            raise typer.Exit(1)
+
         rprint("\n[green]✓[/] Coleta concluída")
 
+    except typer.Exit:
+        raise
     except Exception as e:
         rprint(f"[red]✗[/] Erro na coleta: {e}")
         raise typer.Exit(1) from e
@@ -248,6 +272,77 @@ def _collect_ifdata(db_path: Path | None):
 
     console.print(table)
     rprint(f"[dim]{len(dados.instituicoes)} instituições salvas no banco[/]")
+
+
+def _collect_scrapers(db_path: Path | None, fonte: str = "all"):
+    """Coleta prateleiras de CDB das corretoras e persiste no banco."""
+    from datetime import datetime
+
+    from veredas import TZ_BRASIL
+    from veredas.collectors.scrapers import SCRAPERS, get_collector
+    from veredas.storage.repository import InstituicaoRepository, TaxaCDBRepository
+
+    fontes_alvo = list(SCRAPERS.keys()) if fonte == "all" else [fonte]
+    invalidas = [f for f in fontes_alvo if f not in SCRAPERS]
+    if invalidas:
+        rprint(f"[red]✗[/] Corretora(s) desconhecida(s): {', '.join(invalidas)}")
+        rprint(f"[dim]Disponíveis: {', '.join(SCRAPERS.keys())}[/]")
+        return
+
+    async def _run(col):
+        async with col:
+            return await col.collect()
+
+    db = DatabaseManager(db_path)
+    db.init_db()
+
+    for f in fontes_alvo:
+        col = get_collector(f)
+        with console.status(f"[bold blue]Coletando {f.upper()}..."):
+            result = asyncio.run(_run(col))
+
+        if not result.success:
+            rprint(f"  [red]✗[/] {f.upper()}: {result.error}")
+            continue
+
+        ofertas = result.data or []
+        if not ofertas:
+            rprint(f"  [yellow]⚠[/] {f.upper()}: nenhuma oferta encontrada")
+            continue
+
+        now = datetime.now(TZ_BRASIL)
+        taxas_criadas = 0
+        sem_cnpj = 0
+
+        with db.session_scope() as session:
+            if_repo = InstituicaoRepository(session)
+            taxa_repo = TaxaCDBRepository(session)
+
+            for oferta in ofertas:
+                if not oferta.emissor_cnpj:
+                    sem_cnpj += 1
+                    continue
+
+                if_ = if_repo.upsert(cnpj=oferta.emissor_cnpj, nome=oferta.emissor_nome)
+                taxa_repo.create(
+                    if_id=if_.id,
+                    data_coleta=now,
+                    indexador=oferta.indexador,
+                    percentual=oferta.percentual,
+                    taxa_adicional=oferta.taxa_adicional,
+                    prazo_dias=oferta.prazo_dias,
+                    valor_minimo=oferta.valor_minimo,
+                    liquidez_diaria=oferta.liquidez_diaria,
+                    fonte=oferta.fonte,
+                    url_fonte=oferta.url_fonte,
+                    raw_data=oferta.raw,
+                )
+                taxas_criadas += 1
+
+        msg = f"  [green]✓[/] {f.upper()}: {taxas_criadas} taxas salvas de {len(ofertas)} ofertas"
+        if sem_cnpj:
+            msg += f" [dim]({sem_cnpj} sem CNPJ ignoradas)[/]"
+        rprint(msg)
 
 
 @app.command()
