@@ -18,80 +18,15 @@
 | **Fase 3 — IFData** | Coletor IFData/BCB, HealthDataIF, detectores de Basileia e Liquidez | — |
 | **Fase B — Infraestrutura** | 60+ testes, Alembic, alertas Telegram/Email, CSV export, filtros HTMX | — |
 | **Fase C — CI** | GitHub Actions (pytest 3.11/3.12, ruff, mypy) | v0.1.0-alpha |
+| **Fase 4.1 — Fundação de Scrapers** | `WebCollectorBase` (rate limit, retry, UA rotation), `PlaywrightClient`, camada de normalização `CDBOferta` | — |
+| **Fase 4.2 — Corretoras: Prateleiras** | Scrapers XP, BTG, Inter, Rico; `veredas collect scrapers --fonte`; 40 testes do parser | — |
+| **Tier Clustering** | `catalog.py`: `TierEmissor`/`TierPlataforma`, limiares por tier (bancão alarma a 108% CDI, pequeno a 130%); `SpreadDetector` e `DetectionEngine` com thresholds por if_id; globals Jinja2 | — |
 
 ---
 
-## Em desenvolvimento — Fase 4: Fontes de Mercado
+## Em desenvolvimento — Fase 4: Fontes de Mercado (continuação)
 
-**Objetivo:** ampliar a base de dados do sistema com taxas reais de prateleiras de corretoras e do mercado secundário B3, aumentando a capacidade de detecção cruzada entre fontes.
-
-**Estratégia de scraping:** HTML direto (Approach A) por ser mais rápido de implementar. Cada coletor terá um `# TODO: migrar para API não-oficial (Approach B)` quando a instabilidade do HTML se mostrar recorrente — endpoints JSON dos apps mobile das corretoras são mais estáveis que o HTML do site.
-
----
-
-### 4.1 — Fundação de Scrapers
-
-**Objetivo:** infraestrutura reutilizável que todos os coletores da Fase 4 vão herdar. Sem isso, cada corretora vira código duplicado.
-
-**Esforço estimado:** 3–4 dias
-
-#### Entregas
-
-- `collectors/base.py` estendido com `WebCollectorBase`:
-  - Rate limiting configurável por domínio
-  - Retry exponencial com jitter (3 tentativas, backoff 2×)
-  - Rotação de User-Agent a partir de lista curada
-  - Headers realistas (Accept, Accept-Language, Referer)
-  - Timeout por etapa (connect, read, total)
-- Setup **Playwright** (headless Chromium) para páginas JS-rendered:
-  - `collectors/scraper_client.py` com contexto de browser gerenciado
-  - Suporte a wait_for_selector antes de extrair dados
-- Camada de normalização: qualquer fonte externa entra como `TaxaCDB` com campo `fonte` preenchido (`"xp"`, `"btg"`, `"inter"`, `"b3"`)
-- CI: GitHub Actions atualizado para instalar `playwright install --with-deps chromium`
-- Testes com respostas HTTP mockadas via `pytest-httpx` ou `respx`
-
-**Critério de conclusão:** `WebCollectorBase` instanciável; teste unitário com mock HTTP passa; `playwright chromium` disponível no CI.
-
----
-
-### 4.2 — Corretoras: Prateleiras Públicas
-
-**Objetivo:** coletar taxas de CDB disponíveis para compra nas principais corretoras, sem autenticação — apenas páginas públicas de produtos.
-
-**Esforço estimado:** 1–2 semanas (4 coletores × 2–3 dias cada)
-
-#### Coletores
-
-| Corretora | Arquivo | Notas |
-|-----------|---------|-------|
-| XP Investimentos | `collectors/scrapers/xp.py` | Renderização JS; prioridade 1 |
-| BTG Pactual Digital | `collectors/scrapers/btg.py` | Renderização JS; prioridade 2 |
-| Banco Inter | `collectors/scrapers/inter.py` | App-first; prioridade 3 |
-| Rico | `collectors/scrapers/rico.py` | Infraestrutura XP, endpoint diferente |
-
-#### Padrão de implementação
-
-```python
-class XPCollector(WebCollectorBase):
-    SOURCE = "xp"
-    BASE_URL = "https://www.xpi.com.br/investimentos/renda-fixa/cdb/"
-
-    # TODO: migrar para API não-oficial (Approach B)
-    # O app XP expõe endpoint JSON em /api/products/fixed-income
-    # mais estável que o HTML do site — migrar quando HTML quebrar 2x.
-
-    async def _parse(self, page) -> list[TaxaCDB]:
-        ...
-```
-
-#### Entrega
-
-- `veredas collect scrapers` — coleta todas as corretoras configuradas
-- `veredas collect scrapers --fonte xp` — coleta fonte específica
-- Tolerância a falha parcial: se BTG retorna erro, XP continua
-- Log claro de sucesso/falha por fonte
-
-**Critério de conclusão:** `veredas collect scrapers` roda sem erro por 7 dias consecutivos; falha de uma corretora não interrompe as demais; dados aparecem no dashboard com o filtro de fonte.
+**Fases 4.1 e 4.2 concluídas.** Próximas entregas: mercado secundário B3 (4.3) e inteligência cruzada entre fontes (4.4).
 
 ---
 
@@ -222,11 +157,11 @@ Campo `mercado` em `TaxaCDB`:
 | Versão | Conteúdo esperado |
 |--------|------------------|
 | `v0.1.0-alpha` | Fases 1–3 + B + C — **publicada** |
-| `v0.2.0-alpha` | Fase 4.1 + 4.2 (fundação + primeiras corretoras) |
+| `v0.2.0-alpha` | Fase 4.1 + 4.2 + Tier Clustering — **concluído, release pendente** |
 | `v0.3.0-alpha` | Fase 4.3 + 4.4 (B3 + inteligência cruzada) |
 | `v0.4.0-alpha` | Fase 5 (dados alternativos) |
 | `v1.0.0` | Fase D completa (PyPI, binários, demo) |
 
 ---
 
-*Atualizado em: abril/2026*
+*Atualizado em: 23/abril/2026 — 4.1, 4.2 e Tier Clustering concluídos*
