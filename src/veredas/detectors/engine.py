@@ -199,15 +199,13 @@ class DetectionEngine:
             taxas_anteriores: Taxas históricas para comparação (opcional).
             media_mercado: Média do mercado para divergência (opcional, calculada se não fornecida).
             desvio_padrao_mercado: Desvio padrão do mercado (opcional, calculado se não fornecido).
+            if_cnpj_map: Mapa if_id → CNPJ para thresholds por tier (opcional).
 
         Returns:
             EngineResult com todas as anomalias encontradas.
         """
         start_time = datetime.now()
-        results: list[DetectionResult] = []
-        detectors_used: list[str] = []
 
-        # Calcular estatísticas de mercado se não fornecidas
         if media_mercado is None or desvio_padrao_mercado is None:
             market_mean, market_std = calculate_market_stats(taxas_atuais)
             if media_mercado is None:
@@ -215,93 +213,34 @@ class DetectionEngine:
             if desvio_padrao_mercado is None:
                 desvio_padrao_mercado = Decimal(str(round(market_std, 4)))
 
-        # Combinar todas as taxas para análise temporal
-        all_taxas = list(taxas_atuais)
-        if taxas_anteriores:
-            all_taxas = list(taxas_anteriores) + all_taxas
+        all_taxas = list(taxas_anteriores or []) + list(taxas_atuais)
+        tier_thresholds_map = self._build_tier_thresholds(if_cnpj_map)
 
-        # Construir mapa de limiares por tier a partir do catálogo
-        tier_thresholds_map: dict[int, RuleThresholds] | None = None
-        if if_cnpj_map:
-            tier_thresholds_map = {}
-            for if_id, cnpj in if_cnpj_map.items():
-                tier = get_tier_emissor(cnpj)
-                tier_thresholds_map[if_id] = RuleThresholds(**TIER_SPREAD_THRESHOLDS[tier])
+        results: list[DetectionResult] = []
+        detectors_used: list[str] = []
 
-        # ================== DETECTORES DE REGRAS ==================
         if self.config.enable_rules:
-            # Spread
-            if self._should_run("rules", "spread_detector"):
-                result = self.rule_engine.analyze_spreads(
-                    taxas_atuais, tier_thresholds=tier_thresholds_map
-                )
-                results.append(result)
-                detectors_used.append("spread_detector")
+            r, d = self._run_rules(
+                taxas_atuais,
+                taxas_anteriores,
+                media_mercado,
+                desvio_padrao_mercado,
+                tier_thresholds_map,
+            )
+            results.extend(r)
+            detectors_used.extend(d)
 
-            # Variação
-            if self._should_run("rules", "variacao_detector") and taxas_anteriores:
-                result = self.rule_engine.analyze_variacoes(taxas_atuais, taxas_anteriores)
-                results.append(result)
-                detectors_used.append("variacao_detector")
+        if self.config.enable_statistical:
+            r, d = self._run_statistical(all_taxas)
+            results.extend(r)
+            detectors_used.extend(d)
 
-            # Divergência
-            if self._should_run("rules", "divergencia_detector"):
-                result = self.rule_engine.analyze_divergencias(
-                    taxas_atuais, media_mercado, desvio_padrao_mercado
-                )
-                results.append(result)
-                detectors_used.append("divergencia_detector")
+        if self.config.enable_ml:
+            r, d = self._run_ml(all_taxas)
+            results.extend(r)
+            detectors_used.extend(d)
 
-        # ================== DETECTORES ESTATÍSTICOS ==================
-        if (
-            self.config.enable_statistical
-            and len(all_taxas) >= self.config.min_observations_statistical
-        ):
-            # STL
-            if self._should_run("statistical", "stl_decomposition_detector"):
-                result = self.stl_detector.detect(all_taxas)
-                results.append(result)
-                detectors_used.append("stl_decomposition_detector")
-
-            # Change Point
-            if self._should_run("statistical", "change_point_detector"):
-                result = self.change_point_detector.detect(all_taxas)
-                results.append(result)
-                detectors_used.append("change_point_detector")
-
-            # Rolling Z-Score
-            if self._should_run("statistical", "rolling_zscore_detector"):
-                result = self.rolling_zscore_detector.detect(all_taxas)
-                results.append(result)
-                detectors_used.append("rolling_zscore_detector")
-
-        # ================== DETECTORES DE ML ==================
-        if self.config.enable_ml and len(all_taxas) >= self.config.min_observations_ml:
-            run_if = self._should_run("ml", "isolation_forest_detector")
-            run_dbscan = self._should_run("ml", "dbscan_outlier_detector")
-
-            if run_if or run_dbscan:
-                # PERF-006: Extrair features uma vez e compartilhar entre detectores
-                ml_market_mean, ml_market_std = calculate_market_stats(all_taxas)
-                shared_features = self.isolation_forest_detector.feature_extractor.extract(
-                    all_taxas, ml_market_mean, ml_market_std
-                )
-
-                # Isolation Forest
-                if run_if:
-                    result = self.isolation_forest_detector.detect_with_features(shared_features)
-                    results.append(result)
-                    detectors_used.append("isolation_forest_detector")
-
-                # DBSCAN
-                if run_dbscan:
-                    result = self.dbscan_detector.detect_with_features(shared_features)
-                    results.append(result)
-                    detectors_used.append("dbscan_outlier_detector")
-
-        # Consolidar anomalias
         anomalias = self._consolidate_anomalias(results)
-
         elapsed = (datetime.now() - start_time).total_seconds() * 1000
 
         return EngineResult(
@@ -311,6 +250,97 @@ class DetectionEngine:
             detectors_used=detectors_used,
             taxas_analyzed=len(taxas_atuais),
         )
+
+    def _build_tier_thresholds(
+        self, if_cnpj_map: dict[int, str] | None
+    ) -> dict[int, RuleThresholds] | None:
+        if not if_cnpj_map:
+            return None
+        return {
+            if_id: RuleThresholds(**TIER_SPREAD_THRESHOLDS[get_tier_emissor(cnpj)])
+            for if_id, cnpj in if_cnpj_map.items()
+        }
+
+    def _run_rules(
+        self,
+        taxas_atuais: Sequence[TaxaCDB],
+        taxas_anteriores: Sequence[TaxaCDB] | None,
+        media_mercado: Decimal,
+        desvio_padrao_mercado: Decimal,
+        tier_thresholds_map: dict[int, RuleThresholds] | None,
+    ) -> tuple[list[DetectionResult], list[str]]:
+        results: list[DetectionResult] = []
+        detectors_used: list[str] = []
+
+        if self._should_run("rules", "spread_detector"):
+            results.append(
+                self.rule_engine.analyze_spreads(taxas_atuais, tier_thresholds=tier_thresholds_map)
+            )
+            detectors_used.append("spread_detector")
+
+        if self._should_run("rules", "variacao_detector") and taxas_anteriores:
+            results.append(self.rule_engine.analyze_variacoes(taxas_atuais, taxas_anteriores))
+            detectors_used.append("variacao_detector")
+
+        if self._should_run("rules", "divergencia_detector"):
+            results.append(
+                self.rule_engine.analyze_divergencias(
+                    taxas_atuais, media_mercado, desvio_padrao_mercado
+                )
+            )
+            detectors_used.append("divergencia_detector")
+
+        return results, detectors_used
+
+    def _run_statistical(self, all_taxas: list[TaxaCDB]) -> tuple[list[DetectionResult], list[str]]:
+        results: list[DetectionResult] = []
+        detectors_used: list[str] = []
+
+        if len(all_taxas) < self.config.min_observations_statistical:
+            return results, detectors_used
+
+        if self._should_run("statistical", "stl_decomposition_detector"):
+            results.append(self.stl_detector.detect(all_taxas))
+            detectors_used.append("stl_decomposition_detector")
+
+        if self._should_run("statistical", "change_point_detector"):
+            results.append(self.change_point_detector.detect(all_taxas))
+            detectors_used.append("change_point_detector")
+
+        if self._should_run("statistical", "rolling_zscore_detector"):
+            results.append(self.rolling_zscore_detector.detect(all_taxas))
+            detectors_used.append("rolling_zscore_detector")
+
+        return results, detectors_used
+
+    def _run_ml(self, all_taxas: list[TaxaCDB]) -> tuple[list[DetectionResult], list[str]]:
+        results: list[DetectionResult] = []
+        detectors_used: list[str] = []
+
+        if len(all_taxas) < self.config.min_observations_ml:
+            return results, detectors_used
+
+        run_if = self._should_run("ml", "isolation_forest_detector")
+        run_dbscan = self._should_run("ml", "dbscan_outlier_detector")
+
+        if not (run_if or run_dbscan):
+            return results, detectors_used
+
+        # PERF-006: Extrair features uma vez e compartilhar entre detectores
+        ml_market_mean, ml_market_std = calculate_market_stats(all_taxas)
+        shared_features = self.isolation_forest_detector.feature_extractor.extract(
+            all_taxas, ml_market_mean, ml_market_std
+        )
+
+        if run_if:
+            results.append(self.isolation_forest_detector.detect_with_features(shared_features))
+            detectors_used.append("isolation_forest_detector")
+
+        if run_dbscan:
+            results.append(self.dbscan_detector.detect_with_features(shared_features))
+            detectors_used.append("dbscan_outlier_detector")
+
+        return results, detectors_used
 
     def analyze_single_detector(
         self,

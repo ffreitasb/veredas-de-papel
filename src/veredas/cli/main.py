@@ -7,13 +7,12 @@ Comandos principais:
 - analyze: Executa detecção de anomalias
 - alerts: Gerencia alertas
 - export: Exporta dados
+- detectors: Lista detectores disponíveis
 - status: Mostra status do sistema
 - web: Inicia o servidor web
 """
 
 import asyncio
-import csv
-import json
 from datetime import datetime
 from pathlib import Path
 
@@ -24,8 +23,11 @@ from rich.panel import Panel
 from rich.table import Table
 
 from veredas import __version__
+from veredas.cli._collect import collect_b3, collect_bcb, collect_ifdata, collect_scrapers
+from veredas.cli._export import exportar_anomalias, exportar_taxas
+from veredas.cli.alerts import alerts_app
 from veredas.collectors.bcb import BCBCollector, get_cdi_atual, get_selic_atual
-from veredas.storage import DatabaseManager, TaxaReferenciaRepository
+from veredas.storage import DatabaseManager
 
 app = typer.Typer(
     name="veredas",
@@ -33,6 +35,7 @@ app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
 )
+app.add_typer(alerts_app)
 
 console = Console()
 
@@ -103,7 +106,7 @@ def init(
 def collect(
     source: str = typer.Argument(
         "bcb",
-        help="Fonte de dados (bcb, ifdata, scrapers, all)",
+        help="Fonte de dados (bcb, ifdata, scrapers, b3, all)",
     ),
     db_path: Path | None = typer.Option(
         None,
@@ -147,16 +150,16 @@ def collect(
 
     try:
         if source in ("bcb", "all"):
-            _collect_bcb(db_path)
+            collect_bcb(db_path)
 
         if source in ("ifdata", "all"):
-            _collect_ifdata(db_path)
+            collect_ifdata(db_path)
 
         if source in ("scrapers", "all"):
-            _collect_scrapers(db_path, fonte)
+            collect_scrapers(db_path, fonte)
 
         if source in ("b3", "all"):
-            _collect_b3(db_path, data_b3)
+            collect_b3(db_path, data_b3)
 
         if source not in ("bcb", "ifdata", "scrapers", "b3", "all"):
             rprint(f"[red]✗[/] Fonte desconhecida: '{source}'. Use: bcb, ifdata, scrapers, b3, all")
@@ -169,286 +172,6 @@ def collect(
     except Exception as e:
         rprint(f"[red]✗[/] Erro na coleta: {e}")
         raise typer.Exit(1) from e
-
-
-def _collect_bcb(db_path: Path | None):
-    """Coleta dados do Banco Central."""
-    with console.status("[bold blue]Coletando dados do BCB..."):
-        collector = BCBCollector()
-        result = asyncio.run(collector.collect(dias_retroativos=30))
-
-    if not result.success:
-        rprint(f"[red]✗[/] Erro: {result.error}")
-        return
-
-    dados = result.data
-    table = Table(title="Taxas de Referência - BCB")
-    table.add_column("Indicador", style="cyan")
-    table.add_column("Valor", style="green")
-    table.add_column("Data", style="dim")
-
-    if dados.selic:
-        table.add_row("Selic", f"{dados.selic.valor}%", str(dados.selic.data))
-
-    if dados.cdi:
-        table.add_row("CDI", f"{dados.cdi.valor}%", str(dados.cdi.data))
-
-    if dados.ipca:
-        table.add_row("IPCA", f"{dados.ipca.valor}%", str(dados.ipca.data))
-
-    console.print(table)
-
-    # Salvar no banco
-    if True:  # Sempre salva no banco padrão
-        db = DatabaseManager(db_path)
-        db.init_db()
-
-        with db.session_scope() as session:
-            repo = TaxaReferenciaRepository(session)
-
-            if dados.selic:
-                repo.upsert("selic", dados.selic.data, dados.selic.valor, fonte="bcb")
-
-            if dados.cdi:
-                repo.upsert("cdi", dados.cdi.data, dados.cdi.valor, fonte="bcb")
-
-            if dados.ipca:
-                repo.upsert("ipca", dados.ipca.data, dados.ipca.valor, fonte="bcb")
-
-        rprint("[dim]Dados salvos no banco[/]")
-
-
-def _collect_ifdata(db_path: Path | None):
-    """Coleta dados de saúde financeira do IFData e persiste no banco."""
-    from veredas.collectors.ifdata import IFDataCollector
-    from veredas.storage.repository import HealthDataRepository, InstituicaoRepository
-
-    async def _run():
-        async with IFDataCollector() as collector:
-            return await collector.collect()
-
-    with console.status("[bold blue]Coletando dados do IFData (BCB)..."):
-        result = asyncio.run(_run())
-
-    if not result.success:
-        rprint(f"[red]✗[/] Erro IFData: {result.error}")
-        return
-
-    dados = result.data
-    db = DatabaseManager(db_path)
-    db.init_db()
-
-    table = Table(title="Dados de Saúde — IFData")
-    table.add_column("Instituição", style="cyan")
-    table.add_column("Basileia", justify="right")
-    table.add_column("Liquidez", justify="right")
-    table.add_column("Ativo Total (R$ mi)", justify="right")
-
-    with db.session_scope() as session:
-        if_repo = InstituicaoRepository(session)
-        health_repo = HealthDataRepository(session)
-
-        for dados_if in dados.instituicoes:
-            # Upsert instituição
-            if_ = if_repo.upsert(
-                cnpj=dados_if.cnpj,
-                nome=dados_if.nome,
-                indice_basileia=dados_if.indice_basileia,
-                indice_liquidez=dados_if.indice_liquidez,
-                ativo_total=dados_if.ativo_total,
-                patrimonio_liquido=dados_if.patrimonio_liquido,
-            )
-
-            # Persiste snapshot histórico
-            health_repo.upsert(
-                if_id=if_.id,
-                data_base=dados_if.data_base,
-                indice_basileia=dados_if.indice_basileia,
-                indice_liquidez=dados_if.indice_liquidez,
-                ativo_total=dados_if.ativo_total,
-                patrimonio_liquido=dados_if.patrimonio_liquido,
-                ativos_liquidos=dados_if.ativos_liquidos,
-                depositos_totais=dados_if.depositos_totais,
-                inadimplencia=dados_if.inadimplencia,
-                roa=dados_if.roa,
-                roe=dados_if.roe,
-            )
-
-            ativo_mi = (
-                f"{float(dados_if.ativo_total) / 1_000_000:.1f}" if dados_if.ativo_total else "-"
-            )
-            basileia = f"{dados_if.indice_basileia:.1f}%" if dados_if.indice_basileia else "-"
-            liquidez = f"{dados_if.indice_liquidez:.1f}%" if dados_if.indice_liquidez else "-"
-            table.add_row(dados_if.nome[:40], basileia, liquidez, ativo_mi)
-
-    console.print(table)
-    rprint(f"[dim]{len(dados.instituicoes)} instituições salvas no banco[/]")
-
-
-def _collect_scrapers(db_path: Path | None, fonte: str = "all"):
-    """Coleta prateleiras de CDB das corretoras e persiste no banco."""
-    from datetime import datetime
-
-    from veredas import TZ_BRASIL
-    from veredas.collectors.scrapers import SCRAPERS, get_collector
-    from veredas.storage.repository import InstituicaoRepository, TaxaCDBRepository
-
-    fontes_alvo = list(SCRAPERS.keys()) if fonte == "all" else [fonte]
-    invalidas = [f for f in fontes_alvo if f not in SCRAPERS]
-    if invalidas:
-        rprint(f"[red]✗[/] Corretora(s) desconhecida(s): {', '.join(invalidas)}")
-        rprint(f"[dim]Disponíveis: {', '.join(SCRAPERS.keys())}[/]")
-        return
-
-    async def _run(col):
-        async with col:
-            return await col.collect()
-
-    db = DatabaseManager(db_path)
-    db.init_db()
-
-    for f in fontes_alvo:
-        col = get_collector(f)
-        with console.status(f"[bold blue]Coletando {f.upper()}..."):
-            result = asyncio.run(_run(col))
-
-        if not result.success:
-            rprint(f"  [red]✗[/] {f.upper()}: {result.error}")
-            continue
-
-        ofertas = result.data or []
-        if not ofertas:
-            rprint(f"  [yellow]⚠[/] {f.upper()}: nenhuma oferta encontrada")
-            continue
-
-        now = datetime.now(TZ_BRASIL)
-        taxas_criadas = 0
-        sem_cnpj = 0
-
-        with db.session_scope() as session:
-            if_repo = InstituicaoRepository(session)
-            taxa_repo = TaxaCDBRepository(session)
-
-            for oferta in ofertas:
-                if not oferta.emissor_cnpj:
-                    sem_cnpj += 1
-                    continue
-
-                if_ = if_repo.upsert(cnpj=oferta.emissor_cnpj, nome=oferta.emissor_nome)
-                taxa_repo.create(
-                    if_id=if_.id,
-                    data_coleta=now,
-                    indexador=oferta.indexador,
-                    percentual=oferta.percentual,
-                    taxa_adicional=oferta.taxa_adicional,
-                    prazo_dias=oferta.prazo_dias,
-                    valor_minimo=oferta.valor_minimo,
-                    liquidez_diaria=oferta.liquidez_diaria,
-                    fonte=oferta.fonte,
-                    url_fonte=oferta.url_fonte,
-                    raw_data=oferta.raw,
-                )
-                taxas_criadas += 1
-
-        msg = f"  [green]✓[/] {f.upper()}: {taxas_criadas} taxas salvas de {len(ofertas)} ofertas"
-        if sem_cnpj:
-            msg += f" [dim]({sem_cnpj} sem CNPJ ignoradas)[/]"
-        rprint(msg)
-
-
-def _collect_b3(db_path: Path | None, data_str: str | None = None):
-    """Baixa e persiste o Boletim Diário de Renda Fixa Privada da B3."""
-    from datetime import date, datetime
-
-    from veredas import TZ_BRASIL
-    from veredas.collectors.b3 import B3BoletimCollector
-    from veredas.storage.repository import InstituicaoRepository, TaxaCDBRepository
-
-    pregao: date | None = None
-    if data_str:
-        try:
-            pregao = date.fromisoformat(data_str)
-        except ValueError:
-            rprint(f"[red]✗[/] Data inválida: '{data_str}'. Use o formato YYYY-MM-DD.")
-            return
-
-    async def _run(col, d):
-        async with col:
-            return await col.collect(d)
-
-    col = B3BoletimCollector()
-    label = pregao.isoformat() if pregao else "hoje"
-    with console.status(f"[bold blue]Baixando Boletim B3 ({label})..."):
-        result = asyncio.run(_run(col, pregao))
-
-    if not result.success:
-        rprint(f"  [red]✗[/] B3: {result.error}")
-        return
-
-    records = result.data or []
-    if not records:
-        rprint(f"  [yellow]⚠[/] B3: pregão {label} sem dados (feriado ou sem negociações)")
-        return
-
-    financeiras = [r for r in records if r.is_financeira]
-    rprint(f"  [dim]B3: {len(records)} registros totais, {len(financeiras)} de IFs financeiras[/]")
-
-    if not financeiras:
-        rprint("  [yellow]⚠[/] B3: nenhum registro de IF financeira reconhecida — nada persistido")
-        return
-
-    db = DatabaseManager(db_path)
-    db.init_db()
-
-    now = datetime.now(TZ_BRASIL)
-    salvos = 0
-    sem_if = 0
-
-    with db.session_scope() as session:
-        if_repo = InstituicaoRepository(session)
-        taxa_repo = TaxaCDBRepository(session)
-
-        for rec in financeiras:
-            cnpj = rec.cnpj_emissor
-            if not cnpj:
-                sem_if += 1
-                continue
-
-            # Upsert da IF pelo CNPJ (nome = prefixo do ticker como fallback)
-            if_ = if_repo.get_by_cnpj(cnpj)
-            if if_ is None:
-                sem_if += 1
-                continue
-
-            from veredas.storage.models import Indexador
-
-            # Inferir indexador a partir da taxa (~mercado: DI é CDI)
-            indexador = Indexador.CDI
-
-            taxa_repo.create(
-                if_id=if_.id,
-                data_coleta=now,
-                indexador=indexador,
-                percentual=rec.taxa_mercado,
-                taxa_adicional=None,
-                prazo_dias=rec.dias_corridos,
-                liquidez_diaria=False,
-                fonte="b3",
-                mercado="secundario",
-                url_fonte=None,
-                raw_data={
-                    "codigo": rec.codigo,
-                    "pu_mercado": str(rec.pu_mercado),
-                    "pu_par": str(rec.pu_par),
-                    "fator": str(rec.fator_acumulado),
-                },
-            )
-            salvos += 1
-
-    msg = f"  [green]✓[/] B3: {salvos} registros de IFs salvos"
-    if sem_if:
-        msg += f" [dim]({sem_if} emissores não cadastrados ignorados)[/]"
-    rprint(msg)
 
 
 @app.command()
@@ -488,18 +211,12 @@ def analyze(
 
     Analisa as taxas coletadas usando detectores de regras,
     estatísticos e opcionalmente de Machine Learning.
-
-    Detectores disponíveis:
-    - Regras: spread, variação, divergência
-    - Estatísticos: STL decomposition, change point, rolling z-score
-    - ML: Isolation Forest, DBSCAN (requer --ml)
     """
     from veredas.detectors import DetectionEngine, EngineConfig
     from veredas.storage.models import Severidade
 
     rprint("[bold]Executando análise de anomalias...[/]\n")
 
-    # Mapear severidade
     severity_map = {
         "low": Severidade.LOW,
         "medium": Severidade.MEDIUM,
@@ -511,7 +228,6 @@ def analyze(
         rprint(f"[red]✗[/] Severidade inválida: {min_severity}")
         raise typer.Exit(1)
 
-    # Configurar engine
     config = EngineConfig(
         enable_rules=True,
         enable_statistical=True,
@@ -519,17 +235,14 @@ def analyze(
         min_severity=severity_map[min_severity.lower()],
         deduplicate=True,
     )
-
     engine = DetectionEngine(config)
 
-    # Mostrar detectores disponíveis
     rprint("[bold]Detectores habilitados:[/]")
     rprint("  • Regras: [green]✓[/]")
     rprint("  • Estatísticos: [green]✓[/]")
     rprint(f"  • Machine Learning: {'[green]✓[/]' if enable_ml else '[dim]✗[/]'}")
     rprint()
 
-    # Verificar se há dados no banco
     db = DatabaseManager(db_path)
     if not db.db_path.exists():
         rprint(
@@ -542,7 +255,6 @@ def analyze(
         )
         raise typer.Exit(1)
 
-    # Por enquanto, mostra exemplo (banco pode não ter taxas CDB)
     rprint(
         Panel(
             "[cyan]ℹ[/] Para análise completa, é necessário ter taxas de CDB no banco.\n\n"
@@ -554,87 +266,13 @@ def analyze(
         )
     )
 
-    # Mostrar detectores disponíveis
     detectors = engine.available_detectors()
     detector_table = Table(title="Detectores Disponíveis")
     detector_table.add_column("Categoria", style="cyan")
     detector_table.add_column("Detectores")
-
     for category, names in detectors.items():
         detector_table.add_row(category.value.title(), ", ".join(names))
-
     console.print(detector_table)
-
-
-alerts_app = typer.Typer(name="alerts", help="Gerencia canais de alerta", no_args_is_help=True)
-app.add_typer(alerts_app)
-
-
-@alerts_app.command("status")
-def alerts_status():
-    """Mostra canais de alerta configurados e seu estado."""
-    from veredas.alerts import AlertChannel, AlertManager
-
-    manager = AlertManager()
-    channels = manager.channels_configured
-
-    table = Table(title="Canais de Alerta")
-    table.add_column("Canal", style="cyan")
-    table.add_column("Estado")
-
-    all_channels = [AlertChannel.TELEGRAM, AlertChannel.EMAIL]
-    for ch in all_channels:
-        if ch in channels:
-            table.add_row(ch.value, "[green]✓ Configurado[/]")
-        else:
-            table.add_row(ch.value, "[dim]✗ Não configurado[/]")
-
-    console.print(table)
-
-    if not channels:
-        rprint(
-            "\n[yellow]⚠[/] Nenhum canal configurado. Defina as variáveis de ambiente:\n"
-            "  [dim]VEREDAS_TELEGRAM_BOT_TOKEN / VEREDAS_TELEGRAM_CHAT_ID[/]\n"
-            "  [dim]VEREDAS_SMTP_HOST / VEREDAS_SMTP_USER / VEREDAS_SMTP_PASSWORD / VEREDAS_ALERT_EMAIL_TO[/]"
-        )
-
-
-@alerts_app.command("test")
-def alerts_test(
-    channel: str | None = typer.Option(
-        None,
-        "--channel",
-        "-c",
-        help="Canal específico: telegram, email (padrão: todos)",
-    ),
-):
-    """Envia alerta de teste para canal(is) configurado(s)."""
-    from veredas.alerts import AlertChannel, AlertManager
-
-    manager = AlertManager()
-
-    if not manager.senders:
-        rprint(
-            "[red]✗[/] Nenhum canal configurado. Use [bold]veredas alerts status[/] para detalhes."
-        )
-        raise typer.Exit(1)
-
-    target: AlertChannel | None = None
-    if channel:
-        try:
-            target = AlertChannel(channel.lower())
-        except ValueError:
-            rprint(f"[red]✗[/] Canal inválido: {channel}. Use: telegram, email")
-            raise typer.Exit(1) from None
-
-    rprint("[bold]Enviando alerta de teste...[/]")
-    results = asyncio.run(manager.send_test_alert(target))
-
-    for result in results:
-        if result.success:
-            rprint(f"  [green]✓[/] {result.channel.value}: enviado (id={result.message_id})")
-        else:
-            rprint(f"  [red]✗[/] {result.channel.value}: {result.error}")
 
 
 @app.command()
@@ -697,7 +335,7 @@ def export(
                     filters=filters, limit=50_000, eager_load=True
                 )
                 dest = output or Path(f"veredas_anomalias_{datetime.now():%Y%m%d_%H%M%S}.{format}")
-                _exportar_anomalias(list(anomalias), format, dest)
+                exportar_anomalias(list(anomalias), format, dest)
                 rprint(f"[green]✓[/] {len(anomalias)} anomalias → [bold]{dest}[/]")
 
             if tipo in ("taxas", "all"):
@@ -713,128 +351,12 @@ def export(
                     dest_taxas = output or Path(
                         f"veredas_taxas_{datetime.now():%Y%m%d_%H%M%S}.{format}"
                     )
-                _exportar_taxas(list(taxas), format, dest_taxas)
+                exportar_taxas(list(taxas), format, dest_taxas)
                 rprint(f"[green]✓[/] {len(taxas)} taxas → [bold]{dest_taxas}[/]")
 
     except Exception as e:
         rprint(f"[red]✗[/] Erro na exportação: {e}")
         raise typer.Exit(1) from e
-
-
-def _exportar_anomalias(anomalias: list, format: str, dest: Path) -> None:
-    if format == "csv":
-        with dest.open("w", newline="", encoding="utf-8-sig") as f:
-            writer = csv.writer(f, delimiter=";")
-            writer.writerow(
-                [
-                    "ID",
-                    "Tipo",
-                    "Severidade",
-                    "Instituição",
-                    "CNPJ",
-                    "Valor Detectado",
-                    "Valor Esperado",
-                    "Desvio",
-                    "Descrição",
-                    "Detectado Em",
-                    "Resolvido",
-                    "Resolvido Em",
-                ]
-            )
-            for a in anomalias:
-                writer.writerow(
-                    [
-                        a.id,
-                        a.tipo.value,
-                        a.severidade.value,
-                        a.instituicao.nome if a.instituicao else "",
-                        a.instituicao.cnpj if a.instituicao else "",
-                        str(a.valor_detectado).replace(".", ","),
-                        str(a.valor_esperado).replace(".", ",") if a.valor_esperado else "",
-                        str(a.desvio).replace(".", ",") if a.desvio else "",
-                        a.descricao,
-                        a.detectado_em.strftime("%d/%m/%Y %H:%M") if a.detectado_em else "",
-                        "Sim" if a.resolvido else "Não",
-                        a.resolvido_em.strftime("%d/%m/%Y %H:%M") if a.resolvido_em else "",
-                    ]
-                )
-    else:
-        rows = [
-            {
-                "id": a.id,
-                "tipo": a.tipo.value,
-                "severidade": a.severidade.value,
-                "instituicao": a.instituicao.nome if a.instituicao else None,
-                "cnpj": a.instituicao.cnpj if a.instituicao else None,
-                "valor_detectado": float(a.valor_detectado)
-                if a.valor_detectado is not None
-                else None,
-                "valor_esperado": float(a.valor_esperado) if a.valor_esperado is not None else None,
-                "desvio": float(a.desvio) if a.desvio is not None else None,
-                "descricao": a.descricao,
-                "detectado_em": a.detectado_em.isoformat() if a.detectado_em else None,
-                "resolvido": a.resolvido,
-                "resolvido_em": a.resolvido_em.isoformat() if a.resolvido_em else None,
-            }
-            for a in anomalias
-        ]
-        dest.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-def _exportar_taxas(taxas: list, format: str, dest: Path) -> None:
-    if format == "csv":
-        with dest.open("w", newline="", encoding="utf-8-sig") as f:
-            writer = csv.writer(f, delimiter=";")
-            writer.writerow(
-                [
-                    "Data Coleta",
-                    "Instituição",
-                    "CNPJ",
-                    "Indexador",
-                    "Percentual (%)",
-                    "Taxa Adicional (%)",
-                    "Prazo (dias)",
-                    "Liquidez Diária",
-                    "Fonte",
-                    "Mercado",
-                    "Risk Score",
-                ]
-            )
-            for t in taxas:
-                writer.writerow(
-                    [
-                        t.data_coleta.strftime("%d/%m/%Y"),
-                        t.instituicao.nome if t.instituicao else "",
-                        t.instituicao.cnpj if t.instituicao else "",
-                        t.indexador.value,
-                        str(t.percentual).replace(".", ","),
-                        str(t.taxa_adicional).replace(".", ",") if t.taxa_adicional else "",
-                        t.prazo_dias,
-                        "Sim" if t.liquidez_diaria else "Não",
-                        t.fonte,
-                        t.mercado or "",
-                        str(t.risk_score).replace(".", ",") if t.risk_score else "",
-                    ]
-                )
-    else:
-        rows = [
-            {
-                "id": t.id,
-                "data_coleta": t.data_coleta.isoformat(),
-                "instituicao": t.instituicao.nome if t.instituicao else None,
-                "cnpj": t.instituicao.cnpj if t.instituicao else None,
-                "indexador": t.indexador.value,
-                "percentual": float(t.percentual),
-                "taxa_adicional": float(t.taxa_adicional) if t.taxa_adicional else None,
-                "prazo_dias": t.prazo_dias,
-                "liquidez_diaria": t.liquidez_diaria,
-                "fonte": t.fonte,
-                "mercado": t.mercado,
-                "risk_score": float(t.risk_score) if t.risk_score else None,
-            }
-            for t in taxas
-        ]
-        dest.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 @app.command()
@@ -848,19 +370,16 @@ def detectors():
 
     rprint("[bold]Detectores de Anomalias Disponíveis[/]\n")
 
-    detectors = DetectionEngine.available_detectors()
+    available = DetectionEngine.available_detectors()
 
-    # Verificar dependências ML
     ml_available = False
     ruptures_available = False
-
     try:
         import sklearn  # noqa: F401
 
         ml_available = True
     except ImportError:
         pass
-
     try:
         import ruptures  # noqa: F401
 
@@ -868,24 +387,21 @@ def detectors():
     except ImportError:
         pass
 
-    # Regras
     rprint("[bold cyan]Detectores de Regras:[/]")
-    for name in detectors.get("rules", []):
+    for name in available.get("rules", []):
         rprint(f"  • {name}")
 
-    # Estatísticos
     rprint("\n[bold cyan]Detectores Estatísticos:[/]")
-    for name in detectors.get("statistical", []):
-        status = "[green]✓[/]"
+    for name in available.get("statistical", []):
+        status_str = "[green]✓[/]"
         if "change_point" in name and not ruptures_available:
-            status = "[yellow]⚠ ruptures não instalado[/]"
-        rprint(f"  • {name} {status}")
+            status_str = "[yellow]⚠ ruptures não instalado[/]"
+        rprint(f"  • {name} {status_str}")
 
-    # ML
     rprint("\n[bold cyan]Detectores de Machine Learning:[/]")
-    for name in detectors.get("ml", []):
-        status = "[green]✓[/]" if ml_available else "[yellow]⚠ scikit-learn não instalado[/]"
-        rprint(f"  • {name} {status}")
+    for name in available.get("ml", []):
+        status_str = "[green]✓[/]" if ml_available else "[yellow]⚠ scikit-learn não instalado[/]"
+        rprint(f"  • {name} {status_str}")
 
     rprint("\n[dim]Use --ml com 'veredas analyze' para habilitar detectores ML[/]")
 
@@ -960,7 +476,6 @@ def status(
 
     rprint("\n[bold]Status das Fontes:[/]")
 
-    # Verificar BCB
     with console.status("Verificando BCB..."):
         collector = BCBCollector()
         bcb_ok = asyncio.run(collector.health_check())
@@ -970,18 +485,14 @@ def status(
     else:
         rprint("  [red]✗[/] Banco Central (BCB): Offline")
 
-    # Mostrar últimas taxas
     rprint("\n[bold]Taxas Atuais:[/]")
-
     selic = get_selic_atual()
     cdi = get_cdi_atual()
-
     if selic:
         rprint(f"  • Selic: [green]{selic}%[/] a.m.")
     if cdi:
         rprint(f"  • CDI: [green]{cdi}%[/] a.m.")
 
-    # Status do banco
     db = DatabaseManager(db_path)
     if db.db_path.exists():
         rprint(f"\n[bold]Banco de Dados:[/] {db.db_path}")
