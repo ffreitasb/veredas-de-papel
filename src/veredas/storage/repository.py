@@ -267,6 +267,9 @@ class TaxaCDBRepository:
             if "instituicao_id" in filters:
                 stmt = stmt.where(TaxaCDB.if_id == filters["instituicao_id"])
                 count_stmt = count_stmt.where(TaxaCDB.if_id == filters["instituicao_id"])
+            if "mercado" in filters:
+                stmt = stmt.where(TaxaCDB.mercado == filters["mercado"])
+                count_stmt = count_stmt.where(TaxaCDB.mercado == filters["mercado"])
 
         # Ordenacao
         if order_by == "data_desc":

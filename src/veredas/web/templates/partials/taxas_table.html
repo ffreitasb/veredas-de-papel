@@ -1,7 +1,7 @@
 <!-- Partial: Tabela de taxas (HTMX) -->
 {# Macro para montar URL de ordenação com filtros atuais #}
 {% macro sort_url(col_asc, col_desc) %}
-/taxas/?ordem={{ col_asc if ordem == col_desc else col_desc }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&pagina=1
+/taxas/?ordem={{ col_asc if ordem == col_desc else col_desc }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&mercado={{ mercado or '' }}&pagina=1
 {% endmacro %}
 
 {# Ícone de seta para coluna ativa #}
@@ -24,29 +24,30 @@
             <th>Instituição</th>
             <th>Indexador</th>
             <th>
-                <a href="{{ sort_url('data_asc', 'data_desc') }}"
-                   hx-get="/taxas/?ordem={{ 'prazo_asc' if ordem == 'prazo_desc' else 'prazo_desc' }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&pagina=1"
+                <a href="/taxas/?ordem={{ 'prazo_asc' if ordem == 'prazo_desc' else 'prazo_desc' }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&mercado={{ mercado or '' }}&pagina=1"
+                   hx-get="/taxas/?ordem={{ 'prazo_asc' if ordem == 'prazo_desc' else 'prazo_desc' }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&mercado={{ mercado or '' }}&pagina=1"
                    hx-target="#taxas-table" hx-push-url="true">
                     Prazo
                     {% if ordem == 'prazo_asc' %}&#8593;{% elif ordem == 'prazo_desc' %}&#8595;{% endif %}
                 </a>
             </th>
             <th>
-                <a href="/taxas/?ordem={{ 'taxa_asc' if ordem == 'taxa_desc' else 'taxa_desc' }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&pagina=1"
-                   hx-get="/taxas/?ordem={{ 'taxa_asc' if ordem == 'taxa_desc' else 'taxa_desc' }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&pagina=1"
+                <a href="/taxas/?ordem={{ 'taxa_asc' if ordem == 'taxa_desc' else 'taxa_desc' }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&mercado={{ mercado or '' }}&pagina=1"
+                   hx-get="/taxas/?ordem={{ 'taxa_asc' if ordem == 'taxa_desc' else 'taxa_desc' }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&mercado={{ mercado or '' }}&pagina=1"
                    hx-target="#taxas-table" hx-push-url="true">
                     Taxa
                     {% if ordem == 'taxa_asc' %}&#8593;{% elif ordem == 'taxa_desc' %}&#8595;{% endif %}
                 </a>
             </th>
             <th>
-                <a href="/taxas/?ordem={{ 'spread_asc' if ordem == 'spread_desc' else 'spread_desc' }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&pagina=1"
-                   hx-get="/taxas/?ordem={{ 'spread_asc' if ordem == 'spread_desc' else 'spread_desc' }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&pagina=1"
+                <a href="/taxas/?ordem={{ 'spread_asc' if ordem == 'spread_desc' else 'spread_desc' }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&mercado={{ mercado or '' }}&pagina=1"
+                   hx-get="/taxas/?ordem={{ 'spread_asc' if ordem == 'spread_desc' else 'spread_desc' }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&mercado={{ mercado or '' }}&pagina=1"
                    hx-target="#taxas-table" hx-push-url="true">
                     Spread
                     {% if ordem == 'spread_asc' %}&#8593;{% elif ordem == 'spread_desc' %}&#8595;{% endif %}
                 </a>
             </th>
+            <th>Mercado</th>
         </tr>
     </thead>
     <tbody>
@@ -66,10 +67,11 @@
             <td class="num {% if taxa.percentual and taxa.percentual > 130 %}num-negative{% elif taxa.percentual and taxa.percentual > 100 %}severity-medium{% endif %}">
                 {{ "%.0f"|format(taxa.percentual) if taxa.percentual else "-" }}%
             </td>
+            <td class="num">{{ taxa.mercado or "primário" }}</td>
         </tr>
         {% else %}
         <tr>
-            <td colspan="6" class="empty-state">Nenhuma taxa encontrada</td>
+            <td colspan="7" class="empty-state">Nenhuma taxa encontrada</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -79,16 +81,16 @@
 {% if total_paginas > 1 %}
 <div class="pagination">
     {% if pagina > 1 %}
-    <a href="/taxas/?pagina={{ pagina - 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&ordem={{ ordem }}"
-       hx-get="/taxas/?pagina={{ pagina - 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&ordem={{ ordem }}"
+    <a href="/taxas/?pagina={{ pagina - 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&mercado={{ mercado or '' }}&ordem={{ ordem }}"
+       hx-get="/taxas/?pagina={{ pagina - 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&mercado={{ mercado or '' }}&ordem={{ ordem }}"
        hx-target="#taxas-table" hx-push-url="true">&laquo; Anterior</a>
     {% endif %}
 
     <span class="current">{{ pagina }} / {{ total_paginas }}</span>
 
     {% if pagina < total_paginas %}
-    <a href="/taxas/?pagina={{ pagina + 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&ordem={{ ordem }}"
-       hx-get="/taxas/?pagina={{ pagina + 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&ordem={{ ordem }}"
+    <a href="/taxas/?pagina={{ pagina + 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&mercado={{ mercado or '' }}&ordem={{ ordem }}"
+       hx-get="/taxas/?pagina={{ pagina + 1 }}&indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&mercado={{ mercado or '' }}&ordem={{ ordem }}"
        hx-target="#taxas-table" hx-push-url="true">Próxima &raquo;</a>
     {% endif %}
 </div>

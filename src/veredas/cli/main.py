@@ -434,6 +434,7 @@ def _collect_b3(db_path: Path | None, data_str: str | None = None):
                 prazo_dias=rec.dias_corridos,
                 liquidez_diaria=False,
                 fonte="b3",
+                mercado="secundario",
                 url_fonte=None,
                 raw_data={
                     "codigo": rec.codigo,
@@ -795,6 +796,7 @@ def _exportar_taxas(taxas: list, format: str, dest: Path) -> None:
                     "Prazo (dias)",
                     "Liquidez Diária",
                     "Fonte",
+                    "Mercado",
                     "Risk Score",
                 ]
             )
@@ -810,6 +812,7 @@ def _exportar_taxas(taxas: list, format: str, dest: Path) -> None:
                         t.prazo_dias,
                         "Sim" if t.liquidez_diaria else "Não",
                         t.fonte,
+                        t.mercado or "",
                         str(t.risk_score).replace(".", ",") if t.risk_score else "",
                     ]
                 )
@@ -826,6 +829,7 @@ def _exportar_taxas(taxas: list, format: str, dest: Path) -> None:
                 "prazo_dias": t.prazo_dias,
                 "liquidez_diaria": t.liquidez_diaria,
                 "fonte": t.fonte,
+                "mercado": t.mercado,
                 "risk_score": float(t.risk_score) if t.risk_score else None,
             }
             for t in taxas
