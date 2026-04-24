@@ -19,10 +19,12 @@ DATA_DIR.mkdir(exist_ok=True)
 # Caminho padrão do banco de dados
 DEFAULT_DB_PATH = DATA_DIR / "veredas.db"
 
+_engine_cache: dict[str, object] = {}
+
 
 def get_engine(db_path: Path | str | None = None):
     """
-    Cria engine do SQLAlchemy.
+    Cria ou reutiliza engine do SQLAlchemy para o caminho dado.
 
     Args:
         db_path: Caminho para o banco de dados SQLite.
@@ -31,8 +33,16 @@ def get_engine(db_path: Path | str | None = None):
     if db_path is None:
         db_path = DEFAULT_DB_PATH
 
-    db_url = f"sqlite:///{db_path}"
-    return create_engine(db_url, echo=False)
+    key = str(db_path)
+    if key not in _engine_cache:
+        db_url = f"sqlite:///{db_path}"
+        _engine_cache[key] = create_engine(
+            db_url,
+            echo=False,
+            connect_args={"check_same_thread": False},
+            pool_pre_ping=True,
+        )
+    return _engine_cache[key]
 
 
 def init_db(db_path: Path | str | None = None) -> None:

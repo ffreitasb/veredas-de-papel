@@ -73,11 +73,16 @@ def get_cached_reference_rates(session: Session) -> dict:
     if cached is not None:
         return cached
 
+    def _to_dict(taxa):
+        if taxa is None:
+            return None
+        return {"valor": taxa.valor, "data": taxa.data, "tipo": taxa.tipo}
+
     repo = TaxaReferenciaRepository(session)
     rates = {
-        "selic": repo.get_latest("selic"),
-        "cdi": repo.get_latest("cdi"),
-        "ipca": repo.get_latest("ipca"),
+        "selic": _to_dict(repo.get_latest("selic")),
+        "cdi": _to_dict(repo.get_latest("cdi")),
+        "ipca": _to_dict(repo.get_latest("ipca")),
     }
 
     _reference_cache.set(cache_key, rates)
