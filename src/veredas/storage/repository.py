@@ -121,7 +121,12 @@ class TaxaCDBRepository:
 
     def get_by_id(self, taxa_id: int) -> TaxaCDB | None:
         """Busca taxa por ID."""
-        return self.session.get(TaxaCDB, taxa_id)
+        stmt = (
+            select(TaxaCDB)
+            .where(TaxaCDB.id == taxa_id)
+            .options(selectinload(TaxaCDB.instituicao))
+        )
+        return self.session.execute(stmt).scalar_one_or_none()
 
     def list_by_if(
         self,
@@ -133,6 +138,7 @@ class TaxaCDBRepository:
         stmt = (
             select(TaxaCDB)
             .where(TaxaCDB.if_id == if_id)
+            .options(selectinload(TaxaCDB.instituicao))
             .order_by(desc(TaxaCDB.data_coleta))
             .limit(limit)
         )
@@ -284,6 +290,9 @@ class TaxaCDBRepository:
             stmt = stmt.order_by(desc(TaxaCDB.percentual))
         elif order_by == "taxa_asc":
             stmt = stmt.order_by(TaxaCDB.percentual)
+
+        # Eager load da IF para evitar N+1 no template
+        stmt = stmt.options(selectinload(TaxaCDB.instituicao))
 
         # Paginacao
         offset = (page - 1) * per_page

@@ -84,15 +84,21 @@ def get_session(db_path: Path | str | None = None) -> Generator[Session, None, N
 class DatabaseManager:
     """Gerenciador de conexões com o banco de dados."""
 
-    def __init__(self, db_path: Path | str | None = None):
+    def __init__(self, db_path: Path | str | None = None, *, engine=None):
         """
         Inicializa o gerenciador.
 
         Args:
             db_path: Caminho para o banco de dados SQLite.
+            engine: Engine SQLAlchemy pré-criada (útil em testes).
+                    Se fornecida, db_path é ignorado.
         """
-        self.db_path = db_path or DEFAULT_DB_PATH
-        self.engine = get_engine(self.db_path)
+        if engine is not None:
+            self.db_path = None
+            self.engine = engine
+        else:
+            self.db_path = db_path or DEFAULT_DB_PATH
+            self.engine = get_engine(self.db_path)
         self._session_factory = sessionmaker(bind=self.engine)
 
     def init_db(self) -> None:
