@@ -129,3 +129,4 @@ plans/
 backup/
 **/CLAUDE.md
 .secrets.baseline
+.env
