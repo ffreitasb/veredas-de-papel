@@ -117,6 +117,11 @@ def collect(
         "-f",
         help="Corretora específica para scrapers: xp, btg, inter, rico (padrão: all)",
     ),
+    data_b3: str | None = typer.Option(
+        None,
+        "--data",
+        help="Data do pregão B3 em YYYY-MM-DD (padrão: hoje)",
+    ),
 ):
     """
     Coleta dados de fontes externas.
@@ -125,13 +130,16 @@ def collect(
     - bcb:      Taxa Selic, CDI, IPCA do Banco Central
     - ifdata:   Dados de saúde das instituições financeiras
     - scrapers: Prateleiras de CDB das corretoras (XP, BTG, Inter, Rico)
+    - b3:       Boletim Diário de Renda Fixa Privada B3 (debêntures secundário)
     - all:      Todas as fontes
 
     Exemplos:
 
         veredas collect scrapers --fonte xp
 
-        veredas collect scrapers
+        veredas collect b3
+
+        veredas collect b3 --data 2026-04-23
 
         veredas collect all
     """
@@ -147,8 +155,11 @@ def collect(
         if source in ("scrapers", "all"):
             _collect_scrapers(db_path, fonte)
 
-        if source not in ("bcb", "ifdata", "scrapers", "all"):
-            rprint(f"[red]✗[/] Fonte desconhecida: '{source}'. Use: bcb, ifdata, scrapers, all")
+        if source in ("b3", "all"):
+            _collect_b3(db_path, data_b3)
+
+        if source not in ("bcb", "ifdata", "scrapers", "b3", "all"):
+            rprint(f"[red]✗[/] Fonte desconhecida: '{source}'. Use: bcb, ifdata, scrapers, b3, all")
             raise typer.Exit(1)
 
         rprint("\n[green]✓[/] Coleta concluída")
@@ -343,6 +354,100 @@ def _collect_scrapers(db_path: Path | None, fonte: str = "all"):
         if sem_cnpj:
             msg += f" [dim]({sem_cnpj} sem CNPJ ignoradas)[/]"
         rprint(msg)
+
+
+def _collect_b3(db_path: Path | None, data_str: str | None = None):
+    """Baixa e persiste o Boletim Diário de Renda Fixa Privada da B3."""
+    from datetime import date, datetime
+
+    from veredas import TZ_BRASIL
+    from veredas.collectors.b3 import B3BoletimCollector
+    from veredas.storage.repository import InstituicaoRepository, TaxaCDBRepository
+
+    pregao: date | None = None
+    if data_str:
+        try:
+            pregao = date.fromisoformat(data_str)
+        except ValueError:
+            rprint(f"[red]✗[/] Data inválida: '{data_str}'. Use o formato YYYY-MM-DD.")
+            return
+
+    async def _run(col, d):
+        async with col:
+            return await col.collect(d)
+
+    col = B3BoletimCollector()
+    label = pregao.isoformat() if pregao else "hoje"
+    with console.status(f"[bold blue]Baixando Boletim B3 ({label})..."):
+        result = asyncio.run(_run(col, pregao))
+
+    if not result.success:
+        rprint(f"  [red]✗[/] B3: {result.error}")
+        return
+
+    records = result.data or []
+    if not records:
+        rprint(f"  [yellow]⚠[/] B3: pregão {label} sem dados (feriado ou sem negociações)")
+        return
+
+    financeiras = [r for r in records if r.is_financeira]
+    rprint(f"  [dim]B3: {len(records)} registros totais, {len(financeiras)} de IFs financeiras[/]")
+
+    if not financeiras:
+        rprint("  [yellow]⚠[/] B3: nenhum registro de IF financeira reconhecida — nada persistido")
+        return
+
+    db = DatabaseManager(db_path)
+    db.init_db()
+
+    now = datetime.now(TZ_BRASIL)
+    salvos = 0
+    sem_if = 0
+
+    with db.session_scope() as session:
+        if_repo = InstituicaoRepository(session)
+        taxa_repo = TaxaCDBRepository(session)
+
+        for rec in financeiras:
+            cnpj = rec.cnpj_emissor
+            if not cnpj:
+                sem_if += 1
+                continue
+
+            # Upsert da IF pelo CNPJ (nome = prefixo do ticker como fallback)
+            if_ = if_repo.get_by_cnpj(cnpj)
+            if if_ is None:
+                sem_if += 1
+                continue
+
+            from veredas.storage.models import Indexador
+
+            # Inferir indexador a partir da taxa (~mercado: DI é CDI)
+            indexador = Indexador.CDI
+
+            taxa_repo.create(
+                if_id=if_.id,
+                data_coleta=now,
+                indexador=indexador,
+                percentual=rec.taxa_mercado,
+                taxa_adicional=None,
+                prazo_dias=rec.dias_corridos,
+                liquidez_diaria=False,
+                fonte="b3",
+                url_fonte=None,
+                raw_data={
+                    "codigo": rec.codigo,
+                    "pu_mercado": str(rec.pu_mercado),
+                    "pu_par": str(rec.pu_par),
+                    "fator": str(rec.fator_acumulado),
+                },
+            )
+            salvos += 1
+
+    msg = f"  [green]✓[/] B3: {salvos} registros de IFs salvos"
+    if sem_if:
+        msg += f" [dim]({sem_if} emissores não cadastrados ignorados)[/]"
+    rprint(msg)
 
 
 @app.command()
