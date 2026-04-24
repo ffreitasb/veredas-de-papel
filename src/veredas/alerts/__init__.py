@@ -22,14 +22,14 @@ from veredas.alerts.telegram import TelegramAlertSender
 __all__ = [
     # Base
     "AlertChannel",
+    # Manager
+    "AlertManager",
     "AlertMessage",
     "AlertPriority",
     "AlertResult",
     "AlertSender",
     "ConsoleSender",
+    "EmailAlertSender",
     # Senders
     "TelegramAlertSender",
-    "EmailAlertSender",
-    # Manager
-    "AlertManager",
 ]

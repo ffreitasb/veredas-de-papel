@@ -105,10 +105,18 @@ select = [
     "C4",     # flake8-comprehensions
     "UP",     # pyupgrade
     "SIM",    # flake8-simplify
+    "RUF",    # Ruff-specific rules
+    "TRY",    # exception handling anti-patterns
 ]
 ignore = [
     "E501",   # line too long (handled by formatter)
-    "B008",   # function call in argument defaults (required by FastAPI Depends and Typer Option)
+    "B008",   # function call in argument defaults (FastAPI Depends / Typer Option)
+    "RUF001", # σ é notação matemática intencional (desvio padrão)
+    "RUF002", # idem — docstrings com σ
+    "RUF003", # idem — comentários com σ
+    "TRY003", # mensagens longas em raise são aceitáveis aqui
+    "TRY300", # refactor de else — opinionated
+    "TRY301", # abstract raise — opinionated
 ]
 
 [tool.ruff.lint.isort]

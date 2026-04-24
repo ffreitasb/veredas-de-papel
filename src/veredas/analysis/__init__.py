@@ -21,14 +21,14 @@ from veredas.analysis.risk_score import (
 )
 
 __all__ = [
-    # Risk Score
-    "RiskScore",
-    "RiskLevel",
-    "ScoreBreakdown",
-    "calcular_score_risco",
-    "calcular_score_batch",
     # Health Analysis
     "HealthAnalysis",
+    "RiskLevel",
+    # Risk Score
+    "RiskScore",
+    "ScoreBreakdown",
     "analisar_saude_if",
+    "calcular_score_batch",
+    "calcular_score_risco",
     "comparar_com_benchmark",
 ]

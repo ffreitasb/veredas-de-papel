@@ -4,6 +4,8 @@ Cache em memoria para dados frequentemente acessados.
 Implementa cache TTL simples para reduzir queries ao banco.
 """
 
+import threading
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -20,6 +22,7 @@ class TTLCache:
         self._cache: dict[str, Any] = {}
         self._timestamps: dict[str, datetime] = {}
         self._default_ttl = default_ttl
+        self._lock = threading.Lock()
 
     def get(self, key: str) -> Any | None:
         """Busca valor do cache se ainda valido."""
@@ -44,6 +47,19 @@ class TTLCache:
         self._cache.pop(key, None)
         self._timestamps.pop(key, None)
 
+    def get_or_compute(self, key: str, compute: Callable[[], Any]) -> Any:
+        """Retorna valor do cache ou computa atomicamente, evitando stampede."""
+        cached = self.get(key)
+        if cached is not None:
+            return cached
+        with self._lock:
+            cached = self.get(key)  # double-check após adquirir lock
+            if cached is not None:
+                return cached
+            value = compute()
+            self.set(key, value)
+            return value
+
     def clear(self) -> None:
         """Limpa todo o cache."""
         self._cache.clear()
@@ -67,26 +83,20 @@ def get_cached_reference_rates(session: Session) -> dict:
     Returns:
         Dict com selic, cdi, ipca.
     """
-    cache_key = "reference_rates"
-    cached = _reference_cache.get(cache_key)
-
-    if cached is not None:
-        return cached
-
     def _to_dict(taxa):
         if taxa is None:
             return None
         return {"valor": taxa.valor, "data": taxa.data, "tipo": taxa.tipo}
 
-    repo = TaxaReferenciaRepository(session)
-    rates = {
-        "selic": _to_dict(repo.get_latest("selic")),
-        "cdi": _to_dict(repo.get_latest("cdi")),
-        "ipca": _to_dict(repo.get_latest("ipca")),
-    }
+    def _compute():
+        repo = TaxaReferenciaRepository(session)
+        return {
+            "selic": _to_dict(repo.get_latest("selic")),
+            "cdi": _to_dict(repo.get_latest("cdi")),
+            "ipca": _to_dict(repo.get_latest("ipca")),
+        }
 
-    _reference_cache.set(cache_key, rates)
-    return rates
+    return _reference_cache.get_or_compute("reference_rates", _compute)
 
 
 def get_cached_anomaly_counts(session: Session, count_func) -> dict:
@@ -100,15 +110,7 @@ def get_cached_anomaly_counts(session: Session, count_func) -> dict:
     Returns:
         Dict com contadores por severidade.
     """
-    cache_key = "anomaly_counts"
-    cached = _counter_cache.get(cache_key)
-
-    if cached is not None:
-        return cached
-
-    counts = count_func(session)
-    _counter_cache.set(cache_key, counts)
-    return counts
+    return _counter_cache.get_or_compute("anomaly_counts", lambda: count_func(session))
 
 
 def invalidate_reference_cache() -> None:

@@ -27,26 +27,26 @@ from veredas.storage.repository import (
 )
 
 __all__ = [
+    "Anomalia",
+    "AnomaliaRepository",
+    "Base",
     # Database
     "DatabaseManager",
-    "init_db",
-    "Base",
+    "EventoRegulatorio",
+    "EventoRepository",
+    "Indexador",
     # Models
     "InstituicaoFinanceira",
-    "TaxaCDB",
-    "Anomalia",
-    "EventoRegulatorio",
-    "TaxaReferencia",
-    # Enums
-    "Segmento",
-    "Indexador",
-    "TipoAnomalia",
-    "Severidade",
-    "TipoEvento",
     # Repositories
     "InstituicaoRepository",
+    # Enums
+    "Segmento",
+    "Severidade",
+    "TaxaCDB",
     "TaxaCDBRepository",
-    "AnomaliaRepository",
+    "TaxaReferencia",
     "TaxaReferenciaRepository",
-    "EventoRepository",
+    "TipoAnomalia",
+    "TipoEvento",
+    "init_db",
 ]

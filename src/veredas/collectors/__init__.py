@@ -17,17 +17,17 @@ from veredas.collectors.bcb import (
 from veredas.collectors.scraper_base import WebCollectorBase
 
 __all__ = [
+    # B3
+    "B3BoletimCollector",
+    # BCB
+    "BCBCollector",
     # Base
     "BaseCollector",
     "CollectionResult",
-    "WebCollectorBase",
-    # BCB
-    "BCBCollector",
     "DadosBCB",
     "TaxaReferenciaBCB",
-    "get_selic_atual",
+    "WebCollectorBase",
     "get_cdi_atual",
     "get_ipca_atual",
-    # B3
-    "B3BoletimCollector",
+    "get_selic_atual",
 ]
