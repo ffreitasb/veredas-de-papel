@@ -24,6 +24,12 @@
     <input type="number" name="prazo_min" placeholder="Prazo min (dias)" value="{{ prazo_min or '' }}">
     <input type="number" name="prazo_max" placeholder="Prazo max (dias)" value="{{ prazo_max or '' }}">
 
+    <select name="mercado">
+        <option value="">Todos mercados</option>
+        <option value="primario" {% if mercado == 'primario' %}selected{% endif %}>Primário</option>
+        <option value="secundario" {% if mercado == 'secundario' %}selected{% endif %}>Secundário (B3)</option>
+    </select>
+
     <select name="ordem">
         <option value="data_desc" {% if ordem == 'data_desc' %}selected{% endif %}>Data (recente)</option>
         <option value="data_asc" {% if ordem == 'data_asc' %}selected{% endif %}>Data (antiga)</option>
@@ -34,7 +40,7 @@
     </select>
 
     <button type="submit">Filtrar</button>
-    <a href="/taxas/export.csv?indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&ordem={{ ordem }}"
+    <a href="/taxas/export.csv?indexador={{ indexador or '' }}&if_id={{ if_id or '' }}&prazo_min={{ prazo_min or '' }}&prazo_max={{ prazo_max or '' }}&mercado={{ mercado or '' }}&ordem={{ ordem }}"
        class="btn-export" title="Exportar CSV (compatível com Excel)">
         &#8595; CSV
     </a>

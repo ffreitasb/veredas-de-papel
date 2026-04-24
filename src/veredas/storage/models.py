@@ -183,6 +183,7 @@ class TaxaCDB(Base):
 
     # Metadados da coleta
     fonte: Mapped[str] = mapped_column(String(50), nullable=False)  # xp, btg, rico, etc
+    mercado: Mapped[str | None] = mapped_column(String(20))  # "primario" / "secundario"
     url_fonte: Mapped[str | None] = mapped_column(Text)
     raw_data: Mapped[dict | None] = mapped_column(JSON)  # Dados brutos da coleta
 

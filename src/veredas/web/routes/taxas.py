@@ -29,6 +29,7 @@ async def list_taxas(
     prazo_min: int | None = Query(None, description="Prazo minimo em dias"),
     prazo_max: int | None = Query(None, description="Prazo maximo em dias"),
     if_id: int | None = Query(None, description="ID da instituicao"),
+    mercado: str | None = Query(None, description="Filtrar por mercado: primario, secundario"),
     ordem: str = Query("data_desc", description="Ordenacao"),
     pagina: int = Query(1, ge=1, description="Pagina"),
     por_pagina: int = Query(20, ge=10, le=100, description="Itens por pagina"),
@@ -49,6 +50,8 @@ async def list_taxas(
         filters["prazo_max"] = prazo_max
     if if_id:
         filters["instituicao_id"] = if_id
+    if mercado in ("primario", "secundario"):
+        filters["mercado"] = mercado
 
     # Obter taxas com paginacao
     taxas, total = taxa_repo.list_paginated(
@@ -77,6 +80,7 @@ async def list_taxas(
         "prazo_min": prazo_min,
         "prazo_max": prazo_max,
         "if_id": if_id,
+        "mercado": mercado,
         "ordem": ordem,
         "instituicoes": instituicoes,
         "indexadores": indexadores,
@@ -96,6 +100,7 @@ async def export_taxas_csv(
     prazo_min: int | None = Query(None),
     prazo_max: int | None = Query(None),
     if_id: int | None = Query(None),
+    mercado: str | None = Query(None),
     ordem: str = Query("data_desc"),
 ):
     """Exporta taxas filtradas como CSV (UTF-8-BOM, compatível com Excel)."""
@@ -110,6 +115,8 @@ async def export_taxas_csv(
         filters["prazo_max"] = prazo_max
     if if_id:
         filters["instituicao_id"] = if_id
+    if mercado in ("primario", "secundario"):
+        filters["mercado"] = mercado
 
     # Exporta até 10 000 linhas sem paginação
     taxas, _ = taxa_repo.list_paginated(filters=filters, order_by=ordem, page=1, per_page=10_000)
@@ -129,6 +136,7 @@ async def export_taxas_csv(
                 "Prazo (dias)",
                 "Liquidez Diária",
                 "Fonte",
+                "Mercado",
                 "Risk Score",
             ]
         )
@@ -148,6 +156,7 @@ async def export_taxas_csv(
                     taxa.prazo_dias,
                     "Sim" if taxa.liquidez_diaria else "Não",
                     taxa.fonte,
+                    taxa.mercado or "",
                     str(taxa.risk_score).replace(".", ",") if taxa.risk_score else "",
                 ]
             )
