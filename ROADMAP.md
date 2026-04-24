@@ -32,37 +32,85 @@
 
 ### 4.3 — B3: Mercado Secundário
 
-**Objetivo:** capturar preços de CDBs negociados no mercado secundário — diferente da prateleira de captação primária das corretoras.
+**Objetivo:** capturar preços de CDBs negociados no mercado secundário via Boletim Diário B3 — a única fonte pública gratuita disponível após validação de todas as alternativas.
 
-**Esforço estimado:** 1 semana (dependente de acesso)
+**Esforço estimado:** 1,5 semanas
 
-#### Avaliação de acesso — validada em 23/04/2026
+#### Por que não há fonte melhor — resumo da validação (23/04/2026)
 
-- [x] **B3 Market Data API** (`developers.b3.com.br`) — API "CDB" existe, mas é **B2B fechada**. Requer contrato institucional e OAuth2 pago. Inviável sem contrato.
-- [x] **ANBIMA API** (`api.anbima.com.br`) — Cobre debentures, CRI, CRA, LF — **não tem API de CDB**. CDB não é marcado a mercado pela ANBIMA. Requer registro OAuth2; sandbox aparentemente gratuito, produção exige vínculo com membro ANBIMA.
-- [x] **CETIP/B3 FTP público** — **Não existe.** B3 absorveu a CETIP em 2017; todos os feeds migraram para o portal B2B fechado.
+| Fonte | Veredicto |
+|-------|-----------|
+| B3 API (`developers.b3.com.br`) — API "CDB" existe | B2B fechado, contrato pago obrigatório |
+| ANBIMA API (`api.anbima.com.br`) | Não tem CDB — só debentures, CRI, CRA |
+| CETIP FTP público | Não existe — B3 absorveu CETIP em 2017 |
+| **B3 Boletim Diário "Renda Fixa Privada"** | **✓ Fonte escolhida — público, sem login** |
 
-**Fonte viável identificada: B3 Boletim Diário — arquivo "Renda Fixa Privada"**
-URL pública: `https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/boletins-diarios/pesquisa-por-pregao/pesquisa-por-pregao/`
-- Dado público, sem login, atualização diária (~19:53 BRT)
-- Cobre o segmento "Renda Fixa Privada" (inclui CDB, CRI, CRA, debentures, LCI, LCA)
-- Download via JavaScript dinâmico (sem URL estática) — requer Playwright para extrair `contentId` e baixar o arquivo
-- Formato provável: TXT posicional ou CSV (padrão histórico B3)
-- Abordagem: reverse-engineering da requisição de download no browser para montar URL programaticamente
+---
 
-#### Modelo de dados
+#### Plano de implementação
 
-Campo `mercado` em `TaxaCDB`:
-- `"primario"` — prateleira de captação (corretora/emissor)
-- `"secundario"` — preço negociado no mercado secundário
+##### Etapa A — Reverse-engineering do download (2–3 dias)
 
-#### Entrega
+O boletim usa JavaScript dinâmico para construir a URL de download. A estratégia:
 
-- `collectors/b3/secondary.py` (ou `collectors/anbima.py` conforme avaliação)
-- `veredas collect b3` disponível no CLI
-- Dashboard: coluna "Mercado" visível na tabela de taxas
+1. Usar Playwright para navegar até a página do boletim e interceptar requisições de rede (`page.on("request")`) enquanto o JS monta o link de download do arquivo "Renda Fixa Privada"
+2. Identificar o padrão de URL (provável: `https://www.b3.com.br/pesquisapregao/download?filetype=zip&date=DDMMYYYY&code=...`)
+3. Verificar se o `contentId` é constante por tipo de arquivo ou varia por pregão
+4. Documentar o padrão em `collectors/b3/README_URL_PATTERN.md` para manutenção futura
 
-**Critério de conclusão:** dados de mercado secundário populados via Boletim Diário B3; distinção primário/secundário visível no dashboard.
+**Entregável:** função `_resolve_download_url(date: date) -> str` com URL direta, sem interação com JS para datas futuras.
+
+##### Etapa B — Parser do arquivo (3–4 dias)
+
+O arquivo "Renda Fixa Privada" segue layout posicional (padrão histórico B3). Será necessário:
+
+1. Baixar um arquivo de amostra e inspecionar o layout (campo por campo)
+2. Identificar o código de instrumento para CDB (provável: `"CDB"` ou `"DI"` no campo `TpInstrd`)
+3. Campos de interesse: CNPJ do emissor, taxa DI (%), IPCA+, data de vencimento, volume, data do pregão
+4. Implementar `B3BoletimParser` com mapeamento campo → `CDBOferta`
+
+```python
+# collectors/b3/parser.py
+@dataclass
+class B3BoletimRecord:
+    data_pregao: date
+    cnpj_emissor: str
+    tipo_instrumento: str   # CDB, CRI, CRA, ...
+    taxa_indicativa: Decimal
+    indexador: str          # DI, IPCA, PRE
+    vencimento: date
+    volume_financeiro: Decimal
+
+class B3BoletimParser:
+    def parse(self, filepath: Path) -> list[B3BoletimRecord]: ...
+    def to_cdb_oferta(self, record: B3BoletimRecord) -> CDBOferta | None: ...
+```
+
+##### Etapa C — Coletor (2 dias)
+
+```
+collectors/
+  b3/
+    __init__.py
+    downloader.py   # Playwright + URL resolution
+    parser.py       # layout posicional → B3BoletimRecord → CDBOferta
+    collector.py    # B3BoletimCollector(WebCollectorBase)
+```
+
+- `B3BoletimCollector.collect(date=None)` — baixa e processa o boletim do dia (ou data específica)
+- `veredas collect b3 [--data YYYY-MM-DD]` no CLI
+- Tolerância a pregão fechado (fins de semana, feriados) — retorna lista vazia sem erro
+- Campo `mercado="secundario"` em todos os registros gerados
+
+##### Etapa D — Modelo de dados e dashboard (1–2 dias)
+
+- Migration Alembic: adicionar coluna `mercado` (`"primario"` / `"secundario"`) em `TaxaCDB`
+- Dashboard `/taxas/`: novo filtro por mercado via HTMX
+- Página de detalhe da IF: seção "Mercado Secundário" com histórico de preços negociados
+
+#### Critério de conclusão
+
+`veredas collect b3` baixa e persiste o boletim do dia sem erro; registros aparecem no dashboard com mercado="secundario"; a coluna `mercado` está presente no CSV exportado.
 
 ---
 
