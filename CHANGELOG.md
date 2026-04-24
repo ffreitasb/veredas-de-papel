@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="assets/veredas_icon.png" alt="veredas de papel" width="72">
+</div>
+
 # Changelog
 
 > *"Contar é muito dificultoso. Não pelos anos que já se passaram. Mas pela astúcia que têm certas coisas passadas — de fazerem balancê, de se remexerem nos lugares."*
