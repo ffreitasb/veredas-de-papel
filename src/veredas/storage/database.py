@@ -4,6 +4,7 @@ Configuração do banco de dados.
 Gerencia a conexão com o banco SQLite e sessões.
 """
 
+import contextlib
 from collections.abc import Generator
 from pathlib import Path
 
@@ -102,6 +103,7 @@ class DatabaseManager:
         """Retorna uma nova sessão."""
         return self._session_factory()
 
+    @contextlib.contextmanager
     def session_scope(self) -> Generator[Session, None, None]:
         """
         Context manager para sessões.
