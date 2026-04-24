@@ -1,5 +1,8 @@
 # Contribuindo para o Veredas de Papel
 
+> *"Mestre não é quem sempre ensina, mas quem de repente aprende."*
+> — João Guimarães Rosa, Grande Sertão: Veredas
+
 Agradecemos o seu interesse em contribuir! O processo de colaboração é simples, e encorajamos PRs de todos os níveis.
 
 ## Como contribuir

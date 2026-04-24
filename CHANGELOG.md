@@ -1,5 +1,8 @@
 # Changelog
 
+> *"Contar é muito dificultoso. Não pelos anos que já se passaram. Mas pela astúcia que têm certas coisas passadas — de fazerem balancê, de se remexerem nos lugares."*
+> — João Guimarães Rosa, Grande Sertão: Veredas
+
 ## [0.1.0] - Versão Inicial (Fase 1 + WIP)
 
 ### Adicionado

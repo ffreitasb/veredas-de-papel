@@ -1,5 +1,8 @@
 # ROADMAP — veredas de papel
 
+> *"A vida é assim: esquenta e esfria, aperta e daí afrouxa, sossega e depois desinquieta. O que ela quer da gente é coragem."*
+> — João Guimarães Rosa, Grande Sertão: Veredas
+
 > Documento vivo. Atualizado a cada fase concluída ou replaneada.
 > Para o histórico de mudanças, veja o [CHANGELOG.md](CHANGELOG.md).
 
