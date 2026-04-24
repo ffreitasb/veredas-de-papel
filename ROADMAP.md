@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="assets/veredas_icon.png" alt="veredas de papel" width="72">
+</div>
+
 # ROADMAP — veredas de papel
 
 > *"A vida é assim: esquenta e esfria, aperta e daí afrouxa, sossega e depois desinquieta. O que ela quer da gente é coragem."*

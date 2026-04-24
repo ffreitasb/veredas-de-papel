@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="assets/veredas_icon.png" alt="veredas de papel" width="72">
+</div>
+
 # Guia do Usuário — veredas de papel
 
 > *"O sertão está em toda parte."*

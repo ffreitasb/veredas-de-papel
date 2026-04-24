@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="assets/veredas_icon.png" alt="veredas de papel" width="72">
+</div>
+
 # Contribuindo para o Veredas de Papel
 
 > *"Mestre não é quem sempre ensina, mas quem de repente aprende."*

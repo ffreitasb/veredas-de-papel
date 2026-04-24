@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="assets/veredas_icon.png" alt="veredas de papel" width="72">
+</div>
+
 # Por que veredas de papel é diferente
 
 > *"O sertão é do tamanho do mundo."*
