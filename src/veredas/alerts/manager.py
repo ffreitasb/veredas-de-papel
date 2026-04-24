@@ -6,8 +6,10 @@ gerencia cooldowns e filtra por severidade.
 """
 
 import asyncio
+import logging
 from datetime import datetime, timedelta
 
+from veredas import TZ_BRASIL
 from veredas.alerts.base import (
     AlertChannel,
     AlertMessage,
@@ -18,7 +20,12 @@ from veredas.alerts.base import (
 from veredas.alerts.email import EmailAlertSender
 from veredas.alerts.telegram import TelegramAlertSender
 from veredas.config import get_settings
-from veredas.storage.models import Anomalia
+from veredas.storage.models import Anomalia, Severidade
+
+logger = logging.getLogger(__name__)
+
+# Ordem canônica — deriva do enum, nunca de lista hardcoded
+_SEVERITY_ORDER = list(Severidade)  # [LOW, MEDIUM, HIGH, CRITICAL]
 
 
 class AlertManager:
@@ -91,28 +98,29 @@ class AlertManager:
         Returns:
             Tupla (deve_alertar, motivo_se_nao)
         """
-        # Verificar severidade minima
-        severity_order = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
-
+        # Verificar severidade minima usando o enum canônico
         try:
-            min_idx = severity_order.index(self.min_severity.upper())
-            anomalia_idx = severity_order.index(anomalia.severidade.upper())
+            min_sev = Severidade(self.min_severity.lower())
+            anomalia_sev = Severidade(str(anomalia.severidade).lower())
+        except ValueError as exc:
+            # Configuração inválida: loga e bloqueia — fail-safe para sistema de alertas
+            logger.warning("Severidade inválida na configuração de alertas: %s", exc)
+            return False, f"Configuração inválida de severidade: {exc}"
 
-            if anomalia_idx < min_idx:
-                return (
-                    False,
-                    f"Severidade {anomalia.severidade} abaixo do minimo ({self.min_severity})",
-                )
-        except ValueError:
-            pass  # Severidade invalida, permite
+        if _SEVERITY_ORDER.index(anomalia_sev) < _SEVERITY_ORDER.index(min_sev):
+            return (
+                False,
+                f"Severidade {anomalia.severidade} abaixo do minimo ({self.min_severity})",
+            )
 
-        # Verificar cooldown
-        if anomalia.id in self._alert_history:
+        # Verificar cooldown (só rastreável se anomalia já foi persistida)
+        if anomalia.id is not None and anomalia.id in self._alert_history:
             last_alert = self._alert_history[anomalia.id]
             cooldown = timedelta(minutes=self.cooldown_minutes)
+            now = datetime.now(TZ_BRASIL)
 
-            if datetime.now() - last_alert < cooldown:
-                remaining = cooldown - (datetime.now() - last_alert)
+            if now - last_alert < cooldown:
+                remaining = cooldown - (now - last_alert)
                 return False, f"Cooldown ativo ({remaining.seconds // 60}min restantes)"
 
         return True, None
@@ -172,7 +180,7 @@ class AlertManager:
 
         # Atualiza historico se pelo menos um envio teve sucesso
         if any_success:
-            self._alert_history[anomalia.id] = datetime.now()
+            self._alert_history[anomalia.id] = datetime.now(TZ_BRASIL)
 
         return final_results
 
