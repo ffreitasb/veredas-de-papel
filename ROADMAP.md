@@ -36,13 +36,19 @@
 
 **Esforço estimado:** 1 semana (dependente de acesso)
 
-#### Avaliação de acesso (pré-requisito)
+#### Avaliação de acesso — validada em 23/04/2026
 
-- [ ] **B3 Market Data API** — verificar se endpoint público existe ou exige contrato
-- [ ] **ANBIMA** — dados de debentures e CDBs via `anbima-api` (open, bem documentada)
-- [ ] **CETIP/B3 feed** — feed de fechamento disponível via FTP público
+- [x] **B3 Market Data API** (`developers.b3.com.br`) — API "CDB" existe, mas é **B2B fechada**. Requer contrato institucional e OAuth2 pago. Inviável sem contrato.
+- [x] **ANBIMA API** (`api.anbima.com.br`) — Cobre debentures, CRI, CRA, LF — **não tem API de CDB**. CDB não é marcado a mercado pela ANBIMA. Requer registro OAuth2; sandbox aparentemente gratuito, produção exige vínculo com membro ANBIMA.
+- [x] **CETIP/B3 FTP público** — **Não existe.** B3 absorveu a CETIP em 2017; todos os feeds migraram para o portal B2B fechado.
 
-Fallback se B3 exigir contrato: **ANBIMA** cobre CDBs negociados e tem API gratuita com registro.
+**Fonte viável identificada: B3 Boletim Diário — arquivo "Renda Fixa Privada"**
+URL pública: `https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/boletins-diarios/pesquisa-por-pregao/pesquisa-por-pregao/`
+- Dado público, sem login, atualização diária (~19:53 BRT)
+- Cobre o segmento "Renda Fixa Privada" (inclui CDB, CRI, CRA, debentures, LCI, LCA)
+- Download via JavaScript dinâmico (sem URL estática) — requer Playwright para extrair `contentId` e baixar o arquivo
+- Formato provável: TXT posicional ou CSV (padrão histórico B3)
+- Abordagem: reverse-engineering da requisição de download no browser para montar URL programaticamente
 
 #### Modelo de dados
 
@@ -56,7 +62,7 @@ Campo `mercado` em `TaxaCDB`:
 - `veredas collect b3` disponível no CLI
 - Dashboard: coluna "Mercado" visível na tabela de taxas
 
-**Critério de conclusão:** dados de mercado secundário populados; distinção primário/secundário visível no dashboard.
+**Critério de conclusão:** dados de mercado secundário populados via Boletim Diário B3; distinção primário/secundário visível no dashboard.
 
 ---
 
@@ -164,4 +170,4 @@ Campo `mercado` em `TaxaCDB`:
 
 ---
 
-*Atualizado em: 23/abril/2026 — 4.1, 4.2 e Tier Clustering concluídos*
+*Atualizado em: 23/abril/2026 — 4.1, 4.2 e Tier Clustering concluídos; endpoints 4.3 validados*
