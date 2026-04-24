@@ -1,7 +1,7 @@
 # Guia do Usuário — veredas de papel
 
-> *"O real não está no início nem no fim, ele se mostra pra gente é no meio da travessia."*
-> — Guimarães Rosa
+> *"O sertão está em toda parte."*
+> — João Guimarães Rosa, Grande Sertão: Veredas
 
 Este guia foi escrito para quem quer usar o **veredas de papel** sem necessariamente ter experiência com programação. Se você consegue abrir um terminal e copiar comandos, você consegue usar esta ferramenta.
 
