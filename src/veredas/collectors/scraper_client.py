@@ -93,7 +93,7 @@ class PlaywrightClient:
         """
         assert self._browser is not None, "Use PlaywrightClient como context manager"
 
-        context_kwargs: dict = {"ignore_https_errors": True}
+        context_kwargs: dict = {}
         if user_agent:
             context_kwargs["user_agent"] = user_agent
 

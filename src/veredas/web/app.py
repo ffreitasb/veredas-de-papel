@@ -53,29 +53,36 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     Middleware que adiciona headers de seguranca HTTP.
 
     Adiciona protecoes contra:
-    - Clickjacking (X-Frame-Options)
+    - XSS e injecao de conteudo (Content-Security-Policy)
+    - Clickjacking (X-Frame-Options / frame-ancestors)
     - MIME type sniffing (X-Content-Type-Options)
-    - XSS reflexivo (X-XSS-Protection)
     - Referrer leakage (Referrer-Policy)
     - Feature abuse (Permissions-Policy)
     """
 
+    # CSP para dashboard self-hosted com HTMX e Plotly (servidos de /static).
+    # unsafe-inline em script-src necessário para Plotly inline charts;
+    # tightening com nonces é o próximo passo quando templates suportarem.
+    _CSP = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "font-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self';"
+    )
+
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
 
-        # Protecao contra clickjacking
+        response.headers["Content-Security-Policy"] = self._CSP
         response.headers["X-Frame-Options"] = "DENY"
-
-        # Evita MIME type sniffing
         response.headers["X-Content-Type-Options"] = "nosniff"
-
-        # Protecao XSS legacy (browsers modernos usam CSP)
         response.headers["X-XSS-Protection"] = "1; mode=block"
-
-        # Controla informacoes de referrer
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-
-        # Desabilita features potencialmente perigosas
         response.headers["Permissions-Policy"] = (
             "accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
             "magnetometer=(), microphone=(), payment=(), usb=()"
