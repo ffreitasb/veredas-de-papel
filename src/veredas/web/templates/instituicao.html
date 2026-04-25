@@ -182,7 +182,7 @@
 <script>
     var data = [{
         x: {{ chart_data.dates | tojson }},
-        y: {{ chart_data.values | tojson }},
+        y: {{ chart_data.rates | tojson }},
         text: {{ chart_data.labels | tojson }},
         type: 'scatter',
         mode: 'lines+markers',

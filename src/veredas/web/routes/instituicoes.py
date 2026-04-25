@@ -143,7 +143,7 @@ def _prepare_chart_data(taxas: list) -> dict:
 
     return {
         "dates": dates,
-        "values": values,
+        "rates": values,
         "labels": labels,
     }
 
