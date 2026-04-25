@@ -51,10 +51,10 @@ class TelegramAlertSender(AlertSender):
 
         Se parametros nao forem fornecidos, usa config do ambiente.
         """
-        settings = get_settings()
+        alert_cfg = get_settings().alerts
 
-        self.bot_token = bot_token or settings.telegram_bot_token
-        self.chat_id = chat_id or settings.telegram_chat_id
+        self.bot_token = bot_token or alert_cfg.telegram_bot_token
+        self.chat_id = chat_id or alert_cfg.telegram_chat_id
 
     @property
     def channel(self) -> AlertChannel:

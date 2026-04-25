@@ -43,11 +43,11 @@ def get_collector(fonte: str):
 
 
 __all__ = [
+    "SCRAPERS",
     "BTGCollector",
     "CDBOferta",
     "InterCollector",
     "RicoCollector",
-    "SCRAPERS",
     "XPCollector",
     "get_collector",
 ]

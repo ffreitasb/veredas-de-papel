@@ -52,7 +52,7 @@ class MLThresholds:
     if_score_threshold_high: float = -0.5  # Score < -0.5 = HIGH
 
     # DBSCAN
-    dbscan_eps: float = 0.5  # Raio de vizinhança
+    dbscan_eps: float = 6.0  # Raio de vizinhança calibrado para espaço de 21 features escaladas
     dbscan_min_samples: int = 5  # Mínimo de pontos no cluster
     dbscan_metric: str = "euclidean"
 

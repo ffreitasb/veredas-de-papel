@@ -6,46 +6,20 @@ Cria e configura a aplicacao web do veredas de papel.
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from veredas.catalog import (
-    css_tier_emissor,
-    css_tier_plataforma,
-    get_tier_emissor,
-    get_tier_plataforma,
-    label_tier_emissor,
-    label_tier_plataforma,
-)
 from veredas.config import get_settings
 from veredas.storage.database import DatabaseManager
-from veredas.web.csrf import CSRFMiddleware, csrf_token_input, get_csrf_token
+from veredas.web.csrf import CSRFMiddleware
 from veredas.web.ratelimit import RateLimitMiddleware
 
 # Paths
 WEB_DIR = Path(__file__).parent
-TEMPLATES_DIR = WEB_DIR / "templates"
 STATIC_DIR = WEB_DIR / "static"
-
-# Templates singleton
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-
-# Globals disponíveis em todos os templates
-templates.env.globals["csrf_token_input"] = csrf_token_input
-templates.env.globals["get_csrf_token"] = get_csrf_token
-templates.env.globals["now"] = datetime.now
-# Tier catalog helpers (badges de emissor e plataforma)
-templates.env.globals["get_tier_emissor"] = get_tier_emissor
-templates.env.globals["get_tier_plataforma"] = get_tier_plataforma
-templates.env.globals["label_tier_emissor"] = label_tier_emissor
-templates.env.globals["label_tier_plataforma"] = label_tier_plataforma
-templates.env.globals["css_tier_emissor"] = css_tier_emissor
-templates.env.globals["css_tier_plataforma"] = css_tier_plataforma
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

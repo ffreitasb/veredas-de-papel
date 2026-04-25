@@ -132,10 +132,27 @@ class TestVariacaoDetector:
         result = self.detector.detect(atual, anterior)
         assert len(result.anomalias) == 0
 
-    def test_queda_ignorada(self):
-        atual, anterior = self._taxa_par(120.0, 100.0)
+    def test_queda_pequena_ignorada(self):
+        """Queda < 10pp não dispara alerta."""
+        atual, anterior = self._taxa_par(105.0, 100.0)
         result = self.detector.detect(atual, anterior)
         assert len(result.anomalias) == 0
+
+    def test_queda_brusca_gera_low(self):
+        """Queda > 10pp → QUEDA_BRUSCA / LOW."""
+        atual, anterior = self._taxa_par(120.0, 105.0)
+        result = self.detector.detect(atual, anterior)
+        assert len(result.anomalias) == 1
+        assert result.anomalias[0].tipo == TipoAnomalia.QUEDA_BRUSCA
+        assert result.anomalias[0].severidade == Severidade.LOW
+
+    def test_queda_extrema_gera_medium(self):
+        """Queda > 20pp → QUEDA_EXTREMA / MEDIUM."""
+        atual, anterior = self._taxa_par(130.0, 105.0)
+        result = self.detector.detect(atual, anterior)
+        assert len(result.anomalias) == 1
+        assert result.anomalias[0].tipo == TipoAnomalia.QUEDA_EXTREMA
+        assert result.anomalias[0].severidade == Severidade.MEDIUM
 
     def test_salto_brusco_gera_medium(self):
         atual, anterior = self._taxa_par(100.0, 115.0)

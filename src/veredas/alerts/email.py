@@ -47,14 +47,14 @@ class EmailAlertSender(AlertSender):
 
         Se parametros nao forem fornecidos, usa config do ambiente.
         """
-        settings = get_settings()
+        alert_cfg = get_settings().alerts
 
-        self.smtp_host = smtp_host or settings.smtp_host
-        self.smtp_port = smtp_port or settings.smtp_port
-        self.smtp_user = smtp_user or settings.smtp_user
-        self.smtp_password = smtp_password or settings.smtp_password
-        self.email_to = email_to or settings.alert_email_to
-        self.email_from = email_from or settings.smtp_user
+        self.smtp_host = smtp_host or alert_cfg.smtp_host
+        self.smtp_port = smtp_port or alert_cfg.smtp_port
+        self.smtp_user = smtp_user or alert_cfg.smtp_user
+        self.smtp_password = smtp_password or alert_cfg.smtp_password
+        self.email_to = email_to or alert_cfg.alert_email_to
+        self.email_from = email_from or alert_cfg.smtp_user
 
     @property
     def channel(self) -> AlertChannel:

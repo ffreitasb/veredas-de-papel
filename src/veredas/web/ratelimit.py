@@ -7,6 +7,7 @@ armazenamento em memoria (adequado para single-instance).
 Para producao com multiplas instancias, considere usar Redis.
 """
 
+import os
 import time
 from collections import defaultdict
 from collections.abc import Callable
@@ -15,6 +16,16 @@ from dataclasses import dataclass, field
 from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
+
+# IPs de proxies reversos confiáveis (nginx, caddy, etc.).
+# Formato: lista separada por vírgula — e.g. VEREDAS_TRUSTED_PROXIES="127.0.0.1,::1"
+# Vazio por padrão: headers X-Forwarded-For/X-Real-IP são completamente ignorados,
+# prevenindo spoofing em deployments sem proxy.
+_TRUSTED_PROXIES: frozenset[str] = frozenset(
+    p.strip()
+    for p in os.environ.get("VEREDAS_TRUSTED_PROXIES", "").split(",")
+    if p.strip()
+)
 
 
 @dataclass
@@ -78,27 +89,31 @@ class RateLimitStore:
 _store = RateLimitStore()
 
 
-def get_client_ip(request: Request) -> str:
+def get_client_ip(
+    request: Request,
+    trusted_proxies: frozenset[str] = _TRUSTED_PROXIES,
+) -> str:
     """
     Extrai IP do cliente da request.
 
-    Considera headers de proxy reverso (X-Forwarded-For, X-Real-IP).
+    X-Forwarded-For e X-Real-IP só são lidos se o IP de conexão direta
+    estiver em `trusted_proxies`. Sem proxies confiáveis configurados,
+    o IP de conexão é sempre usado, prevenindo spoofing por header.
     """
-    # Verificar headers de proxy
+    direct_ip = request.client.host if request.client else "unknown"
+
+    if direct_ip not in trusted_proxies:
+        return direct_ip
+
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
-        # Primeiro IP da lista e o cliente original
         return forwarded_for.split(",")[0].strip()
 
     real_ip = request.headers.get("X-Real-IP")
     if real_ip:
         return real_ip.strip()
 
-    # Fallback para IP direto
-    if request.client:
-        return request.client.host
-
-    return "unknown"
+    return direct_ip
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -120,11 +135,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         requests_per_minute: int = 60,
         window_seconds: int = 60,
         exclude_paths: list[str] | None = None,
+        trusted_proxies: frozenset[str] | None = None,
     ):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self.window_seconds = window_seconds
         self.exclude_paths = exclude_paths or ["/static", "/health"]
+        self.trusted_proxies = trusted_proxies if trusted_proxies is not None else _TRUSTED_PROXIES
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Processa request aplicando rate limiting."""
@@ -134,8 +151,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if path.startswith(excluded):
                 return await call_next(request)
 
-        # Obter IP do cliente
-        client_ip = get_client_ip(request)
+        # Obter IP do cliente (somente de proxy confiável)
+        client_ip = get_client_ip(request, self.trusted_proxies)
 
         # Verificar rate limit
         state = _store.get_state(client_ip, self.window_seconds)

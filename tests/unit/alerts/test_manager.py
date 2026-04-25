@@ -44,8 +44,8 @@ def _make_sender(success: bool = True) -> MagicMock:
 
 def _manager(min_severity: str = "medium", cooldown: int = 60) -> AlertManager:
     with patch("veredas.alerts.manager.get_settings") as mock_settings:
-        mock_settings.return_value.alert_min_severity = min_severity
-        mock_settings.return_value.alert_cooldown_minutes = cooldown
+        mock_settings.return_value.alerts.alert_min_severity = min_severity
+        mock_settings.return_value.alerts.alert_cooldown_minutes = cooldown
         return AlertManager(senders=[])
 
 

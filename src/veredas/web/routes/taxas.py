@@ -15,8 +15,8 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 
 from veredas.storage.models import Indexador
 from veredas.storage.repository import InstituicaoRepository, TaxaCDBRepository
-from veredas.web.app import templates
 from veredas.web.dependencies import get_db
+from veredas.web.templates_config import templates
 
 router = APIRouter()
 

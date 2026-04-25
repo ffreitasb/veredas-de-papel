@@ -20,9 +20,9 @@ TZ_BRASIL = timezone(timedelta(hours=-3))
 from veredas.storage import DatabaseManager  # noqa: E402
 
 __all__ = [
-    "__version__",
-    "__author__",
-    "__license__",
     "TZ_BRASIL",
     "DatabaseManager",
+    "__author__",
+    "__license__",
+    "__version__",
 ]

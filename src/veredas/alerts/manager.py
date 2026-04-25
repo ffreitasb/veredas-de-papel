@@ -53,10 +53,10 @@ class AlertManager:
             min_severity: Severidade minima para alertar.
             cooldown_minutes: Minutos entre alertas da mesma anomalia.
         """
-        settings = get_settings()
+        alert_cfg = get_settings().alerts
 
-        self.min_severity = min_severity or settings.alert_min_severity
-        self.cooldown_minutes = cooldown_minutes or settings.alert_cooldown_minutes
+        self.min_severity = min_severity or alert_cfg.alert_min_severity
+        self.cooldown_minutes = cooldown_minutes or alert_cfg.alert_cooldown_minutes
 
         # Historico de alertas enviados (anomalia_id -> timestamp)
         self._alert_history: dict[int, datetime] = {}

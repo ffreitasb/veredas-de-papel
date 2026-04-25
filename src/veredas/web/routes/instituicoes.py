@@ -17,8 +17,8 @@ from veredas.storage.repository import (
     TaxaCDBRepository,
 )
 from veredas.validators import parse_cnpj
-from veredas.web.app import templates
 from veredas.web.dependencies import get_db
+from veredas.web.templates_config import templates
 
 router = APIRouter()
 

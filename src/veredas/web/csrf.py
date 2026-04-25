@@ -9,9 +9,9 @@ Implements double-submit cookie pattern:
 
 import secrets
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 CSRF_COOKIE_NAME = "csrf_token"
 CSRF_HEADER_NAME = "X-CSRF-Token"
@@ -55,7 +55,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         # Validate on unsafe methods
         if request.method not in SAFE_METHODS:
-            await self._validate_csrf(request, token)
+            error_response = await self._validate_csrf(request, token)
+            if error_response is not None:
+                return error_response
 
         # Process request
         response = await call_next(request)
@@ -73,19 +75,41 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         return response
 
-    async def _validate_csrf(self, request: Request, expected_token: str) -> None:
-        """Validate CSRF token from header or form."""
-        # Skip if no token expected (first request)
+    async def _validate_csrf(self, request: Request, expected_token: str) -> Response | None:
+        """Validate CSRF token from header or form.
+
+        Two-layer defense:
+        1. Origin header check — rejects cross-origin requests immediately.
+        2. Double-submit cookie — requires matching cookie + submitted token.
+
+        Returns None on success, JSONResponse(403) on failure.
+        Must NOT raise — HTTPException raised inside BaseHTTPMiddleware bypasses
+        ExceptionMiddleware and reaches ServerErrorMiddleware as a 500.
+        """
+        # Layer 1: Origin header check.
+        # Browsers always send Origin on cross-origin POST. If Origin is present
+        # and doesn't match our host, reject regardless of cookie state.
+        origin = request.headers.get("origin")
+        if origin:
+            host = request.url.netloc
+            if origin not in (f"http://{host}", f"https://{host}"):
+                return JSONResponse(
+                    {"detail": "CSRF: Origin não autorizada"},
+                    status_code=403,
+                )
+
+        # Layer 2: Double-submit cookie.
+        # No cookie means the client has not loaded a page yet — block it.
+        # (Legitimate HTMX/form flows always start with a GET that sets the cookie.)
         cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
         if not cookie_token:
-            return
+            return JSONResponse({"detail": "CSRF token ausente"}, status_code=403)
 
-        # Check header first (HTMX sends this)
+        # Check header first (HTMX sends X-CSRF-Token)
         submitted_token = request.headers.get(CSRF_HEADER_NAME)
 
-        # Check form field if no header
+        # Fall back to form field
         if not submitted_token:
-            # Try to get from form data
             content_type = request.headers.get("content-type", "")
             if (
                 "application/x-www-form-urlencoded" in content_type
@@ -97,12 +121,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 except Exception:
                     pass
 
-        # Validate
         if not submitted_token or not secrets.compare_digest(submitted_token, cookie_token):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="CSRF token missing or invalid",
-            )
+            return JSONResponse({"detail": "CSRF token inválido"}, status_code=403)
+
+        return None
 
 
 def csrf_token_input(request: Request) -> str:
