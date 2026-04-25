@@ -44,6 +44,16 @@ Registro de itens que foram avaliados e conscientemente descartados. A ausência
 
 ---
 
+## DBSCANOutlierDetector em produção (dataset atual)
+
+**Precondição documentada:** ≥200 emissores ativos únicos no dataset.
+
+**Por que não é útil agora:** DBSCAN é um algoritmo de clustering por densidade. Com menos de ~200 emissores únicos no espaço de 21 features escaladas, não há densidade suficiente para formar clusters estáveis — todos os pontos tendem a receber label=-1 (outlier), gerando falsos positivos em massa. O mercado brasileiro tem ~50–150 emissores de CDB monitorados ativamente; a precondição provavelmente não será atingida no curto/médio prazo. O detector tem um guard em `detect()` que retorna resultado vazio abaixo de 200 emissores únicos.
+
+**O que justificaria a revisão:** O dataset passar a incluir >200 emissores distintos com histórico contínuo de taxas.
+
+---
+
 ## 5ª e 6ª fontes de scraping
 
 **O que seria:** Adicionar scrapers para Nubank, C6, Modalmais, Órama ou outras plataformas de distribuição antes de estabilizar os quatro existentes (BTG, XP, Inter, Rico).

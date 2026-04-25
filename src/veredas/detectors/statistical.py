@@ -2,9 +2,11 @@
 Detectores estatísticos de anomalias em séries temporais.
 
 Implementa algoritmos estatísticos para detecção de anomalias:
-- STL Decomposition: Detecta quebra de padrão sazonal
 - Change Point Detection: Detecta mudanças estruturais (ruptures PELT)
 - Rolling Z-Score: Detecta outliers locais em janelas móveis
+
+STLDecompositionDetector foi movido para veredas.detectors.experimental.stl
+por incompatibilidade semântica com o domínio de taxas de CDB.
 """
 
 import logging
@@ -17,7 +19,6 @@ from decimal import Decimal
 
 import numpy as np
 import pandas as pd
-from statsmodels.tsa.seasonal import STL
 
 from veredas.detectors.base import AnomaliaDetectada, BaseDetector, DetectionResult
 from veredas.storage.models import Severidade, TaxaCDB, TipoAnomalia
@@ -96,195 +97,6 @@ def _group_by_if(taxas: Sequence[TaxaCDB]) -> dict[int, list[TaxaCDB]]:
     for taxa in taxas:
         grouped[taxa.if_id].append(taxa)
     return grouped
-
-
-class STLDecompositionDetector(BaseDetector):
-    """
-    Detecta quebras de padrão sazonal usando STL Decomposition.
-
-    O STL (Seasonal-Trend decomposition using LOESS) decompõe a série
-    temporal em tendência, sazonalidade e resíduos. Resíduos anormalmente
-    altos indicam anomalias.
-
-    Regras:
-    - SEASONALITY_BREAK (MEDIUM): Resíduo > 2.5σ
-    - SEASONALITY_BREAK (HIGH): Resíduo > 3.5σ
-    """
-
-    def __init__(
-        self,
-        thresholds: StatisticalThresholds | None = None,
-        min_observations: int = 14,
-    ):
-        """
-        Inicializa o detector STL.
-
-        Args:
-            thresholds: Thresholds de detecção.
-            min_observations: Mínimo de observações para análise.
-        """
-        self.thresholds = thresholds or DEFAULT_THRESHOLDS
-        self.min_observations = min_observations
-
-    @property
-    def name(self) -> str:
-        return "stl_decomposition_detector"
-
-    @property
-    def description(self) -> str:
-        return "Detecta quebras de padrão sazonal via STL decomposition"
-
-    def detect(self, taxas: Sequence[TaxaCDB]) -> DetectionResult:
-        """
-        Analisa séries temporais de taxas e detecta anomalias sazonais.
-
-        Args:
-            taxas: Sequência de TaxaCDB a analisar.
-
-        Returns:
-            DetectionResult com anomalias encontradas.
-        """
-        start_time = time.perf_counter()
-        anomalias: list[AnomaliaDetectada] = []
-
-        try:
-            # Agrupar por IF
-            grouped = _group_by_if(taxas)
-
-            for if_id, if_taxas in grouped.items():
-                if len(if_taxas) < 30:
-                    continue
-
-                # Preparar série temporal
-                series, taxa_map = _prepare_time_series(if_taxas, if_id)
-
-                if len(series) < 30:
-                    continue
-
-                # Detectar anomalias para esta IF
-                if_anomalias = self._analyze_series(series, taxa_map, if_id)
-                anomalias.extend(if_anomalias)
-
-        except Exception as e:
-            elapsed = (time.perf_counter() - start_time) * 1000
-            return DetectionResult(
-                detector_name=self.name,
-                anomalias=[],
-                execution_time_ms=elapsed,
-                error=str(e),
-            )
-
-        elapsed = (time.perf_counter() - start_time) * 1000
-        return DetectionResult(
-            detector_name=self.name,
-            anomalias=anomalias,
-            execution_time_ms=elapsed,
-        )
-
-    def _analyze_series(
-        self,
-        series: pd.Series,
-        taxa_map: dict[datetime, TaxaCDB],
-        if_id: int,
-    ) -> list[AnomaliaDetectada]:
-        """Analisa uma série temporal com STL."""
-        anomalias = []
-
-        try:
-            # Aplicar STL
-            stl = STL(
-                series,
-                period=self.thresholds.stl_period,
-                robust=True,
-            )
-            result = stl.fit()
-
-            # Calcular estatísticas dos resíduos
-            residuals = result.resid
-            residual_std = residuals.std()
-
-            # BUG-003: Verificar também NaN além de zero
-            if residual_std == 0 or pd.isna(residual_std):
-                return []
-
-            # Calcular z-scores dos resíduos
-            z_scores = (residuals - residuals.mean()) / residual_std
-
-            # Verificar cada ponto
-            for date, z_score in z_scores.items():
-                anomalia = self._check_residual(
-                    z_score=z_score,
-                    date=date,
-                    taxa_map=taxa_map,
-                    if_id=if_id,
-                    residual_std=residual_std,
-                )
-                if anomalia:
-                    anomalias.append(anomalia)
-
-        except Exception:
-            # BUG-002: Log da exceção para debug (não silenciar completamente)
-            logger.debug("STL falhou para IF %s (dados insuficientes ou irregulares)", if_id)
-
-        return anomalias
-
-    def _check_residual(
-        self,
-        z_score: float,
-        date: datetime,
-        taxa_map: dict[datetime, TaxaCDB],
-        if_id: int,
-        residual_std: float,
-    ) -> AnomaliaDetectada | None:
-        """Verifica se um resíduo é anômalo."""
-        abs_z = abs(z_score)
-        taxa = taxa_map.get(date)
-
-        # HIGH: > 3.5σ
-        if abs_z > float(self.thresholds.stl_residual_high):
-            return AnomaliaDetectada(
-                tipo=TipoAnomalia.SEASONALITY_BREAK,
-                severidade=Severidade.HIGH,
-                valor_detectado=Decimal(str(taxa.percentual)) if taxa else Decimal("0"),
-                desvio=Decimal(str(round(z_score, 2))),
-                threshold=self.thresholds.stl_residual_high,
-                descricao=(
-                    f"Quebra de padrão sazonal detectada: "
-                    f"resíduo {z_score:.1f}σ (>{self.thresholds.stl_residual_high}σ)"
-                ),
-                if_id=if_id,
-                taxa_id=taxa.id if taxa else None,
-                detector=self.name,
-                detalhes={
-                    "z_score": round(z_score, 4),
-                    "residual_std": round(residual_std, 4),
-                    "data": date.isoformat() if isinstance(date, datetime) else str(date),
-                },
-            )
-
-        # MEDIUM: > 2.5σ
-        if abs_z > float(self.thresholds.stl_residual_medium):
-            return AnomaliaDetectada(
-                tipo=TipoAnomalia.SEASONALITY_BREAK,
-                severidade=Severidade.MEDIUM,
-                valor_detectado=Decimal(str(taxa.percentual)) if taxa else Decimal("0"),
-                desvio=Decimal(str(round(z_score, 2))),
-                threshold=self.thresholds.stl_residual_medium,
-                descricao=(
-                    f"Possível quebra de padrão sazonal: "
-                    f"resíduo {z_score:.1f}σ (>{self.thresholds.stl_residual_medium}σ)"
-                ),
-                if_id=if_id,
-                taxa_id=taxa.id if taxa else None,
-                detector=self.name,
-                detalhes={
-                    "z_score": round(z_score, 4),
-                    "residual_std": round(residual_std, 4),
-                    "data": date.isoformat() if isinstance(date, datetime) else str(date),
-                },
-            )
-
-        return None
 
 
 class ChangePointDetector(BaseDetector):
@@ -637,24 +449,15 @@ class StatisticalEngine:
     """
     Motor de detecção que orquestra os detectores estatísticos.
 
-    Executa todos os detectores estatísticos e agrega os resultados.
+    Executa ChangePointDetector e RollingZScoreDetector.
+    STLDecompositionDetector foi movido para experimental/ por incompatibilidade
+    semântica — use ChangePointDetector para detectar mudanças de regime.
     """
 
     def __init__(self, thresholds: StatisticalThresholds | None = None):
-        """
-        Inicializa o motor estatístico.
-
-        Args:
-            thresholds: Thresholds para todos os detectores.
-        """
         self.thresholds = thresholds or DEFAULT_THRESHOLDS
-        self.stl_detector = STLDecompositionDetector(thresholds=self.thresholds)
         self.change_point_detector = ChangePointDetector(thresholds=self.thresholds)
         self.rolling_zscore_detector = RollingZScoreDetector(thresholds=self.thresholds)
-
-    def analyze_seasonality(self, taxas: Sequence[TaxaCDB]) -> DetectionResult:
-        """Executa detecção de quebras sazonais com STL."""
-        return self.stl_detector.detect(taxas)
 
     def analyze_change_points(self, taxas: Sequence[TaxaCDB]) -> DetectionResult:
         """Executa detecção de change points com PELT."""
@@ -665,17 +468,8 @@ class StatisticalEngine:
         return self.rolling_zscore_detector.detect(taxas)
 
     def run_all(self, taxas: Sequence[TaxaCDB]) -> list[DetectionResult]:
-        """
-        Executa todos os detectores estatísticos.
-
-        Args:
-            taxas: Sequência de TaxaCDB a analisar.
-
-        Returns:
-            Lista de DetectionResult de cada detector.
-        """
+        """Executa todos os detectores estatísticos ativos."""
         return [
-            self.analyze_seasonality(taxas),
             self.analyze_change_points(taxas),
             self.analyze_local_outliers(taxas),
         ]

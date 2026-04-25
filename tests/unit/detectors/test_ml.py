@@ -142,7 +142,7 @@ class TestIsolationForestComOutliers:
 
 
 # ---------------------------------------------------------------------------
-# DBSCAN — outlier isolado deve ser detectado
+# DBSCAN — precondição de emissores e comportamento de fallback
 # ---------------------------------------------------------------------------
 
 
@@ -150,13 +150,14 @@ class TestDBSCANComOutliers:
     def setup_method(self):
         self.detector = DBSCANOutlierDetector(min_samples=20)
 
-    def test_outlier_isolado_detectado(self):
-        # 40 normais variados + 1 outlier 8x acima; eps=6.0 forma cluster nos normais
+    def test_menos_de_200_emissores_retorna_vazio(self):
+        # Precondição: ≥200 emissores únicos. Com 1 único if_id o detector
+        # retorna resultado vazio (não é falha — é proteção contra falsos positivos).
         valores = [100.0 + (i % 10) * 2 for i in range(40)] + [800.0]
         taxas = make_taxa_serie(if_id=1, valores=valores)
         result = self.detector.detect(taxas)
         assert result.success
-        assert len(result.anomalias) >= 1
+        assert len(result.anomalias) == 0  # guard ativo: < 200 emissores únicos
 
     def test_anomalia_tem_tipo_cluster_outlier(self):
         valores = [100.0 + (i % 10) * 2 for i in range(40)] + [800.0]

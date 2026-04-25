@@ -22,11 +22,11 @@ from veredas.detectors.rules import (
     RuleBasedEngine,
     RuleThresholds,
 )
+from veredas.detectors.experimental.stl import STLDecompositionDetector
 from veredas.detectors.statistical import (
     ChangePointDetector,
     RollingZScoreDetector,
     StatisticalThresholds,
-    STLDecompositionDetector,
 )
 from veredas.storage.models import Severidade, TaxaCDB
 
@@ -34,6 +34,19 @@ logger = logging.getLogger(__name__)
 
 # PERF-007: Constante de módulo (evita recriação em cada chamada)
 SEVERITY_ORDER = [Severidade.LOW, Severidade.MEDIUM, Severidade.HIGH, Severidade.CRITICAL]
+
+# Mapeamento detector → categoria para votação cruzada (ENG-01).
+# Detectores da mesma categoria não são evidência independente.
+_DETECTOR_CATEGORY: dict[str, str] = {
+    "spread_detector": "rules",
+    "variacao_detector": "rules",
+    "divergencia_detector": "rules",
+    "stl_decomposition_detector": "statistical",
+    "change_point_detector": "statistical",
+    "rolling_zscore_detector": "statistical",
+    "isolation_forest_detector": "ml",
+    "dbscan_outlier_detector": "ml",
+}
 
 
 class DetectorCategory(StrEnum):
@@ -426,48 +439,46 @@ class DetectionEngine:
         return all_anomalias
 
     def _deduplicate(self, anomalias: list[AnomaliaDetectada]) -> list[AnomaliaDetectada]:
-        """Remove anomalias duplicadas com votação ponderada por detectores.
+        """Remove anomalias duplicadas com votação ponderada por categorias distintas.
 
-        Quando múltiplos detectores independentes concordam sobre a mesma taxa/dia,
-        a co-ocorrência eleva a severidade da anomalia resultante:
-        - 1 detector  → severidade original
-        - 2 detectores → +1 nível (MEDIUM → HIGH)
-        - 3+ detectores → +2 níveis (MEDIUM → CRITICAL)
+        Elevação de severidade ocorre apenas quando detectores de *categorias*
+        diferentes concordam (rules, statistical, ml). Dois detectores da mesma
+        categoria não são evidência independente — e.g., IsolationForest + DBSCAN
+        ambos encontrando a mesma taxa não é cruzamento de metodologias.
 
-        A lista de detectores que votaram é preservada em detalhes["detectores"].
+        - 1 categoria   → severidade original
+        - 2 categorias  → +1 nível (MEDIUM → HIGH)
+        - 3+ categorias → +2 níveis (MEDIUM → CRITICAL)
+
+        detalhes["detectores"] lista os detectores que votaram.
+        detalhes["votos"] registra o número de categorias distintas (quando ≥ 2).
         """
-        # Agrupa por (if_id, taxa_id, data aproximada)
         groups: dict[tuple, list[AnomaliaDetectada]] = {}
-
         for anomalia in anomalias:
             date_key = (
                 anomalia.detectado_em.strftime("%Y-%m-%d") if anomalia.detectado_em else "unknown"
             )
             key = (anomalia.if_id, anomalia.taxa_id, date_key)
-
-            if key not in groups:
-                groups[key] = []
-            groups[key].append(anomalia)
+            groups.setdefault(key, []).append(anomalia)
 
         deduplicated = []
-
         for group_anomalias in groups.values():
-            # Winner = anomalia de maior severidade no grupo
             group_anomalias.sort(key=lambda a: SEVERITY_ORDER.index(a.severidade), reverse=True)
             winner = group_anomalias[0]
 
-            # Votação ponderada: unique detectors → elevate severity
             unique_detectors = sorted({a.detector for a in group_anomalias})
-            n = len(unique_detectors)
-            if n >= 2:
-                levels_up = 1 if n == 2 else 2
+            unique_categories = {_DETECTOR_CATEGORY.get(d, "unknown") for d in unique_detectors}
+            n_categories = len(unique_categories)
+
+            if n_categories >= 2:
+                levels_up = 1 if n_categories == 2 else 2
                 current_idx = SEVERITY_ORDER.index(winner.severidade)
                 new_idx = min(current_idx + levels_up, len(SEVERITY_ORDER) - 1)
                 winner.severidade = SEVERITY_ORDER[new_idx]
 
             winner.detalhes["detectores"] = unique_detectors
-            if n >= 2:
-                winner.detalhes["votos"] = n
+            if n_categories >= 2:
+                winner.detalhes["votos"] = n_categories
 
             deduplicated.append(winner)
 
