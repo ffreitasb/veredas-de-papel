@@ -262,6 +262,16 @@ class DBSCANOutlierDetector(BaseDetector):
     Regras:
     - CLUSTER_OUTLIER (MEDIUM): Ponto não pertence a nenhum cluster
     - CLUSTER_OUTLIER (HIGH): Ponto muito distante do cluster mais próximo
+
+    Precondição mínima: ≥200 emissores ativos no dataset
+    -----------------------------------------------------------
+    DBSCAN é um algoritmo baseado em densidade. Com menos de ~200 emissores
+    únicos no espaço de 21 features escaladas, não há densidade suficiente para
+    formar clusters estáveis — todos os pontos tendem a virar outliers (label=-1),
+    gerando falsos positivos em massa. O mercado brasileiro atual tem ~50–150
+    emissores ativos de CDB monitorados; esta precondição provavelmente não será
+    atingida no curto prazo. O detector retorna resultado vazio se
+    len(unique if_ids) < 200.
     """
 
     def __init__(
@@ -311,6 +321,16 @@ class DBSCANOutlierDetector(BaseDetector):
             )
 
         if len(taxas) < self.min_samples:
+            elapsed = (time.perf_counter() - start_time) * 1000
+            return DetectionResult(
+                detector_name=self.name,
+                anomalias=[],
+                execution_time_ms=elapsed,
+            )
+
+        # Precondição: ≥200 emissores únicos (ver docstring da classe).
+        unique_emitters = len({t.if_id for t in taxas})
+        if unique_emitters < 200:
             elapsed = (time.perf_counter() - start_time) * 1000
             return DetectionResult(
                 detector_name=self.name,

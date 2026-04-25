@@ -72,7 +72,7 @@ class TestRollingZScoreDetector:
 
 class TestSTLDecompositionDetector:
     def test_sem_dados_suficientes_retorna_vazio(self):
-        from veredas.detectors.statistical import STLDecompositionDetector
+        from veredas.detectors.experimental.stl import STLDecompositionDetector
 
         detector = STLDecompositionDetector(min_observations=14)
         taxas = make_taxa_serie(if_id=1, valores=[100.0] * 5)
@@ -81,7 +81,7 @@ class TestSTLDecompositionDetector:
         assert len(result.anomalias) == 0
 
     def test_serie_suficiente_executa_sem_erro(self):
-        from veredas.detectors.statistical import STLDecompositionDetector
+        from veredas.detectors.experimental.stl import STLDecompositionDetector
 
         detector = STLDecompositionDetector(min_observations=14)
         # 30 pontos com padrão sazonal leve

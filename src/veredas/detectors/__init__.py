@@ -20,12 +20,12 @@ from veredas.detectors.rules import (
     SpreadDetector,
     VariacaoDetector,
 )
+from veredas.detectors.experimental.stl import STLDecompositionDetector
 from veredas.detectors.statistical import (
     ChangePointDetector,
     RollingZScoreDetector,
     StatisticalEngine,
     StatisticalThresholds,
-    STLDecompositionDetector,
 )
 
 __all__ = [
