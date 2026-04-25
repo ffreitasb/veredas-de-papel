@@ -74,7 +74,7 @@ async def instituicao_detail(
     - Anomalias relacionadas
     """
     # Validar e normalizar CNPJ (levanta HTTPException se invalido)
-    cnpj_normalizado = parse_cnpj(cnpj, required=True, validate=False)
+    cnpj_normalizado = parse_cnpj(cnpj, required=True, validate=True)
 
     if_repo = InstituicaoFinanceiraRepository(session)
     taxa_repo = TaxaCDBRepository(session)
@@ -158,7 +158,7 @@ async def instituicao_chart_partial(
     Partial HTMX para grafico de evolucao da IF.
     """
     # Validar e normalizar CNPJ
-    cnpj_normalizado = parse_cnpj(cnpj, required=True, validate=False)
+    cnpj_normalizado = parse_cnpj(cnpj, required=True, validate=True)
 
     if_repo = InstituicaoFinanceiraRepository(session)
     taxa_repo = TaxaCDBRepository(session)

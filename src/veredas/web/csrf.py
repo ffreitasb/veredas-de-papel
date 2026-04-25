@@ -10,6 +10,7 @@ Implements double-submit cookie pattern:
 import secrets
 
 from fastapi import Request
+from markupsafe import Markup
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
 
@@ -127,12 +128,13 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         return None
 
 
-def csrf_token_input(request: Request) -> str:
+def csrf_token_input(request: Request) -> Markup:
     """
     Generate hidden input field with CSRF token for templates.
 
+    Returns Markup so Jinja2 renders it as raw HTML without | safe.
     Usage in Jinja2:
-        {{ csrf_token_input(request) | safe }}
+        {{ csrf_token_input(request) }}
     """
     token = get_csrf_token(request)
-    return f'<input type="hidden" name="{CSRF_FORM_FIELD}" value="{token}">'
+    return Markup(f'<input type="hidden" name="{CSRF_FORM_FIELD}" value="{token}">')

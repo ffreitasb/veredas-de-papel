@@ -22,7 +22,7 @@ from veredas.storage.models import (
 from veredas.web.app import create_app
 from veredas.web.dependencies import get_db
 
-_CNPJ = "12345678000100"  # sem formatação — parse_cnpj faz lookup exato
+_CNPJ = "60872504000123"  # Itaú Unibanco — CNPJ válido para teste com validate=True
 _IF_NOME = "Banco Alpha S.A."
 
 
@@ -309,7 +309,8 @@ class TestInstituicoesComDados:
         assert response.status_code == 200
 
     def test_detalhe_cnpj_inexistente_retorna_404(self, seeded_client):
-        response = seeded_client.get("/instituicoes/00000000000100")
+        # CNPJ válido (dígitos corretos) mas não cadastrado na base de teste
+        response = seeded_client.get("/instituicoes/11222333000181")
         assert response.status_code == 404
 
     def test_ordenacao_nome(self, seeded_client):
