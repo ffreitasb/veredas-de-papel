@@ -50,7 +50,7 @@ class EngineConfig:
 
     # Quais categorias de detectores usar
     enable_rules: bool = True
-    enable_statistical: bool = True
+    enable_statistical: bool = False
     enable_ml: bool = True
 
     # Detectores específicos (se False, usa todos da categoria)

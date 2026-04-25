@@ -152,13 +152,13 @@ class STLDecompositionDetector(BaseDetector):
             grouped = _group_by_if(taxas)
 
             for if_id, if_taxas in grouped.items():
-                if len(if_taxas) < self.min_observations:
+                if len(if_taxas) < 30:
                     continue
 
                 # Preparar série temporal
                 series, taxa_map = _prepare_time_series(if_taxas, if_id)
 
-                if len(series) < self.min_observations:
+                if len(series) < 30:
                     continue
 
                 # Detectar anomalias para esta IF
