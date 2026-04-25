@@ -20,6 +20,19 @@ from veredas.web.templates_config import templates
 
 router = APIRouter()
 
+_ORDENS_VALIDAS: frozenset[str] = frozenset(
+    {"data_desc", "data_asc", "spread_desc", "spread_asc", "taxa_desc", "taxa_asc"}
+)
+
+
+def _validar_ordem(ordem: str) -> str:
+    if ordem not in _ORDENS_VALIDAS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Ordenação inválida: {ordem!r}. Valores aceitos: {sorted(_ORDENS_VALIDAS)}",
+        )
+    return ordem
+
 
 @router.get("/", response_class=HTMLResponse)
 async def list_taxas(
@@ -59,7 +72,7 @@ async def list_taxas(
     # Obter taxas com paginacao
     taxas, total = taxa_repo.list_paginated(
         filters=filters,
-        order_by=ordem,
+        order_by=_validar_ordem(ordem),
         page=pagina,
         per_page=por_pagina,
     )
@@ -125,7 +138,7 @@ async def export_taxas_csv(
         filters["mercado"] = mercado
 
     # Exporta até 10 000 linhas sem paginação
-    taxas, _ = taxa_repo.list_paginated(filters=filters, order_by=ordem, page=1, per_page=10_000)
+    taxas, _ = taxa_repo.list_paginated(filters=filters, order_by=_validar_ordem(ordem), page=1, per_page=10_000)
 
     def _gerar_csv():
         buf = io.StringIO()

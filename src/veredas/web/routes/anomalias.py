@@ -13,12 +13,25 @@ import io
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 
-from veredas.storage.models import Severidade
+from veredas.storage.models import Severidade, TipoAnomalia
 from veredas.storage.repository import AnomaliaRepository, InstituicaoFinanceiraRepository
 from veredas.web.dependencies import get_db
 from veredas.web.templates_config import templates
 
 router = APIRouter()
+
+
+def _parse_tipo(value: str | None) -> TipoAnomalia | None:
+    if not value:
+        return None
+    try:
+        return TipoAnomalia(value)
+    except ValueError:
+        valid_values = [t.value for t in TipoAnomalia]
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tipo de anomalia inválido: '{value}'. Valores aceitos: {valid_values}",
+        ) from None
 
 
 def _parse_severidade(value: str | None) -> Severidade | None:
@@ -69,8 +82,9 @@ async def anomalias_list(
     parsed_severidade = _parse_severidade(severidade)
     if parsed_severidade:
         filters["severidade"] = parsed_severidade
-    if tipo:
-        filters["tipo"] = tipo
+    parsed_tipo = _parse_tipo(tipo)
+    if parsed_tipo:
+        filters["tipo"] = parsed_tipo
     if instituicao:
         filters["cnpj"] = instituicao
     if status == "ativas":
@@ -128,8 +142,9 @@ async def export_anomalias_csv(
     parsed_sev = _parse_severidade(severidade)
     if parsed_sev:
         filters["severidade"] = parsed_sev
-    if tipo:
-        filters["tipo"] = tipo
+    parsed_tipo = _parse_tipo(tipo)
+    if parsed_tipo:
+        filters["tipo"] = parsed_tipo
     if instituicao:
         filters["cnpj"] = instituicao
     if status == "ativas":
@@ -237,8 +252,9 @@ async def anomalias_list_partial(
     parsed_severidade = _parse_severidade(severidade)
     if parsed_severidade:
         filters["severidade"] = parsed_severidade
-    if tipo:
-        filters["tipo"] = tipo
+    parsed_tipo = _parse_tipo(tipo)
+    if parsed_tipo:
+        filters["tipo"] = parsed_tipo
     if instituicao:
         filters["cnpj"] = instituicao
     if status == "ativas":
