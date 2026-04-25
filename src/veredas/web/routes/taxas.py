@@ -10,7 +10,7 @@ Exibe tabela filtravel de taxas coletadas:
 import csv
 import io
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 
 from veredas.storage.models import Indexador
@@ -43,7 +43,10 @@ async def list_taxas(
     # Aplicar filtros
     filters = {}
     if indexador:
-        filters["indexador"] = Indexador(indexador)
+        try:
+            filters["indexador"] = Indexador(indexador)
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"Indexador inválido: {indexador!r}")
     if prazo_min:
         filters["prazo_min"] = prazo_min
     if prazo_max:
@@ -108,7 +111,10 @@ async def export_taxas_csv(
 
     filters = {}
     if indexador:
-        filters["indexador"] = Indexador(indexador)
+        try:
+            filters["indexador"] = Indexador(indexador)
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"Indexador inválido: {indexador!r}")
     if prazo_min:
         filters["prazo_min"] = prazo_min
     if prazo_max:
