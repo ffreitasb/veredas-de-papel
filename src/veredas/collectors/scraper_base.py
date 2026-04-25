@@ -173,12 +173,12 @@ class WebCollectorBase(BaseCollector):
     @staticmethod
     def _backoff_delay(attempt: int) -> float:
         """Backoff exponencial com jitter: 2^attempt + random[0, 1)."""
-        return (2**attempt) + random.uniform(0, 1)  # noqa: S311
+        return (2**attempt) + random.uniform(0, 1)
 
     def _build_headers(self) -> dict[str, str]:
         """Headers realistas que simulam um navegador desktop."""
         return {
-            "User-Agent": random.choice(_USER_AGENTS),  # noqa: S311
+            "User-Agent": random.choice(_USER_AGENTS),
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
             "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
             "Accept-Encoding": "gzip, deflate, br",

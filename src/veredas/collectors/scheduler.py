@@ -331,7 +331,7 @@ class CollectionScheduler:
                 try:
                     task.on_complete(result)
                 except Exception as callback_error:
-                    logger.warning(f"Erro em callback da task {task.task_id}: {callback_error}")
+                    logger.warning("Erro em callback da task %s: %s", task.task_id, callback_error)
 
             return updated_task
 
@@ -340,7 +340,7 @@ class CollectionScheduler:
             new_errors.append(f"{now}: Timeout apos {task.timeout_seconds}s")
             new_errors = new_errors[-10:]
 
-            logger.warning(f"Task {task.task_id} timeout apos {task.timeout_seconds}s")
+            logger.warning("Task %s timeout apos %ss", task.task_id, task.timeout_seconds)
 
             return replace(
                 task,
@@ -352,10 +352,10 @@ class CollectionScheduler:
 
         except Exception as e:
             new_errors = task.errors.copy()
-            new_errors.append(f"{now}: {str(e)}")
+            new_errors.append(f"{now}: {e!s}")
             new_errors = new_errors[-10:]
 
-            logger.exception(f"Erro em task {task.task_id}")
+            logger.exception("Erro em task %s", task.task_id)
 
             return replace(
                 task,

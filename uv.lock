@@ -2478,7 +2478,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "python-bcb", specifier = ">=0.2.0" },
-    { name = "python-multipart", marker = "extra == 'web'", specifier = ">=0.0.9" },
+    { name = "python-multipart", marker = "extra == 'web'", specifier = ">=0.0.13" },
     { name = "python-telegram-bot", marker = "extra == 'alerts'", specifier = ">=21.0" },
     { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21.0" },
     { name = "rich", specifier = ">=13.7.0" },

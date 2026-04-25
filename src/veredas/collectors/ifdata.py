@@ -226,7 +226,7 @@ class IFDataCollector(BaseCollector):
             return self._parse_dados_if(cnpj, data)
 
         except Exception:
-            logger.debug(f"Falha ao coletar dados da IF {cnpj}")
+            logger.debug("Falha ao coletar dados da IF %s", cnpj)
             return None
 
     def _parse_dados_if(self, cnpj: str, data: dict) -> DadosIF | None:
@@ -288,14 +288,11 @@ class IFDataCollector(BaseCollector):
             True se a API esta respondendo com sucesso (HTTP 200).
         """
         try:
-            client = await self._get_client()
-            # Usar endpoint real que sabemos existir (L2)
-            response = await client.get(
-                f"{IFDATA_BASE_URL}{IFDATA_ENDPOINTS['lista_ifs']}",
-                params={"tipo": "Banco"},
-                timeout=10,
-            )
-            # Aceitar apenas 200 - qualquer outro codigo indica problema
+            async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
+                response = await client.get(
+                    f"{IFDATA_BASE_URL}{IFDATA_ENDPOINTS['lista_ifs']}",
+                    params={"tipo": "Banco"},
+                )
             return response.status_code == 200
         except Exception:
             return False

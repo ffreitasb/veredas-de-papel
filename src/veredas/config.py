@@ -270,17 +270,7 @@ class Settings(BaseSettings):
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     collector: CollectorSettings = Field(default_factory=CollectorSettings)
     web: WebSettings = Field(default_factory=WebSettings)
-
-    # Alertas (campos diretos para facilitar acesso)
-    smtp_host: str | None = Field(default=None)
-    smtp_port: int = Field(default=587)
-    smtp_user: str | None = Field(default=None)
-    smtp_password: str | None = Field(default=None)
-    alert_email_to: str | None = Field(default=None)
-    telegram_bot_token: str | None = Field(default=None)
-    telegram_chat_id: str | None = Field(default=None)
-    alert_min_severity: str = Field(default="HIGH")
-    alert_cooldown_minutes: int = Field(default=60)
+    alerts: AlertSettings = Field(default_factory=AlertSettings)
 
     def ensure_data_dir(self) -> Path:
         """Garante que o diretorio de dados existe."""

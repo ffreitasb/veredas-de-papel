@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
+import numpy as np
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -42,7 +43,7 @@ class InstituicaoRepository:
     def get_by_nome(self, nome: str) -> InstituicaoFinanceira | None:
         """Busca IF por nome (case-insensitive, parcial)."""
         stmt = select(InstituicaoFinanceira).where(InstituicaoFinanceira.nome.ilike(f"%{nome}%"))
-        return self.session.execute(stmt).scalar_one_or_none()
+        return self.session.execute(stmt).scalars().first()
 
     def list_all(self, ativas_only: bool = True) -> Sequence[InstituicaoFinanceira]:
         """Lista todas as IFs."""
@@ -208,21 +209,8 @@ class TaxaCDBRepository:
         if len(result) < 2:
             return None
 
-        # Converter para float para cálculos
-        valores = [float(v) for v in result]
-        n = len(valores)
-
-        # Calcular média
-        media = sum(valores) / n
-
-        # Calcular variância (soma dos quadrados das diferenças / n)
-        soma_quadrados = sum((x - media) ** 2 for x in valores)
-        variancia = soma_quadrados / n
-
-        # Desvio padrão = raiz quadrada da variância
-        desvio = variancia**0.5
-
-        return Decimal(str(round(desvio, 6)))
+        valores = np.array([float(v) for v in result], dtype=np.float64)
+        return Decimal(str(round(float(np.std(valores)), 6)))
 
     def create(self, **kwargs) -> TaxaCDB:
         """Cria uma nova taxa."""

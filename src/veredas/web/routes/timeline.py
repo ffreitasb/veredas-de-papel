@@ -14,8 +14,8 @@ from fastapi.responses import HTMLResponse
 
 from veredas.storage.models import Severidade
 from veredas.storage.repository import AnomaliaRepository, EventoRegulatorioRepository
-from veredas.web.app import templates
 from veredas.web.dependencies import get_db
+from veredas.web.templates_config import templates
 
 router = APIRouter()
 

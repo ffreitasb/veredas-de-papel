@@ -11,7 +11,6 @@ Define as entidades principais:
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Optional
 
 from sqlalchemy import (
     JSON,
@@ -63,6 +62,8 @@ class TipoAnomalia(StrEnum):
     SPREAD_CRITICO = "spread_critico"
     SALTO_BRUSCO = "salto_brusco"
     SALTO_EXTREMO = "salto_extremo"
+    QUEDA_BRUSCA = "queda_brusca"
+    QUEDA_EXTREMA = "queda_extrema"
     DIVERGENCIA = "divergencia"
     DIVERGENCIA_EXTREMA = "divergencia_extrema"
 
@@ -239,7 +240,7 @@ class Anomalia(Base):
 
     # Relacionamentos
     instituicao: Mapped["InstituicaoFinanceira"] = relationship(back_populates="anomalias")
-    taxa: Mapped[Optional["TaxaCDB"]] = relationship(back_populates="anomalias")
+    taxa: Mapped["TaxaCDB | None"] = relationship(back_populates="anomalias")
 
     def __repr__(self) -> str:
         return f"<Anomalia {self.tipo.value} [{self.severidade.value}]>"
@@ -280,7 +281,7 @@ class EventoRegulatorio(Base):
     )
 
     # Relacionamentos
-    instituicao: Mapped[Optional["InstituicaoFinanceira"]] = relationship(back_populates="eventos")
+    instituicao: Mapped["InstituicaoFinanceira | None"] = relationship(back_populates="eventos")
 
     def __repr__(self) -> str:
         return f"<Evento {self.tipo.value} - {self.if_nome} ({self.data_evento})>"
@@ -413,7 +414,7 @@ class PrecoSecundarioDB(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relacionamentos
-    instituicao: Mapped[Optional["InstituicaoFinanceira"]] = relationship()
+    instituicao: Mapped["InstituicaoFinanceira | None"] = relationship()
 
     def __repr__(self) -> str:
         return f"<PrecoSec {self.codigo_titulo} {self.data_referencia}: R$ {self.pu_fechamento}>"
@@ -485,7 +486,7 @@ class ProcessoRegulatorio(Base):
     )
 
     # Relacionamentos
-    instituicao: Mapped[Optional["InstituicaoFinanceira"]] = relationship()
+    instituicao: Mapped["InstituicaoFinanceira | None"] = relationship()
 
     def __repr__(self) -> str:
         return f"<Processo {self.numero_processo} [{self.status.value}]>"
@@ -535,7 +536,7 @@ class ReclamacaoHistorico(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relacionamentos
-    instituicao: Mapped[Optional["InstituicaoFinanceira"]] = relationship()
+    instituicao: Mapped["InstituicaoFinanceira | None"] = relationship()
 
     def __repr__(self) -> str:
         return f"<Reclamacao {self.empresa_nome} {self.data_coleta.date()}: {self.nota_geral}>"
@@ -633,7 +634,7 @@ class TaxaColetadaPlataforma(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relacionamentos
-    instituicao: Mapped[Optional["InstituicaoFinanceira"]] = relationship()
+    instituicao: Mapped["InstituicaoFinanceira | None"] = relationship()
 
     def __repr__(self) -> str:
         return f"<TaxaPlat {self.plataforma} {self.percentual}% {self.indexador.value}>"

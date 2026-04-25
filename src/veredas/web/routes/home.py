@@ -16,9 +16,9 @@ from veredas.storage.repository import (
     AnomaliaRepository,
     TaxaCDBRepository,
 )
-from veredas.web.app import templates
 from veredas.web.cache import get_cached_reference_rates
 from veredas.web.dependencies import get_db
+from veredas.web.templates_config import templates
 
 router = APIRouter()
 

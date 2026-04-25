@@ -286,14 +286,13 @@ class VariacaoDetector(BaseDetector):
         atual: TaxaCDB,
         anterior: TaxaCDB,
     ) -> AnomaliaDetectada | None:
-        """Verifica variação entre duas taxas."""
+        """Verifica variação entre duas taxas, em ambas as direções."""
         variacao = atual.percentual - anterior.percentual
 
-        # Apenas variações positivas (aumento de taxa = sinal de risco)
-        if variacao <= 0:
+        if variacao == 0:
             return None
 
-        # SALTO_EXTREMO: > 20pp
+        # ── Aumentos (sinal de risco de crédito por taxa elevada) ────────────
         if variacao > self.thresholds.salto_extremo:
             return AnomaliaDetectada(
                 tipo=TipoAnomalia.SALTO_EXTREMO,
@@ -316,7 +315,6 @@ class VariacaoDetector(BaseDetector):
                 },
             )
 
-        # SALTO_BRUSCO: > 10pp
         if variacao > self.thresholds.salto_brusco:
             return AnomaliaDetectada(
                 tipo=TipoAnomalia.SALTO_BRUSCO,
@@ -328,6 +326,53 @@ class VariacaoDetector(BaseDetector):
                 descricao=(
                     f"Taxa aumentou de {anterior.percentual}% para {atual.percentual}% "
                     f"(+{variacao}pp em {self.janela_dias} dias)"
+                ),
+                if_id=atual.if_id,
+                taxa_id=atual.id,
+                detector=self.name,
+                detalhes={
+                    "taxa_anterior": str(anterior.percentual),
+                    "data_anterior": anterior.data_coleta.isoformat(),
+                    "variacao_pp": str(variacao),
+                },
+            )
+
+        # ── Quedas (repricing abrupto ou dificuldade de captação) ────────────
+        # Severidade reduzida: mesmo threshold, um nível abaixo da alta equivalente.
+        queda = -variacao  # positivo
+        if queda > self.thresholds.salto_extremo:
+            return AnomaliaDetectada(
+                tipo=TipoAnomalia.QUEDA_EXTREMA,
+                severidade=Severidade.MEDIUM,
+                valor_detectado=atual.percentual,
+                valor_esperado=anterior.percentual,
+                desvio=variacao,
+                threshold=self.thresholds.salto_extremo,
+                descricao=(
+                    f"Taxa caiu de {anterior.percentual}% para {atual.percentual}% "
+                    f"(-{queda}pp em {self.janela_dias} dias)"
+                ),
+                if_id=atual.if_id,
+                taxa_id=atual.id,
+                detector=self.name,
+                detalhes={
+                    "taxa_anterior": str(anterior.percentual),
+                    "data_anterior": anterior.data_coleta.isoformat(),
+                    "variacao_pp": str(variacao),
+                },
+            )
+
+        if queda > self.thresholds.salto_brusco:
+            return AnomaliaDetectada(
+                tipo=TipoAnomalia.QUEDA_BRUSCA,
+                severidade=Severidade.LOW,
+                valor_detectado=atual.percentual,
+                valor_esperado=anterior.percentual,
+                desvio=variacao,
+                threshold=self.thresholds.salto_brusco,
+                descricao=(
+                    f"Taxa caiu de {anterior.percentual}% para {atual.percentual}% "
+                    f"(-{queda}pp em {self.janela_dias} dias)"
                 ),
                 if_id=atual.if_id,
                 taxa_id=atual.id,

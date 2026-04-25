@@ -11,6 +11,7 @@ Séries coletadas:
 """
 
 import asyncio
+import logging
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
@@ -20,6 +21,8 @@ import httpx
 from bcb import sgs
 
 from veredas.collectors.base import BaseCollector, CollectionResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -163,7 +166,8 @@ class BCBCollector(BaseCollector):
                 valor=Decimal(str(ultimo_valor)),
             )
 
-        except Exception:
+        except Exception as exc:
+            logger.debug("Falha ao coletar série %s: %s", tipo, exc)
             return None
 
     async def collect_selic(self, dias: int = 30) -> CollectionResult[list[TaxaReferenciaBCB]]:

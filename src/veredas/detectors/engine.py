@@ -13,6 +13,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
+from veredas import TZ_BRASIL
 from veredas.catalog import TIER_SPREAD_THRESHOLDS, get_tier_emissor
 from veredas.detectors.base import AnomaliaDetectada, DetectionResult
 from veredas.detectors.features import FeatureExtractor, calculate_market_stats
@@ -83,7 +84,7 @@ class EngineResult:
     anomalias: list[AnomaliaDetectada]
 
     # Metadados
-    executed_at: datetime = field(default_factory=datetime.now)
+    executed_at: datetime = field(default_factory=lambda: datetime.now(TZ_BRASIL))
     execution_time_ms: float = 0
     detectors_used: list[str] = field(default_factory=list)
     taxas_analyzed: int = 0
@@ -425,12 +426,20 @@ class DetectionEngine:
         return all_anomalias
 
     def _deduplicate(self, anomalias: list[AnomaliaDetectada]) -> list[AnomaliaDetectada]:
-        """Remove anomalias duplicadas, mantendo a mais severa."""
+        """Remove anomalias duplicadas com votação ponderada por detectores.
+
+        Quando múltiplos detectores independentes concordam sobre a mesma taxa/dia,
+        a co-ocorrência eleva a severidade da anomalia resultante:
+        - 1 detector  → severidade original
+        - 2 detectores → +1 nível (MEDIUM → HIGH)
+        - 3+ detectores → +2 níveis (MEDIUM → CRITICAL)
+
+        A lista de detectores que votaram é preservada em detalhes["detectores"].
+        """
         # Agrupa por (if_id, taxa_id, data aproximada)
         groups: dict[tuple, list[AnomaliaDetectada]] = {}
 
         for anomalia in anomalias:
-            # Criar chave de agrupamento
             date_key = (
                 anomalia.detectado_em.strftime("%Y-%m-%d") if anomalia.detectado_em else "unknown"
             )
@@ -440,13 +449,27 @@ class DetectionEngine:
                 groups[key] = []
             groups[key].append(anomalia)
 
-        # Manter apenas a mais severa de cada grupo (PERF-007: usa constante de módulo)
         deduplicated = []
 
         for group_anomalias in groups.values():
-            # Ordenar por severidade (maior primeiro)
+            # Winner = anomalia de maior severidade no grupo
             group_anomalias.sort(key=lambda a: SEVERITY_ORDER.index(a.severidade), reverse=True)
-            deduplicated.append(group_anomalias[0])
+            winner = group_anomalias[0]
+
+            # Votação ponderada: unique detectors → elevate severity
+            unique_detectors = sorted({a.detector for a in group_anomalias})
+            n = len(unique_detectors)
+            if n >= 2:
+                levels_up = 1 if n == 2 else 2
+                current_idx = SEVERITY_ORDER.index(winner.severidade)
+                new_idx = min(current_idx + levels_up, len(SEVERITY_ORDER) - 1)
+                winner.severidade = SEVERITY_ORDER[new_idx]
+
+            winner.detalhes["detectores"] = unique_detectors
+            if n >= 2:
+                winner.detalhes["votos"] = n
+
+            deduplicated.append(winner)
 
         return deduplicated
 

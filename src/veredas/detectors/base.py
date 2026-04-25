@@ -13,6 +13,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
+from veredas import TZ_BRASIL
 from veredas.storage.models import Severidade, TipoAnomalia
 
 
@@ -37,7 +38,7 @@ class AnomaliaDetectada:
 
     # Metadados
     detector: str = ""
-    detectado_em: datetime = field(default_factory=datetime.now)
+    detectado_em: datetime = field(default_factory=lambda: datetime.now(TZ_BRASIL))
     detalhes: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -66,7 +67,7 @@ class DetectionResult:
 
     detector_name: str
     anomalias: list[AnomaliaDetectada]
-    executed_at: datetime = field(default_factory=datetime.now)
+    executed_at: datetime = field(default_factory=lambda: datetime.now(TZ_BRASIL))
     execution_time_ms: float = 0
     error: str | None = None
 
