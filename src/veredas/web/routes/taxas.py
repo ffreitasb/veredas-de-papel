@@ -46,7 +46,7 @@ async def list_taxas(
         try:
             filters["indexador"] = Indexador(indexador)
         except ValueError:
-            raise HTTPException(status_code=422, detail=f"Indexador inválido: {indexador!r}")
+            raise HTTPException(status_code=422, detail=f"Indexador inválido: {indexador!r}") from None
     if prazo_min:
         filters["prazo_min"] = prazo_min
     if prazo_max:
@@ -114,7 +114,7 @@ async def export_taxas_csv(
         try:
             filters["indexador"] = Indexador(indexador)
         except ValueError:
-            raise HTTPException(status_code=422, detail=f"Indexador inválido: {indexador!r}")
+            raise HTTPException(status_code=422, detail=f"Indexador inválido: {indexador!r}") from None
     if prazo_min:
         filters["prazo_min"] = prazo_min
     if prazo_max:
