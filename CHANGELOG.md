@@ -11,6 +11,42 @@
 
 ---
 
+## [0.2.0-alpha] — 2026-04-27
+
+Release que consolida as Fases 4.1, 4.2 e 4.3 (parcial), Tier Clustering, hardening de segurança e maturidade dos detectores. Marca a transição de ferramenta de análise local para sistema multi-fonte com scrapers de corretoras e mercado secundário B3.
+
+### Fontes de mercado (Fase 4)
+- **Fase 4.1** — `WebCollectorBase`: fundação para scrapers com Playwright (páginas JS-heavy) e BeautifulSoup (HTML estático), com rate limiting, retry exponencial e rotação de User-Agent
+- **Fase 4.2** — Scrapers de corretoras: XP Investimentos, BTG Pactual, Banco Inter e Rico; normalização de taxas entre plataformas; `veredas collect scrapers --fonte xp|btg|inter|rico`
+- **Fase 4.3 (parcial)** — B3 Boletim Diário: `downloader.py` extrai ZIP aninhado (ZIP → SFX Windows → ZIP interno → TXT); `parser.py` processa Renda Fixa Privada com mapeamento CNPJ; coluna `mercado` (`primario`/`secundario`) em `TaxaCDB`; filtro por fonte no dashboard
+- **Tier Clustering** — `catalog.py`: `TierEmissor` (`BANCAO`, `MEDIO`, `PEQUENO`, `FINTECH`); thresholds de spread por tier no `SpreadDetector` e `DetectionEngine`
+
+### Detectores
+- **DOM-01** — `VariacaoDetector` detecta quedas bruscas: `QUEDA_BRUSCA` (>10 pp, LOW) e `QUEDA_EXTREMA` (>20 pp, MEDIUM)
+- **ENG-01** — `_deduplicate()` com votação cross-category: elevação de severidade só ocorre entre detectores de categorias distintas (rules/statistical/ml); dois detectores ML concordando não é evidência independente; constante `_DETECTOR_CATEGORY` define o mapeamento
+- **STL → experimental/** — `STLDecompositionDetector` movido para `veredas.detectors.experimental.stl`; semântica incompatível com CDB (STL pressupõe periodicidade sazonal inexistente no domínio); `StatisticalEngine` passa a orquestrar apenas `ChangePointDetector` + `RollingZScoreDetector`
+- **DBSCAN guard** — `DBSCANOutlierDetector.detect()` retorna vazio se `unique(if_id) < 200`; mercado brasileiro tem ~50–150 emissores — precondição documentada no docstring
+- `EngineConfig.enable_statistical` passa a `False` por padrão (opt-in consciente)
+- Guard em `STLDecompositionDetector`: mínimo de 30 pontos por IF (hardcoded)
+
+### Segurança
+- **SEC-02** — `get_client_ip` só confia em `X-Forwarded-For`/`X-Real-IP` para IPs em `VEREDAS_TRUSTED_PROXIES`
+- **SEC-04** — `CSRFMiddleware` corrigido: `_validate_csrf` retorna `JSONResponse(403)` em vez de `raise HTTPException`; Origin header check como Layer 1
+- **SEC-05** — `csrf_token_input` retorna `Markup` (Jinja2 não re-escapa HTML)
+- **SEC-06** — Whitelist de ordenação em `/taxas/` via `frozenset` + `_validar_ordem()`
+- **SEC-07** — `_parse_tipo()` valida enum `TipoAnomalia` em `/anomalias/` (3 endpoints)
+- **SEC-09** — `parse_cnpj` com `validate=True` em `/instituicoes/{cnpj}`
+
+### Infraestrutura e qualidade
+- CI/CD: GitHub Actions com 4 jobs (test Python 3.11/3.12, ruff, mypy, format)
+- 70 testes de detectores passando; suite total acima de 479 testes
+- `docs/decisoes_tecnicas.md`: registro de não-implementações deliberadas (service layer, typed filters, lazy imports, DOM-02, fontes extras, DBSCAN)
+- `TipoAnomalia` expandido com `QUEDA_BRUSCA` e `QUEDA_EXTREMA`
+
+> **Nota alpha:** scrapers de corretoras (XP, BTG, Inter, Rico) têm cobertura de parser (28 testes), mas ainda não foram validados contra os sites reais em produção contínua. Use com cautela e reporte regressões.
+
+---
+
 ## [0.1.0-alpha.3] — 2026-04-24
 
 ### Segurança
