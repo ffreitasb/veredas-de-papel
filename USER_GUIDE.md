@@ -122,7 +122,11 @@ cd veredas-de-papel
 **Passo 3: Instalar as dependências**
 
 ```bash
+# Instalação completa (recomendada)
 uv sync --extra dev --extra web --extra ml --extra alerts
+
+# Com scrapers de corretoras (requer Playwright)
+uv sync --extra dev --extra web --extra ml --extra alerts --extra scrapers
 ```
 
 Isso pode levar 1 a 3 minutos na primeira vez. O `uv` vai baixar e instalar tudo automaticamente.
@@ -133,7 +137,7 @@ Isso pode levar 1 a 3 minutos na primeira vez. O `uv` vai baixar e instalar tudo
 uv run veredas --version
 ```
 
-Deve aparecer algo como `veredas de papel v0.1.0`.
+Deve aparecer algo como `veredas de papel v0.2.0`.
 
 ---
 
@@ -319,9 +323,42 @@ veredas collect ifdata
 
 > **Frequência recomendada**: os dados do IFData são publicados trimestralmente pelo Banco Central. Executar uma vez por mês é suficiente.
 
+#### `veredas collect scrapers`
+
+*(Novo em v0.2.0)* Coleta taxas de CDB diretamente das **prateleiras públicas das corretoras** via scraping. Captura o mercado primário com preços reais anunciados ao investidor pessoa física.
+
+```bash
+# Coletar de uma corretora específica
+veredas collect scrapers --fonte xp
+veredas collect scrapers --fonte btg
+veredas collect scrapers --fonte inter
+veredas collect scrapers --fonte rico
+
+# Coletar de todas as corretoras disponíveis
+veredas collect scrapers
+```
+
+> **Dependência**: requer o grupo `scrapers` instalado (`uv sync --extra scrapers`). O primeiro uso de fontes JavaScript (XP, BTG) faz o download automático do Playwright — aguarde alguns minutos.
+
+> **Nota alpha**: os parsers estão cobertos por testes unitários, mas ainda não foram validados em produção contínua. Reporte regressões se os dados parecerem incorretos.
+
+#### `veredas collect b3`
+
+*(Novo em v0.2.0)* Baixa o **Boletim Diário de Renda Fixa Privada da B3** — debêntures de instituições financeiras negociadas no mercado secundário. Serve como proxy de stress de crédito: se os spreads das debêntures de uma IF sobem, seus CDBs estão sob risco similar.
+
+```bash
+# Boletim do dia atual
+veredas collect b3
+
+# Boletim de uma data específica (pregões dos últimos ~2 dias disponíveis)
+veredas collect b3 --data 2026-04-25
+```
+
+> Pregões fechados (feriados, fins de semana) retornam lista vazia sem erro.
+
 #### `veredas collect all`
 
-Executa ambas as coletas em sequência:
+Executa BCB e IFData em sequência. Scrapers de corretoras e B3 devem ser executados separadamente (ver acima).
 
 ```bash
 veredas collect all
@@ -405,7 +442,7 @@ veredas status
 **Exemplo de saída**:
 ```
 ╭────────────────────────────────────────╮
-│ veredas de papel v0.1.0                │
+│ veredas de papel v0.2.0                │
 │ Monitor de taxas de CDB                │
 ╰────────────────────────────────────────╯
 
@@ -441,8 +478,7 @@ Detectores de Regras:
   • variacao_detector
 
 Detectores Estatísticos:
-  • zscore_detector                ✓
-  • stl_detector                  ✓
+  • rolling_zscore_detector       ✓
   • change_point_detector         ⚠ ruptures não instalado
 
 Detectores de Machine Learning:
@@ -458,6 +494,8 @@ pip install ruptures
 # ou
 uv add ruptures
 ```
+
+> O detector STL (decomposição sazonal) foi movido para `veredas.detectors.experimental` e não aparece no pipeline padrão. CDBs são decisões discricionárias, não séries com sazonalidade periódica — o STL produzia artefatos algorítmicos neste domínio.
 
 ---
 
@@ -730,7 +768,7 @@ Para quem quer monitorar o mercado de forma consistente, aqui está um fluxo de 
 # 1. Clonar e instalar (veja seção 3)
 git clone https://github.com/ffreitasb/veredas-de-papel.git
 cd veredas-de-papel
-uv sync --extra dev --extra web --extra ml --extra alerts
+uv sync --extra dev --extra web --extra ml --extra alerts --extra scrapers
 
 # 2. Configurar (veja seção 4)
 cp .env.example .env
@@ -756,6 +794,9 @@ veredas web
 # Atualizar dados do Banco Central
 veredas collect bcb
 
+# Boletim B3 do dia (mercado secundário)
+veredas collect b3
+
 # Rodar análise
 veredas analyze
 
@@ -766,6 +807,12 @@ veredas web
 ### Uso semanal / mensal
 
 ```bash
+# Prateleiras das corretoras (mercado primário)
+veredas collect scrapers --fonte xp
+veredas collect scrapers --fonte btg
+veredas collect scrapers --fonte inter
+veredas collect scrapers --fonte rico
+
 # Atualizar dados de saúde das IFs (dados publicados trimestralmente, mas vale coletar mensalmente)
 veredas collect ifdata
 
@@ -819,8 +866,10 @@ Quando o sistema detecta algo suspeito, ele registra uma anomalia com um tipo e 
 |------|-------------|-----------|
 | `SPREAD_ALTO` | Spread alto | CDB oferecido a mais de 130% do CDI — fora da curva do mercado |
 | `SPREAD_CRITICO` | Spread crítico | CDB acima de 150% do CDI — nível historicamente associado a bancos em aperto |
-| `SALTO_BRUSCO` | Salto brusco | A taxa subiu mais de 10 pontos percentuais em 7 dias — comportamento incomum |
-| `SALTO_EXTREMO` | Salto extremo | Subida de mais de 20 pontos percentuais em 7 dias — extremamente anormal |
+| `SALTO_BRUSCO` | Salto brusco | A taxa subiu mais de 10 pp em 7 dias — comportamento incomum |
+| `SALTO_EXTREMO` | Salto extremo | Subida de mais de 20 pp em 7 dias — extremamente anormal |
+| `QUEDA_BRUSCA` | Queda brusca | A taxa caiu mais de 10 pp em 7 dias — repricing abrupto pode indicar dificuldade de captação |
+| `QUEDA_EXTREMA` | Queda extrema | Queda de mais de 20 pp em 7 dias — sinal de instabilidade ou mudança estratégica forçada |
 
 #### Estatísticas Avançadas
 
@@ -828,15 +877,17 @@ Quando o sistema detecta algo suspeito, ele registra uma anomalia com um tipo e 
 |------|-------------|-----------|
 | `DIVERGENCIA` | Divergência | A taxa desta IF está a mais de 2 desvios padrão acima da média do mercado — muito acima dos pares |
 | `DIVERGENCIA_EXTREMA` | Divergência extrema | A mais de 3 desvios padrão — um outlier estatístico expressivo |
-| `STL_RESIDUAL` | Resíduo STL | Após extrair a tendência e sazonalidade histórica desta IF, resta uma anomalia que não tem explicação pelo padrão habitual |
-| `CHANGEPOINT` | Ponto de ruptura | Houve uma mudança estrutural na trajetória de taxas desta IF — algo mudou no comportamento dela |
+| `CHANGE_POINT` | Ponto de ruptura | Houve uma mudança estrutural na trajetória de taxas desta IF — algo mudou no comportamento dela |
+| `ROLLING_OUTLIER` | Outlier local | A taxa desta IF está muito acima da média recente de seus próprios registros históricos |
 
 #### Machine Learning
 
 | Tipo | Em português | Significa |
 |------|-------------|-----------|
-| `ISOLATION_FOREST` | Isolamento anormal | O conjunto de características desta taxa (valor, prazo, risco) é tão incomum que o algoritmo a "isolou" de todas as outras |
-| `DBSCAN_OUTLIER` | Fora dos clusters | Esta IF não se agrupa com nenhum conjunto de instituições similares — ela está sozinha no espaço de comparações |
+| `ISOLATION_ANOMALY` | Isolamento anormal | O conjunto de características desta taxa (valor, prazo, risco) é tão incomum que o algoritmo a "isolou" de todas as outras. Requer ao menos 30 amostras da IF. |
+| `CLUSTER_OUTLIER` | Fora dos clusters | Esta IF não se agrupa com nenhum conjunto de instituições similares — ela está sozinha no espaço de comparações. Requer ≥ 200 emissores únicos no banco; com menos emissores o detector retorna vazio para evitar falsos positivos. |
+
+> **Votação cross-category**: quando detectores de *categorias diferentes* (regras + estatística + ML) concordam sobre a mesma taxa, a severidade é elevada automaticamente — 2 categorias sobem +1 nível, 3 categorias sobem +2 níveis. Isso significa que uma anomalia com `SPREAD_CRITICO` + `CHANGE_POINT` pode ser promovida automaticamente de HIGH para CRITICAL.
 
 #### Saúde Financeira
 
@@ -862,7 +913,7 @@ Quando você encontrar uma anomalia no painel, responda estas perguntas:
 
 **P: O veredas de papel tem acesso às taxas de CDB das corretoras (XP, BTG, etc.)?**
 
-Ainda não. Na versão atual (0.1.0-alpha), o sistema coleta dados do Banco Central (taxas macroeconômicas e indicadores das IFs). A integração com prateleiras de corretoras está planejada para uma versão futura.
+Sim, desde a v0.2.0-alpha. Use `veredas collect scrapers --fonte xp|btg|inter|rico` para coletar as prateleiras públicas das corretoras. O grupo `scrapers` precisa estar instalado (`uv sync --extra scrapers`). Os parsers têm cobertura de testes, mas ainda estão em validação em produção — reporte regressões se os dados parecerem incorretos.
 
 ---
 
@@ -1012,7 +1063,10 @@ uv add ruptures
 
 ### "Os detectores de ML não encontram nada"
 
-Normal em bancos com poucos dados. Os detectores de Machine Learning (Isolation Forest e DBSCAN) precisam de no mínimo 30 amostras por instituição financeira. Continue coletando dados regularmente e os resultados vão aparecer.
+Normal em bancos com poucos dados. Dois casos:
+
+- **Isolation Forest**: precisa de no mínimo 30 amostras por IF. Continue coletando dados regularmente.
+- **DBSCAN**: precisa de pelo menos 200 emissores únicos no banco para evitar falsos positivos. O mercado brasileiro tem cerca de 50–150 emissores ativos — este detector raramente dispara em uso local. Isso é intencional, não um bug.
 
 ---
 

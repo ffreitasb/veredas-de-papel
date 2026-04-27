@@ -36,129 +36,134 @@
 
 ## Em desenvolvimento — v0.3.0-alpha
 
-**Próximas entregas:** B3 Collector completo (4.3-C) e inteligência cruzada entre fontes (4.4).
+**Próximas entregas:** validação em produção das novas fontes + inteligência cruzada (Fase 4.4).
+
+> **Nota:** a Fase 4.3 (B3BoletimCollector + CLI `veredas collect b3`) foi concluída ainda durante a v0.2.0-alpha. A v0.3 foca em validação real contra os sites e nos detectores de inteligência cruzada.
 
 ---
 
-### 4.3 — B3: Mercado Secundário
+### Etapa 0 — Validação em produção das fontes v0.2 *(1–2 dias)*
 
-**Objetivo:** capturar preços de CDBs negociados no mercado secundário via Boletim Diário B3 — a única fonte pública gratuita disponível após validação de todas as alternativas.
+**Objetivo:** confirmar que scrapers e B3 collector funcionam contra os sites reais antes de construir detectores em cima deles.
 
-**Esforço estimado:** 1,5 semanas
+| Fonte | Validação necessária |
+|-------|---------------------|
+| XP Investimentos | `veredas collect scrapers --fonte xp` retorna ≥ 1 taxa com valor > 0 |
+| BTG Pactual | `veredas collect scrapers --fonte btg` retorna ≥ 1 taxa com valor > 0 |
+| Banco Inter | `veredas collect scrapers --fonte inter` retorna ≥ 1 taxa com valor > 0 |
+| Rico | `veredas collect scrapers --fonte rico` retorna ≥ 1 taxa com valor > 0 |
+| B3 Boletim | `veredas collect b3` baixa boletim do último pregão sem erro |
 
-#### Por que não há fonte melhor — validação completa (23/04/2026)
-
-| Fonte | CDB secundário? | Veredicto |
-|-------|----------------|-----------|
-| B3 API (`developers.b3.com.br`) | Sim (API "CDB" existe) | B2B fechado, contrato pago |
-| ANBIMA API | Não — só debentures/CRI/CRA | OAuth2; sem CDB |
-| CETIP FTP público | — | Não existe (B3 absorveu em 2017) |
-| Yubb, Status Invest, Mais Retorno | Mercado primário apenas | Anti-bot ou sem CDB |
-| **B3 Boletim Diário RF Privada** | **Debêntures (não CDB puro)** | **✓ Fonte escolhida** |
-
-> **Nota:** CDB secundário real fica no sistema B3/CETIP com acesso restrito a participantes qualificados. É uma lacuna estrutural do mercado — não um problema de descoberta de endpoint. A alternativa pública mais próxima são as **debêntures** de IFs no mesmo arquivo, que funcionam como proxy de stress de crédito: se os spreads das debêntures do Banco X sobem, os CDBs do mesmo emissor estão sob risco similar.
+- Ajustar parsers que falhem (HTML/JS dos sites pode ter mudado desde os testes)
+- Registrar taxa de sucesso: % das corretoras operacionais em dia 1
+- Critério de prosseguir: ≥ 3 corretoras e B3 operacionais
 
 ---
 
-#### URL e formato — confirmados sem JS
-
-```
-GET https://www.b3.com.br/pesquisapregao/download?filelist=RF{DDMMYY}.ex_,
-```
-- `DDMMYY` = dia+mês+ano com 2 dígitos cada (ex.: 23/04/2026 → `230426`)
-- Retorna ZIP aninhado: ZIP externo → executável SFX Windows → `RF{DDMMYY}.txt`
-- Arquivo TXT: primeira linha = data do pregão (`YYYYMMDD`); linhas seguintes = CSV com `;`
-- Campos: `TICKER;VENCIMENTO;DIAS_CORRIDOS;DIAS_UTEIS;PU_MERCADO;PU_PAR;TAXA_MERCADO;FATOR_ACUMULADO`
-- Janela: ~2 pregões disponíveis simultaneamente — coleta deve ser **diária**
-
----
-
-#### Plano de implementação
-
-##### ~~Etapa A — Reverse-engineering do download~~ ✓ concluído
-
-URL confirmada e formato documentado (ver acima).
-
-##### Etapa B — Parser do arquivo (2–3 dias)
-
-Arquivo CSV semicolon, layout simples:
-
-```python
-# collectors/b3/parser.py
-@dataclass
-class B3RendaFixaRecord:
-    data_pregao: date
-    codigo: str          # ex: AGRU-DEB21
-    vencimento: date
-    dias_corridos: int
-    dias_uteis: int
-    pu_mercado: Decimal
-    pu_par: Decimal
-    taxa_mercado: Decimal   # % a.a.
-    fator_acumulado: Decimal
-    emissor_codigo: str     # prefixo do ticker (ex: AGRU, EGIE)
-    tipo: str               # "DEB", "ETF", ou "OUTRO"
-
-class B3RendaFixaParser:
-    def parse(self, conteudo: str, data_pregao: date) -> list[B3RendaFixaRecord]: ...
-```
-
-Extração do ZIP aninhado (SFX dentro de ZIP):
-
-```python
-pk_pos = sfx_bytes.rfind(b'PK\x03\x04')
-with zipfile.ZipFile(io.BytesIO(sfx_bytes[pk_pos:])) as inner:
-    txt = inner.read(inner.namelist()[0]).decode("latin-1")
-```
-
-##### Etapa C — Coletor (1–2 dias)
-
-```
-collectors/b3/
-  __init__.py
-  downloader.py   # _build_url(date) + download + extração do ZIP aninhado
-  parser.py       # B3RendaFixaRecord + B3RendaFixaParser
-  collector.py    # B3BoletimCollector(WebCollectorBase)
-```
-
-- `B3BoletimCollector.collect(data: date | None = None)` — boletim do dia ou data específica
-- `veredas collect b3 [--data YYYY-MM-DD]` no CLI
-- Tolerância a pregão fechado (fin de semana, feriado) — retorna lista vazia sem erro
-
-##### Etapa D — Modelo de dados e dashboard (1–2 dias)
-
-- Migration Alembic: coluna `mercado` (`"primario"` / `"secundario"`) em `TaxaCDB`
-- Dashboard `/taxas/`: filtro por mercado via HTMX
-- Registros B3 persistidos apenas para emissores já cadastrados em `InstituicaoFinanceira` (matching por prefixo do ticker → CNPJ do catálogo)
-
-#### Critério de conclusão
-
-`veredas collect b3` baixa o boletim do dia sem erro; debêntures de IFs financeiras aparecem no dashboard com `mercado="secundario"`; coluna `mercado` presente no CSV exportado.
-
----
-
-### 4.4 — Inteligência Cruzada
+### Fase 4.4 — Inteligência Cruzada *(3–4 dias)*
 
 **Objetivo:** usar as múltiplas fontes para detectar padrões que nenhuma fonte isolada revelaria.
 
-**Esforço estimado:** 1 semana
+#### Etapa A — `TipoAnomalia` e modelos *(meio dia)*
 
-#### Novos tipos de anomalia
+Adicionar em `src/veredas/storage/models.py`:
 
-| Tipo | Lógica | Severidade |
-|------|--------|------------|
-| `SPREAD_CORRETORA` | Taxa na prateleira da corretora ≥ X% acima do benchmark de mercado primário (BCB) | HIGH |
-| `DIVERGENCIA_FONTES` | Mesma IF ofertando taxas com diferença ≥ Y pp entre duas corretoras | MEDIUM |
-| `PRIMARIO_VS_SECUNDARIO` | Taxa de emissão nova muito abaixo do preço implícito no secundário (sinal de deságio) | HIGH |
+```python
+# Fase 4.4 - Inteligência cruzada
+SPREAD_CORRETORA = "spread_corretora"          # prateleira vs benchmark BCB
+DIVERGENCIA_FONTES = "divergencia_fontes"       # mesma IF, corretoras divergem
+PRIMARIO_VS_SECUNDARIO = "primario_vs_secundario"  # emissão vs deságio B3
+```
 
-#### Integração
+Adicionar campo `fonte` em `Anomalia` (ou usar `detalhes["fonte"]` para evitar migração).
 
-- Novas fontes entram no ciclo do `scheduler.py` (coleta automática junto com BCB/IFData)
+---
+
+#### Etapa B — `CrossSourceDetector` *(1,5 dias)*
+
+Novo arquivo: `src/veredas/detectors/cross_source.py`
+
+```python
+class CrossSourceDetector:
+    """Detecta anomalias que exigem cruzamento entre múltiplas fontes."""
+
+    def detect_spread_corretora(
+        self,
+        taxas_corretora: list[TaxaCDB],   # fonte="xp"|"btg"|"inter"|"rico"
+        benchmark_bcb: Decimal,            # CDI atual
+        threshold_pp: Decimal = Decimal("15"),
+    ) -> list[Anomalia]:
+        """Taxa corretora ≥ threshold_pp acima do benchmark BCB → SPREAD_CORRETORA (HIGH)."""
+        ...
+
+    def detect_divergencia_fontes(
+        self,
+        taxas_por_fonte: dict[str, list[TaxaCDB]],  # fonte → taxas
+        threshold_pp: Decimal = Decimal("10"),
+    ) -> list[Anomalia]:
+        """Mesma IF com diferença ≥ threshold_pp entre duas corretoras → DIVERGENCIA_FONTES (MEDIUM)."""
+        ...
+
+    def detect_primario_vs_secundario(
+        self,
+        taxas_primario: list[TaxaCDB],   # fonte="bcb"|corretoras
+        taxas_b3: list[TaxaCDB],          # fonte="b3", mercado="secundario"
+        threshold_pp: Decimal = Decimal("20"),
+    ) -> list[Anomalia]:
+        """Taxa de emissão nova muito abaixo do preço implícito no secundário → PRIMARIO_VS_SECUNDARIO (HIGH)."""
+        ...
+```
+
+Integrar em `DetectionEngine.analyze()` como quarta categoria (além de rules/statistical/ml).
+Atualizar `_DETECTOR_CATEGORY` em `engine.py`:
+
+```python
+"cross_source_detector": "cross_source",
+```
+
+---
+
+#### Etapa C — Dashboard: filtro de fonte em `/taxas/` *(1 dia)*
+
+- Adicionar campo `fonte` na query de `/taxas/` (já existe na coluna `TaxaCDB.fonte`)
+- Novo filtro HTMX no template `taxas/index.html`: dropdown `bcb | xp | btg | inter | rico | b3`
+- Whitelist de validação em `_validar_fonte()` (padrão SEC-06)
+- CSV export inclui coluna `fonte`
+
+---
+
+#### Etapa D — Perfil da IF: comparativo por fonte *(meio dia)*
+
+Na rota `/instituicoes/{cnpj}`, adicionar seção "Taxas por Fonte":
+
+- Tabela agrupada por fonte mostrando taxa mais recente de cada plataforma
+- Destaque visual quando desvio entre fontes > 5 pp
+
+---
+
+#### Etapa E — Scheduler inclui scrapers e B3 *(meio dia)*
+
+Em `src/veredas/scheduler.py`, adicionar tarefas:
+
+```python
+# Coleta diária (junto com BCB)
+{"type": "scrapers_all", "frequency": "daily", "hour": 8}
+{"type": "b3_boletim",   "frequency": "daily", "hour": 9}
+
+# Ou via veredas collect all
+```
+
+`veredas collect all` passa a incluir scrapers e B3.
+
+---
+
+#### Critério de conclusão v0.3
+
+- `veredas analyze` detecta `SPREAD_CORRETORA` e `DIVERGENCIA_FONTES` quando os dados estão presentes
+- Anomalias de inteligência cruzada aparecem no dashboard com atribuição de fonte
+- Filtro de fonte funciona em `/taxas/`
+- Página de detalhe da IF exibe comparativo por fonte
 - `veredas collect all` inclui scrapers e B3
-- Dashboard: filtro de fonte (`bcb`, `xp`, `btg`, `inter`, `b3`) em `/taxas/`
-- Página de detalhe da IF exibe comparativo de taxas por fonte
-
-**Critério de conclusão:** `veredas analyze` detecta `SPREAD_CORRETORA` e `DIVERGENCIA_FONTES`; anomalias aparecem no dashboard com atribuição de fonte.
 
 ---
 
@@ -235,10 +240,10 @@ collectors/b3/
 |--------|------------------|
 | `v0.1.0-alpha` | Fases 1–3 + B + C — **publicada** |
 | `v0.2.0-alpha` | Fase 4.1 + 4.2 + 4.3 parcial + Tier Clustering + hardening — **publicada** |
-| `v0.3.0-alpha` | Fase 4.3-C (B3BoletimCollector + CLI) + 4.4 (inteligência cruzada) |
+| `v0.3.0-alpha` | Validação PRD scrapers/B3 + Fase 4.4 (inteligência cruzada) |
 | `v0.4.0-alpha` | Fase 5 (dados alternativos: Reclame Aqui, sanções BCB) |
 | `v1.0.0` | Fase D completa (PyPI, binários, demo) |
 
 ---
 
-*Atualizado em: 27/abril/2026 — v0.2.0-alpha publicada; v0.3.0-alpha em desenvolvimento*
+*Atualizado em: 27/abril/2026 — v0.2.0-alpha publicada; v0.3.0-alpha: validação PRD + Fase 4.4 em desenvolvimento*
