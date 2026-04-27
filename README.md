@@ -17,7 +17,7 @@
 [![CI](https://github.com/ffreitasb/veredas-de-papel/actions/workflows/ci.yml/badge.svg)](https://github.com/ffreitasb/veredas-de-papel/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white)](https://python.org)
 [![Licença: GPL v3](https://img.shields.io/badge/licen%C3%A7a-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Versão](https://img.shields.io/badge/vers%C3%A3o-0.1.0--alpha-orange)](https://github.com/ffreitasb/veredas-de-papel/releases)
+[![Versão](https://img.shields.io/badge/vers%C3%A3o-0.2.0--alpha-orange)](https://github.com/ffreitasb/veredas-de-papel/releases)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Feito no Brasil](https://img.shields.io/badge/feito%20no-Brasil%20%F0%9F%87%A7%F0%9F%87%B7-009c3b)](https://github.com/ffreitasb/veredas-de-papel)
@@ -104,11 +104,15 @@ pip install -e ".[dev,web,ml,alerts]"
 | `web` | FastAPI, Jinja2, uvicorn |
 | `ml` | scikit-learn (Isolation Forest, DBSCAN) |
 | `alerts` | Telegram Bot, Email SMTP |
+| `scrapers` | Playwright, BeautifulSoup4 (coleta de corretoras) |
 
 Instale apenas o que precisar:
 ```bash
 # uv
 uv sync --extra web --extra ml
+
+# com scrapers de corretoras
+uv sync --extra web --extra scrapers
 
 # pip
 pip install -e ".[web,ml]"
@@ -161,11 +165,20 @@ veredas collect ifdata
 ```
 Importa Índice de Basileia, Liquidez e ROA/ROE do portal IFData do Banco Central.
 
-**3. Executar o motor de análise:**
+**3. Coletar taxas de corretoras (novo em v0.2):**
+```bash
+veredas collect scrapers --fonte xp
+veredas collect scrapers --fonte btg
+veredas collect scrapers --fonte inter
+veredas collect scrapers --fonte rico
+```
+Coleta taxas de CDB diretamente das prateleiras públicas das corretoras via scraping.
+
+**4. Executar o motor de análise:**
 ```bash
 veredas analyze
 ```
-Avalia os dados com regras determinísticas, Z-Score, STL, Isolation Forest e detectores de saúde financeira.
+Avalia os dados com regras determinísticas, Z-Score rolling, Isolation Forest e detectores de saúde financeira.
 
 **4. Iniciar o dashboard web:**
 ```bash
@@ -182,6 +195,7 @@ Acesse: [http://localhost:8000](http://localhost:8000)
 | `veredas init` | Cria/atualiza o esquema do banco via Alembic |
 | `veredas collect bcb` | Sincroniza dados históricos com o Banco Central |
 | `veredas collect ifdata` | Importa indicadores prudenciais das IFs do IFData |
+| `veredas collect scrapers --fonte xp\|btg\|inter\|rico` | Coleta taxas das prateleiras públicas das corretoras |
 | `veredas analyze` | Executa o pipeline completo de detecção de anomalias |
 | `veredas analyze --ml` | Inclui detectores de Machine Learning na análise |
 | `veredas web` | Inicia o dashboard web (padrão: `localhost:8000`) |
@@ -219,25 +233,28 @@ Todas as listagens possuem botão **↓ CSV** que gera arquivos compatíveis com
 
 | Tipo | Condição | Severidade |
 |------|----------|------------|
-| `SPREAD_ALTO` | CDB > 130% CDI | HIGH |
+| `SPREAD_ALTO` | CDB > 130% CDI (ajustado por tier do emissor) | HIGH |
 | `SPREAD_CRITICO` | CDB > 150% CDI | CRITICAL |
-| `SALTO_BRUSCO` | Variação > 10pp em 7 dias | MEDIUM |
-| `SALTO_EXTREMO` | Variação > 20pp em 7 dias | HIGH |
+| `SALTO_BRUSCO` | Alta > 10 pp em 7 dias | MEDIUM |
+| `SALTO_EXTREMO` | Alta > 20 pp em 7 dias | HIGH |
+| `QUEDA_BRUSCA` | Queda > 10 pp em 7 dias | LOW |
+| `QUEDA_EXTREMA` | Queda > 20 pp em 7 dias | MEDIUM |
 
-### Estatística Avançada
+### Estatística
 
 | Tipo | Método |
 |------|--------|
-| `DIVERGENCIA` / `DIVERGENCIA_EXTREMA` | Z-Score (2σ / 3σ acima da média) |
-| `STL_RESIDUAL` | Decomposição sazonal STL — anomalia isolada da tendência macro |
-| `CHANGEPOINT` | Detecção de quebra estrutural na curva de juros da IF |
+| `DIVERGENCIA` / `DIVERGENCIA_EXTREMA` | Z-Score rolling (2σ / 3σ acima da média de mercado) |
+| `CHANGE_POINT` | Detecção de quebra estrutural via PELT (ruptures) |
 
 ### Machine Learning
 
-| Tipo | Método |
-|------|--------|
-| `ISOLATION_FOREST` | Detecção de outliers multivariável (Taxa, Prazo, Risco) |
-| `DBSCAN_OUTLIER` | Agrupamento de densidade — IFs "isoladas" dos clusters do mercado |
+| Tipo | Método | Precondição |
+|------|--------|-------------|
+| `ISOLATION_ANOMALY` | Isolation Forest multivariável (Taxa, Prazo, Risco) | ≥ 30 amostras |
+| `CLUSTER_OUTLIER` | DBSCAN — IFs sem cluster de densidade | ≥ 200 emissores únicos |
+
+> **Votação cross-category (ENG-01):** quando detectores de *categorias diferentes* (regras + estatística + ML) concordam sobre a mesma taxa, a severidade é elevada automaticamente: 2 categorias → +1 nível, 3 categorias → +2 níveis.
 
 ### Saúde Financeira (IFData)
 
@@ -252,20 +269,19 @@ Todas as listagens possuem botão **↓ CSV** que gera arquivos compatíveis com
 
 ## 🗺️ Roadmap
 
-Versão atual: **[v0.1.0-alpha](https://github.com/ffreitasb/veredas-de-papel/releases/tag/v0.1.0-alpha)** — veja o [ROADMAP.md](ROADMAP.md) para o detalhamento completo de cada fase.
+Versão atual: **[v0.2.0-alpha](https://github.com/ffreitasb/veredas-de-papel/releases/tag/v0.2.0-alpha)** — veja o [ROADMAP.md](ROADMAP.md) para o detalhamento completo de cada fase.
 
 - [x] **Fase 1 (MVP)**: Estrutura base, CLI, integração BCB, núcleo de detecção (Regras, Estatística, ML).
 - [x] **Fase 2**: Dashboard web (FastAPI + Jinja2 + HTMX) para análise visual.
 - [x] **Fase 3**: Coletor IFData — cruzamento de taxas altas com saúde financeira oficial (Basileia, Liquidez, ROA/ROE).
-- [x] **Fase B**: Suite de testes, migrações Alembic, sistema de alertas (Telegram/Email), detectores de saúde, CSV export, filtros e ordenação no dashboard.
+- [x] **Fase B**: Suite de testes, migrações Alembic, sistema de alertas (Telegram/Email), CSV export, filtros e ordenação no dashboard.
 - [x] **Fase C**: GitHub Actions CI (tests × Python 3.11/3.12, lint, types).
-- [ ] **Fase 4 — Fontes de Mercado** *(próxima)*
-  - [ ] 4.1 — Fundação de scrapers (BaseCollector web, Playwright, normalização)
-  - [ ] 4.2 — Corretoras: prateleiras públicas (XP, BTG, Inter, Rico)
-  - [ ] 4.3 — B3: mercado secundário (preços negociados e yield implícito)
-  - [ ] 4.4 — Inteligência cruzada (detecção entre fontes, dashboard multi-origem)
-- [ ] **Fase 5 — Dados Alternativos**: Reclame Aqui, Processos Sancionadores Bacen.
-- [ ] **Fase D — Distribuição**: empacotamento PyInstaller, release PyPI, demo público.
+- [x] **Fase 4.1**: Fundação de scrapers (WebCollectorBase, Playwright, normalização).
+- [x] **Fase 4.2**: Corretoras — prateleiras públicas (XP, BTG, Inter, Rico).
+- [ ] **Fase 4.3**: B3: mercado secundário *(em andamento — downloader/parser prontos, collector pendente)*
+- [ ] **Fase 4.4**: Inteligência cruzada entre fontes (detecção multi-origem).
+- [ ] **Fase 5**: Dados alternativos (Reclame Aqui, Processos Sancionadores BCB).
+- [ ] **Fase D**: Distribuição (PyInstaller, PyPI, demo público).
 
 ---
 

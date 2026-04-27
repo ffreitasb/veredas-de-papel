@@ -12,9 +12,9 @@
 
 ---
 
-## Status atual — v0.1.0-alpha
+## Status atual — v0.2.0-alpha
 
-[**Release v0.1.0-alpha**](https://github.com/ffreitasb/veredas-de-papel/releases/tag/v0.1.0-alpha) publicada em abril/2026.
+[**Release v0.2.0-alpha**](https://github.com/ffreitasb/veredas-de-papel/releases/tag/v0.2.0-alpha) publicada em abril/2026.
 
 ### Concluído
 
@@ -25,15 +25,18 @@
 | **Fase 3 — IFData** | Coletor IFData/BCB, HealthDataIF, detectores de Basileia e Liquidez | — |
 | **Fase B — Infraestrutura** | 60+ testes, Alembic, alertas Telegram/Email, CSV export, filtros HTMX | — |
 | **Fase C — CI** | GitHub Actions (pytest 3.11/3.12, ruff, mypy) | v0.1.0-alpha |
-| **Fase 4.1 — Fundação de Scrapers** | `WebCollectorBase` (rate limit, retry, UA rotation), `PlaywrightClient`, camada de normalização `CDBOferta` | — |
-| **Fase 4.2 — Corretoras: Prateleiras** | Scrapers XP, BTG, Inter, Rico; `veredas collect scrapers --fonte`; 40 testes do parser | — |
-| **Tier Clustering** | `catalog.py`: `TierEmissor`/`TierPlataforma`, limiares por tier (bancão alarma a 108% CDI, pequeno a 130%); `SpreadDetector` e `DetectionEngine` com thresholds por if_id; globals Jinja2 | — |
+| **Fase 4.1 — Fundação de Scrapers** | `WebCollectorBase` (rate limit, retry, UA rotation), `PlaywrightClient`, normalização `CDBOferta` | v0.2.0-alpha |
+| **Fase 4.2 — Corretoras: Prateleiras** | Scrapers XP, BTG, Inter, Rico; `veredas collect scrapers --fonte`; 28 testes de parser | v0.2.0-alpha |
+| **Fase 4.3-A/B/D — B3 parcial** | Downloader ZIP aninhado, parser Renda Fixa Privada, coluna `mercado`, filtro no dashboard | v0.2.0-alpha |
+| **Tier Clustering** | `TierEmissor` (`BANCAO`/`MEDIO`/`PEQUENO`/`FINTECH`); thresholds de spread por tier | v0.2.0-alpha |
+| **Hardening detectores** | ENG-01 cross-category, STL → experimental/, DBSCAN guard ≥200, `enable_statistical=False` | v0.2.0-alpha |
+| **SEC-02/04/05/06/07/09** | CSRF, whitelist de parâmetros, CNPJ validation, Markup return type | v0.2.0-alpha |
 
 ---
 
-## Em desenvolvimento — Fase 4: Fontes de Mercado (continuação)
+## Em desenvolvimento — v0.3.0-alpha
 
-**Fases 4.1 e 4.2 concluídas.** Próximas entregas: mercado secundário B3 (4.3) e inteligência cruzada entre fontes (4.4).
+**Próximas entregas:** B3 Collector completo (4.3-C) e inteligência cruzada entre fontes (4.4).
 
 ---
 
@@ -231,11 +234,11 @@ collectors/b3/
 | Versão | Conteúdo esperado |
 |--------|------------------|
 | `v0.1.0-alpha` | Fases 1–3 + B + C — **publicada** |
-| `v0.2.0-alpha` | Fase 4.1 + 4.2 + Tier Clustering — **concluído, release pendente** |
-| `v0.3.0-alpha` | Fase 4.3 + 4.4 (B3 + inteligência cruzada) |
-| `v0.4.0-alpha` | Fase 5 (dados alternativos) |
+| `v0.2.0-alpha` | Fase 4.1 + 4.2 + 4.3 parcial + Tier Clustering + hardening — **publicada** |
+| `v0.3.0-alpha` | Fase 4.3-C (B3BoletimCollector + CLI) + 4.4 (inteligência cruzada) |
+| `v0.4.0-alpha` | Fase 5 (dados alternativos: Reclame Aqui, sanções BCB) |
 | `v1.0.0` | Fase D completa (PyPI, binários, demo) |
 
 ---
 
-*Atualizado em: 23/abril/2026 — 4.1, 4.2 e Tier Clustering concluídos; endpoints 4.3 validados*
+*Atualizado em: 27/abril/2026 — v0.2.0-alpha publicada; v0.3.0-alpha em desenvolvimento*
